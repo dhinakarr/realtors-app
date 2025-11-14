@@ -1,0 +1,49 @@
+spring:
+  cache:
+    caffeine:
+      spec: expireAfterWrite=1h,maximumSize=1000
+
+  mvc:
+    pathmatch:
+       matching-strategy: ANT_PATH_MATCHER
+  datasource:
+    url: jdbc:postgresql://localhost:5432/realtors
+    username: postgres
+    password: admin
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      pool-name: RealtorsHikariPool
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration  
+  # optional: log SQL queries
+  jdbc:
+    template:
+      fetch-size: 50
+
+  web:
+    resources:
+      add-mappings: false
+
+server:
+  servlet:
+    context-path: /
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    com.realitor.common.util.JsonAwareRowMapper: INFO
+    org.springframework.jdbc.core.BeanPropertyRowMapper: WARN
+
+jwt:
+  secret: "ThisIsASecretKeyForJWTsChangeMe1234567890"  # use env var in production
+  expiration-ms: 86400000
+  refreshExpirationMs: 604800000
