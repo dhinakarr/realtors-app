@@ -1,6 +1,9 @@
 package com.realtors.admin.service;
 
 import com.realtors.admin.dto.FeatureDto;
+import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.form.DynamicFormResponseDto;
+import com.realtors.admin.dto.form.EditResponseDto;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,12 +23,15 @@ public class FeatureService extends AbstractBaseService<FeatureDto, UUID>{
     public FeatureService(JdbcTemplate jdbcTemplate) {
         super(FeatureDto.class, "features", jdbcTemplate);
         this.jdbcTemplate = jdbcTemplate;
+        addDependentLookup("module_id", "modules", "module_id", "module_name", "moduleName");
     }
 
     @Override
     protected String getIdColumn() {
         return "feature_id";
     }
+    
+    //List<LookupDefinition> lookupDefs = List.of(new LookupDefinition("modules", "modules", "module_id", "module_name", ""));
     
     private static final org.springframework.jdbc.core.RowMapper<FeatureDto> featureRowMapper = (rs, rowNum) -> {
     	FeatureDto dto = new FeatureDto();
@@ -39,75 +45,55 @@ public class FeatureService extends AbstractBaseService<FeatureDto, UUID>{
         dto.setUpdatedAt(rs.getObject("updated_at", Timestamp.class));
         return dto;
     };
+    
+    public DynamicFormResponseDto getRolesFormData() {
+    	return super.buildDynamicFormResponse();
+    }
+    
+    public EditResponseDto<FeatureDto> editRolesResponse(UUID roleId) {
+        Optional<FeatureDto> opt = super.findById(roleId);
+        DynamicFormResponseDto form = super.buildDynamicFormResponse();
+        return opt.map(user -> new EditResponseDto<>(user, form))
+                  .orElse(null);
+    }
 
     // CREATE
     public FeatureDto createFeature(FeatureDto dto) {
-        log.info("Creating new feature: {}", dto.getFeatureName());
         return super.create(dto);
-        /*
-        String sql = """
-                INSERT INTO features (
-                    module_id, feature_name, description, url,
-                    status, created_at, updated_at, created_by, updated_by
-                )
-                VALUES (?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?)
-                RETURNING feature_id, module_id, feature_name, description, url, status, created_at, updated_at
-            """;
-        return jdbcTemplate.queryForObject(
-                sql,
-                featureRowMapper,
-                dto.getModuleId(),
-                dto.getFeatureName(),
-                dto.getDescription(),
-                dto.getUrl(),
-                currentUserId,
-                currentUserId
-        );
-        */
     }
 
     // READ ALL (Active only)
     public List<FeatureDto> getAllFeatures() {
-        log.info("Fetching all active features");
-        /*
-        String sql = "SELECT * FROM features WHERE status = 'ACTIVE' ORDER BY created_at DESC";
-
-        List<FeatureDto> list = jdbcTemplate.query(sql, featureRowMapper);
-//        return ResponseEntity.ok(new ApiResponse<>(true, "Features fetched successfully", list));
-        return list;
-        */
         return super.findAll();
+    }
+    
+    // SEARCH ALL (Active only)
+    public List<FeatureDto> searchFeatures(String searchText) {
+        return super.search(searchText, List.of("feature_name", "description"), null);
+    }
+    
+    // SEARCH ALL (Active only)
+    public PagedResult<FeatureDto> getPaginated(int page, int size) {
+		/*
+		 * return new FeatureListResponseDto<>( "Features", "table",
+		 * List.of("Feature Name", "Description", "Module Name", "Status"),
+		 * Map.ofEntries( Map.entry("Feature Name", "featureName"),
+		 * Map.entry("Module Name", "moduleName"), Map.entry("Description",
+		 * "description"), Map.entry("Status", "status")), "featureId", true, //
+		 * pagination enabled super.findAllPaginated(page, size, null), // <-- MUST
+		 * return PagedResult<AppUserDto> super.getLookupData(lookupDefs) // <-- fully
+		 * dynamic lookup map );
+		 */
+    	return super.findAllPaginated(page, size, null);
     }
 
     // READ BY ID
     public Optional<FeatureDto> getFeatureById(UUID featureId) {
-        log.info("Fetching feature by ID: {}", featureId);
-/*
-        String sql = "SELECT * FROM features WHERE feature_id = ? AND status = 'ACTIVE'";
-        List<FeatureDto> results = jdbcTemplate.query(sql, featureRowMapper, featureId);
-
-        Optional<FeatureDto> feature = results.stream().findFirst();
-        return feature;
-        */
         return super.findById(featureId);
     }
 
     // UPDATE
     public FeatureDto updateFeature(UUID featureId, FeatureDto dto) {
-        log.info("Updating feature ID: {}", featureId);
-/*
-        int updated = jdbcTemplate.update("""
-                UUPDATE features
-            SET module_id = ?, feature_name = ?, description = ?, url = ?, updated_by=?, updated_at = CURRENT_TIMESTAMP
-            WHERE feature_id = ? AND status = 'ACTIVE'
-            """, dto.getModuleId(), dto.getFeatureName(), dto.getDescription(), dto.getUrl(), currentUserId, featureId);
-        if (updated == 0) {
-            throw new ResourceNotFoundException("Module not found or inactive: " + featureId);
-        }
-
-        return getFeatureById(featureId)
-                .orElseThrow(() -> new ResourceNotFoundException("Feature not found after update: " + featureId));
-                */
         return super.update(featureId, dto);
     }
 
@@ -117,15 +103,6 @@ public class FeatureService extends AbstractBaseService<FeatureDto, UUID>{
     
     // SOFT DELETE
     public boolean deleteFeature(UUID featureId) {
-        log.info("Soft deleting feature ID: {}", featureId);
-        /*
-        String sql = "UPDATE features SET status = 'INACTIVE', updated_at = CURRENT_TIMESTAMP WHERE feature_id = ?";
-
-        int updated = jdbcTemplate.update(sql, featureId);
-        if (updated > 0) {
-        	throw new ResourceNotFoundException("Module not found or already inactive: " + featureId);
-        } */
-        log.info("Feature {} marked as INACTIVE", featureId);
         return super.softDelete(featureId);
     }
 }

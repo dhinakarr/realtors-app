@@ -2,6 +2,9 @@ package com.realtors.admin.controller;
 
 
 import com.realtors.admin.dto.AclPermissionDto;
+import com.realtors.admin.dto.ModulePermissionDto;
+import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.form.PermissionFormDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.admin.service.AclPermissionService;
 
@@ -23,11 +26,23 @@ public class AclPermissionController {
     public AclPermissionController(AclPermissionService permissionService) {
         this.permissionService = permissionService;
     }
+    
+    @GetMapping("/form")
+	public ResponseEntity<ApiResponse<PermissionFormDto>> getUserForm() {
+    	PermissionFormDto users = permissionService.getPermissionFormData();
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
+	}
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AclPermissionDto>>> getAll() {
-    	List<AclPermissionDto> list = this.permissionService.findAll();
-        return ResponseEntity.ok(com.realtors.common.ApiResponse.success("Acl Data Fetched", list,  HttpStatus.OK));
+    public ResponseEntity<ApiResponse<List<ModulePermissionDto>>> getAll() {
+    	List<ModulePermissionDto> list = this.permissionService.findPermissionsByRole(null, false);
+        return ResponseEntity.ok(ApiResponse.success("Acl Data Fetched", list,  HttpStatus.OK));
+    }
+    
+    @GetMapping("/pages")
+    public ResponseEntity<ApiResponse<PagedResult<AclPermissionDto>>> getPages(@RequestParam int page, @RequestParam int size) {
+    	PagedResult<AclPermissionDto> list = this.permissionService.getAllPaginated(page, size);
+        return ResponseEntity.ok(ApiResponse.success("Acl Data Fetched", list,  HttpStatus.OK));
     }
 
     @GetMapping("/{id}")
@@ -36,6 +51,17 @@ public class AclPermissionController {
         return ResponseEntity.ok(ApiResponse.success("Acl Data Fetched", dto, HttpStatus.OK));
     }
 
+    @PostMapping("/bulk/{roleId}")
+    public ResponseEntity<ApiResponse<AclPermissionDto>> createBulk(@PathVariable String roleId, @RequestBody List<AclPermissionDto> dto) {
+    	UUID role = UUID.fromString(roleId);
+    	boolean flag = permissionService.bulkInsert(role, dto);
+    	if (flag) 
+    		return ResponseEntity.ok(ApiResponse.success("Acl Data Created", null, HttpStatus.CREATED)) ;
+    	else
+    	 return ResponseEntity.badRequest().body((ApiResponse.failure("Data failed to insert", HttpStatus.EXPECTATION_FAILED)));
+        
+    }
+    
     @PostMapping
     public ResponseEntity<ApiResponse<AclPermissionDto>> create(@RequestBody AclPermissionDto dto) {
     	AclPermissionDto acl = permissionService.create(dto);
@@ -59,5 +85,6 @@ public class AclPermissionController {
     	permissionService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Acl data deleted", null, HttpStatus.OK));
     }
+    
 }
 

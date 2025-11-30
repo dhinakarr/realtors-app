@@ -61,9 +61,10 @@ public class GenericRowMapper<T> implements RowMapper<T> {
         }
         return sb.toString();
     }
-    
+    /*
     private String camelToSnake(String name) {
         return name.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
+    */
 }
 

@@ -16,11 +16,13 @@ public class RoleDto {
         private UUID roleId;
         private String roleName;
         private String description;
-        private  Timestamp createdAt;
-        private  Timestamp updatedAt;
+        private int roleLevel;
+        private  @JsonIgnore Timestamp createdAt;
+        private  @JsonIgnore Timestamp updatedAt;
         private String status;
         private @JsonIgnore UUID createdBy;
         private @JsonIgnore UUID updatedBy;
         private UUID parentRoleId;
+        private String managerRole;
 }
 

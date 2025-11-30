@@ -5,6 +5,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.UUID;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.sql.Timestamp;
 
 @Data
@@ -14,11 +17,12 @@ public class FeatureDto {
     private UUID featureId;
     private UUID moduleId;
     private String featureName;
+    private String moduleName;
     private String description;
     private String url;
     private String status;
-    private Timestamp createdAt;
-    private Timestamp updatedAt;
-    private UUID createdBy;
-    private UUID updatedBy;
+    private @JsonIgnore Timestamp createdAt;
+    private @JsonIgnore Timestamp updatedAt;
+    private @JsonIgnore UUID createdBy;
+    private @JsonIgnore UUID updatedBy;
 }

@@ -60,7 +60,7 @@ public class AuthService {
         this.userService.updateLastLogin(userId);
         
         //Build return Value after successful login
-        List<ModulePermissionDto> returnDto = this.permissionService.findPermissionsByRole(roleId);
+        List<ModulePermissionDto> returnDto = this.permissionService.findPermissionsByRole(roleId, false);
         Map<String, Object> map = Map.of(
                 "accessToken", token,
                 "refreshToken", refToken,

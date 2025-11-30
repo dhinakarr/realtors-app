@@ -3,6 +3,8 @@ package com.realtors.admin.dto;
 import java.sql.Timestamp;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,11 +16,11 @@ public class ModuleDto {
 	private UUID moduleId;
 	private String moduleName;
 	private String description;
-	private Timestamp createdAt;
-	private Timestamp updatedAt;
+	private @JsonIgnore Timestamp createdAt;
+	private @JsonIgnore Timestamp updatedAt;
 	private String status;
-	private UUID createdBy;
-	private UUID updatedBy;
+	private @JsonIgnore UUID createdBy;
+	private @JsonIgnore UUID updatedBy;
 }
 
 

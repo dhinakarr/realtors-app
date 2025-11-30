@@ -31,7 +31,7 @@ public class AppUserService {
         AppUserDto dto = new AppUserDto();
         dto.setUserId((UUID) rs.getObject("user_id"));
         dto.setRoleId((UUID) rs.getObject("role_id"));
-        dto.setRoleName(rs.getString("role_name"));
+//        dto.setRoleName(rs.getString("role_name"));
         dto.setEmail(rs.getString("email"));
         dto.setMobile(rs.getString("mobile"));
         dto.setFullName(rs.getString("full_name"));

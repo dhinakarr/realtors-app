@@ -88,5 +88,9 @@ public class TokenCacheService {
         log.warn("Clearing all tokens from cache!");
         tokenCache.invalidateAll();
     }
+    
+    public boolean isRevoked(String token) {
+        return tokenCache.asMap().containsKey(token); // or check DB/Redis
+    }
 }
 

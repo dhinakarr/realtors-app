@@ -1,6 +1,9 @@
 package com.realtors.admin.controller;
 
 import com.realtors.admin.dto.ModuleDto;
+import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.form.DynamicFormResponseDto;
+import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.admin.service.ModuleService;
 import jakarta.validation.Valid;
@@ -22,6 +25,18 @@ public class ModuleController {
         this.moduleService = moduleService;
     }
 
+    @GetMapping("/form")
+	public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getUserForm() {
+		DynamicFormResponseDto roles = moduleService.getModulesFormData();
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", roles, HttpStatus.OK));
+	}
+    
+    @GetMapping("/editForm/{id}")
+	public ResponseEntity<ApiResponse<EditResponseDto<ModuleDto>>> getUserEditForm(@PathVariable UUID id) {
+		EditResponseDto<ModuleDto> users = moduleService.editModulesResponse(id);
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
+	}
+    
     // ✅ Create
     @PostMapping
     public ResponseEntity<ApiResponse<ModuleDto>> createModule(
@@ -37,6 +52,18 @@ public class ModuleController {
     public ResponseEntity<ApiResponse<List<ModuleDto>>> getAllModules() {
         List<ModuleDto> modules = moduleService.getAllModules();
         return ResponseEntity.ok(ApiResponse.success("Modules fetched successfully", modules, HttpStatus.OK));
+    }
+    
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<ModuleDto>>> searchModules(String searchText) {
+        List<ModuleDto> modules =  moduleService.searchModules(searchText);
+        return ResponseEntity.ok(ApiResponse.success("Active modules fetched", modules));
+    }
+    
+    @GetMapping("/pages")
+    public ResponseEntity<ApiResponse<PagedResult<ModuleDto>>> getPagedData(int page, int size) {
+    	PagedResult<ModuleDto> modules =  moduleService.getPaginatedModules(page,size);
+        return ResponseEntity.ok(ApiResponse.success("Active modules fetched", modules));
     }
 
     // ✅ Get by ID

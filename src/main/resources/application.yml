@@ -47,3 +47,7 @@ jwt:
   secret: "ThisIsASecretKeyForJWTsChangeMe1234567890"  # use env var in production
   expiration-ms: 86400000
   refreshExpirationMs: 604800000
+
+file:
+  upload-dir: D:\temp\app-images\uploads
+  temp-dir: D:\temp\

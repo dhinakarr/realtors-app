@@ -1,7 +1,10 @@
 package com.realtors.admin.controller;
 
+import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.RoleDto;
 import com.realtors.admin.dto.RoleHierarchyDto;
+import com.realtors.admin.dto.form.DynamicFormResponseDto;
+import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.RoleService;
 import com.realtors.common.ApiResponse;
 import org.slf4j.Logger;
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -24,13 +28,43 @@ public class RoleController {
     public RoleController(RoleService rolesService) {
         this.rolesService = rolesService;
     }
+    
+    @GetMapping("/form")
+	public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getUserForm() {
+		DynamicFormResponseDto roles = rolesService.getRolesFormData();
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", roles, HttpStatus.OK));
+	}
+    
+    @GetMapping("/editForm/{id}")
+	public ResponseEntity<ApiResponse<EditResponseDto<RoleDto>>> getUserEditForm(@PathVariable UUID id) {
+		EditResponseDto<RoleDto> users = rolesService.editRolesResponse(id);
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
+	}
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<RoleDto>>> listAllRoles() {
         List<RoleDto> roles =  rolesService.getAllRoles();
         return ResponseEntity.ok(ApiResponse.success("Active roles fetched", roles));
     }
-
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<Optional<RoleDto>>> listByRoleId(@PathVariable UUID id ) {
+        Optional<RoleDto> roles =  rolesService.getRoleById(id);
+        return ResponseEntity.ok(ApiResponse.success("Active roles fetched", roles));
+    }
+    
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<RoleDto>>> listSearchData(String searchText) {
+        List<RoleDto> roles =  rolesService.searchRoles(searchText);
+        return ResponseEntity.ok(ApiResponse.success("Active roles fetched", roles));
+    }
+    
+    @GetMapping("/pages")
+    public ResponseEntity<ApiResponse<PagedResult<RoleDto>>> getPagedData(int page, int size) {
+    	PagedResult<RoleDto> roles =  rolesService.getPaginatedData(page,size);
+        return ResponseEntity.ok(ApiResponse.success("Active roles fetched", roles));
+    }
+    
     // ✅ Create role
     @PostMapping
     public ResponseEntity<ApiResponse<RoleDto>> createRole(@RequestBody RoleDto role) {
