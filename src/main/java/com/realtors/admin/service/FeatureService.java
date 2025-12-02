@@ -4,6 +4,10 @@ import com.realtors.admin.dto.FeatureDto;
 import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditContext;
+import com.realtors.common.service.AuditTrailService;
+import com.realtors.common.util.AppUtil;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,13 +23,15 @@ public class FeatureService extends AbstractBaseService<FeatureDto, UUID>{
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    private final AuditTrailService audit; 
 
-    public FeatureService(JdbcTemplate jdbcTemplate) {
+    public FeatureService(JdbcTemplate jdbcTemplate, AuditTrailService audit) {
         super(FeatureDto.class, "features", jdbcTemplate);
         this.jdbcTemplate = jdbcTemplate;
+        this.audit = audit;
         addDependentLookup("module_id", "modules", "module_id", "module_name", "moduleName");
     }
-
+    
     @Override
     protected String getIdColumn() {
         return "feature_id";
@@ -47,28 +53,44 @@ public class FeatureService extends AbstractBaseService<FeatureDto, UUID>{
     };
     
     public DynamicFormResponseDto getRolesFormData() {
-    	return super.buildDynamicFormResponse();
+    	DynamicFormResponseDto dto = super.buildDynamicFormResponse();
+    	audit.auditAsync("features", null, EnumConstants.FORM.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+    	
+    	return dto;
     }
     
     public EditResponseDto<FeatureDto> editRolesResponse(UUID roleId) {
         Optional<FeatureDto> opt = super.findById(roleId);
         DynamicFormResponseDto form = super.buildDynamicFormResponse();
+        
+        audit.auditAsync("features", roleId, EnumConstants.EDIT_FORM.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        
         return opt.map(user -> new EditResponseDto<>(user, form))
                   .orElse(null);
     }
 
     // CREATE
     public FeatureDto createFeature(FeatureDto dto) {
-        return super.create(dto);
+    	FeatureDto data = super.create(dto);
+    	audit.auditAsync("features", data.getFeatureId(), EnumConstants.CREATE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        return data;
     }
 
     // READ ALL (Active only)
     public List<FeatureDto> getAllFeatures() {
-        return super.findAll();
+    	List<FeatureDto> list = super.findAll();
+    	audit.auditAsync("features", list.getFirst().getFeatureId(), EnumConstants.GET_ALL.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        return list;
     }
     
     // SEARCH ALL (Active only)
     public List<FeatureDto> searchFeatures(String searchText) {
+    	audit.auditAsync("features", null, EnumConstants.SEARCH.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         return super.search(searchText, List.of("feature_name", "description"), null);
     }
     
@@ -84,25 +106,39 @@ public class FeatureService extends AbstractBaseService<FeatureDto, UUID>{
 		 * return PagedResult<AppUserDto> super.getLookupData(lookupDefs) // <-- fully
 		 * dynamic lookup map );
 		 */
-    	return super.findAllPaginated(page, size, null);
+    	PagedResult<FeatureDto> paged = super.findAllPaginated(page, size, null);
+    	audit.auditAsync("features", paged.data().getFirst().getFeatureId(), EnumConstants.PAGED.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+    	return paged;
     }
 
     // READ BY ID
     public Optional<FeatureDto> getFeatureById(UUID featureId) {
-        return super.findById(featureId);
+    	Optional<FeatureDto> opt = super.findById(featureId);
+    	audit.auditAsync("features", opt.isPresent() ? opt.get().getFeatureId() : null, EnumConstants.BY_ID.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        return opt;
     }
 
     // UPDATE
     public FeatureDto updateFeature(UUID featureId, FeatureDto dto) {
-        return super.update(featureId, dto);
+    	FeatureDto data = super.update(featureId, dto);
+    	audit.auditAsync("features", data.getFeatureId(), EnumConstants.UPDATE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        return data;
     }
 
     public FeatureDto partialUpdate(UUID id, Map<String, Object> dto) {
-        return super.patch(id, dto);
+    	FeatureDto data = super.patch(id, dto);
+    	audit.auditAsync("features", data.getFeatureId(), EnumConstants.PATCH.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        return data;
     }
     
     // SOFT DELETE
     public boolean deleteFeature(UUID featureId) {
+    	audit.auditAsync("features", featureId, EnumConstants.DELETE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         return super.softDelete(featureId);
     }
 }

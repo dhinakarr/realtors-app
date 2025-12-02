@@ -82,11 +82,13 @@ public class FileStorageService {
 		boolean flag = false;
 		String normalizedPath = filePath.replace("\\", "/");
 		Path path = Paths.get(normalizedPath);
+		logger.info("@FileStorage.deletFile path: "+path);
 		try {
 			flag = Files.deleteIfExists(path);
 		} catch (IOException ioe) {
 			logger.error("@FileStorage.deletFile Error when deleting the file: "+ ioe.getMessage());
 		}
+		logger.info("@FileStorage.deletFile flag: "+flag);
 		return flag;
 	}
 }

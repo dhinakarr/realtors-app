@@ -1,6 +1,7 @@
 package com.realtors.projects.dto;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -26,4 +27,6 @@ public class PlotUnitDto {
 	private String status;
 	private UUID customerId;
 	private String remarks;
+	private UUID updatedBy;
+	private Timestamp updated_at;
 }

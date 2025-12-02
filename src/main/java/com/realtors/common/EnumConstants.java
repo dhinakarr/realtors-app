@@ -1,0 +1,19 @@
+package com.realtors.common;
+
+public enum EnumConstants {
+	CREATE,
+	READ,
+	UPDATE,
+	DELETE,
+	SEARCH,
+	BY_ID,
+	FORM,
+	EDIT_FORM,
+	GET_ALL,
+	PAGED,
+	PATCH,
+	CREATE_BULK,
+	UPDATE_BULK,
+	CREATE_WITH_FILES,
+	UPDATE_WITH_FILES
+}

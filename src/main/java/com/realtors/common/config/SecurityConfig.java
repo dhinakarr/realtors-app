@@ -33,11 +33,10 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
-//            .cors(Customizer.withDefaults())
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .authorizeHttpRequests(auth -> auth
             		// permit API auth/public endpoints
-            	    .requestMatchers("/api/auth/**", "/api/public/**").permitAll()
+            	    .requestMatchers("/api/auth/**", "/api/public/**", "/public/**").permitAll()
             	    .requestMatchers("/api/projects/file/**").permitAll()
             	    .requestMatchers("/.well-known/**").permitAll()
             	    

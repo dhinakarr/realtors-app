@@ -7,6 +7,10 @@ import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.dto.form.LookupDefinition;
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditContext;
+import com.realtors.common.service.AuditTrailService;
+import com.realtors.common.util.AppUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +34,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    private final AuditTrailService audit;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -40,12 +45,13 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     	    new LookupDefinition("app_users", "app_users", "manager_id", "full_name", "managerName")
     	);
     
-    public UserService(JdbcTemplate jdbcTemplate) {
+    public UserService(JdbcTemplate jdbcTemplate, AuditTrailService audit) {
     	super(AppUserDto.class, "app_users", jdbcTemplate, Set.of("role_name", "managerName")); 
     	// Add multiple foreign key lookups
         addDependentLookup("role_id", "roles", "role_id", "role_name", "roleName");
         addDependentLookup("manager_id", "app_users", "user_id", "full_name", "managerName");
     	this.jdbcTemplate = jdbcTemplate;
+    	this.audit = audit;
     }
     
 	@Override
@@ -85,6 +91,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     
     /** ✅ User form response */
     public DynamicFormResponseDto getUserFormData() {
+    	audit.auditAsync("users", null, EnumConstants.FORM.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
     	return super.buildDynamicFormResponse();
     }
     
@@ -92,7 +100,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     public EditResponseDto<AppUserDto> editUserResponse(UUID currentUserId) {
         Optional<AppUserDto> opt = super.findById(currentUserId);
         DynamicFormResponseDto form = super.buildDynamicFormResponse();
-        
+        audit.auditAsync("users", opt.isPresent() ? opt.get().getUserId() : null, EnumConstants.EDIT_FORM.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         return opt.map(user -> new EditResponseDto<>(user, form))
                   .orElse(null);
     }
@@ -114,13 +123,20 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
         // Hash password
         String hashedPassword = passwordEncoder.encode(dto.getPasswordHash()==null? "Test@123":dto.getPasswordHash());
         dto.setPasswordHash(hashedPassword);
+        AppUserDto data = super.create(dto);
         
-        return super.create(dto);
+        audit.auditAsync("users", data.getUserId(), EnumConstants.CREATE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        
+        return data;
     }
 
     /** ✅ Update user */
     public AppUserDto updateUser(AppUserDto dto, UUID currentUserId) {
-    	return super.update(currentUserId, dto);
+    	AppUserDto data = super.update(currentUserId, dto);
+    	audit.auditAsync("users", data.getUserId(), EnumConstants.UPDATE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+    	return data;
     }
     
  // ---------------- CREATE ----------------
@@ -149,26 +165,40 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
             : new HashMap<>();     // or empty map
         data.setMeta(metaMap);
     	Map<String, Object> updatedMap = mapper.convertValue(data, Map.class);
+    	AppUserDto obj = super.createWithFiles( updatedMap);
+    	audit.auditAsync("users", obj.getUserId(), EnumConstants.CREATE_WITH_FILES.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         // You can use a GenericInsertUtil that supports files
-        return super.createWithFiles( updatedMap);
+        return obj;
     }
 
     // ---------------- UPDATE ----------------
     public AppUserDto updateWithFiles(UUID id, Map<String, Object> updates) {
-        return super.patchUpdateWithFile(id, updates);
+    	AppUserDto data = super.patchUpdateWithFile(id, updates);
+    	audit.auditAsync("users", data.getUserId(), EnumConstants.PATCH.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        return data;
     }
     
     /** ✅ Soft delete */
     public boolean softDeleteUser(UUID userId) {
+    	audit.auditAsync("users", userId, EnumConstants.DELETE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
     	return super.softDelete(userId);
     }
 
     public AppUserDto partialUpdate(UUID id, Map<String, Object> dto) {
-    	return super.patch(id, dto);
+    	AppUserDto data = super.patch(id, dto);
+    	audit.auditAsync("users", data.getUserId(), EnumConstants.PATCH.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+    	return data;
     }
     
  // Search Use data
     public List<AppUserDto> searchUsers(String searchText) {
+    	
+    	audit.auditAsync("users", null, EnumConstants.SEARCH.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
     	return super.search(searchText, List.of("full_name", "email"), null);
     }
     
@@ -185,7 +215,10 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
 		 * PagedResult<AppUserDto> super.getLookupData(lookupDefs) // <-- fully dynamic
 		 * lookup map );
 		 */
-    	return super.findAllPaginated(page, size, null);
+    	PagedResult<AppUserDto> data = super.findAllPaginated(page, size, null);
+    	audit.auditAsync("users", data.data().getFirst().getUserId(), EnumConstants.PAGED.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+    	return data;
     }
     
     /** ✅ Update meta JSONB */
@@ -205,16 +238,25 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     /** ✅ Update last login */
     public boolean updateLastLogin(UUID userId) {
         int rows = jdbcTemplate.update("UPDATE app_users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?", userId);
+        audit.auditAsync("users", userId, EnumConstants.UPDATE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         return rows > 0;
     }
 
     /** ✅ Get all active users */
     public List<AppUserDto> getAllUsers() {
-    	return super.findAll();
+    	List<AppUserDto> list = super.findAll();
+    	audit.auditAsync("users", list.getFirst().getUserId(), EnumConstants.GET_ALL.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+    	return list;
     }
 
     /** ✅ Get user by ID */
     public Optional<AppUserDto> getUserById(UUID id) {
+    	Optional<AppUserDto> opt = super.findById(id);
+    	audit.auditAsync("users", opt.isPresent() ? opt.get().getUserId() : null, EnumConstants.BY_ID.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+    	
     	return super.findById(id);
     }
 }

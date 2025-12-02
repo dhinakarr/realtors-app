@@ -10,11 +10,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
 import com.realtors.common.util.AppUtil;
+import com.realtors.projects.controller.ProjectController;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.dto.ProjectFileDto;
 import com.realtors.projects.dto.ProjectSummaryDto;
@@ -28,6 +31,7 @@ public class ProjectRepository {
 
 	private final JdbcTemplate jdbc;
 	private final ProjectRowMapper rowMapper = new ProjectRowMapper();
+	private static final Logger logger = LoggerFactory.getLogger(ProjectRepository.class);
 	
 	public List<ProjectDto> findAll() {
 		String sql = "SELECT * FROM projects ORDER BY created_at DESC";
@@ -131,8 +135,9 @@ public class ProjectRepository {
                 """;
             params = new Object[]{filter};
         }
-
-        return jdbc.query(sql, params, projectExtractor);
+        List<ProjectSummaryDto> list = jdbc.query(sql, params, projectExtractor);
+        logger.info("@ProjectRepository.getProjects publicUrl: "+list.getFirst().getFiles().getFirst().getPublicUrl());
+        return list;
     }
     
     private final ResultSetExtractor<List<ProjectSummaryDto>> projectExtractor = new ResultSetExtractor<>() {

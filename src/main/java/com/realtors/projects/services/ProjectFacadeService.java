@@ -1,14 +1,15 @@
 package com.realtors.projects.services;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.realtors.projects.controller.ProjectController;
 import com.realtors.projects.dto.FileTemp;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.dto.ProjectFileDto;
@@ -18,12 +19,18 @@ import lombok.RequiredArgsConstructor;
 
 //ProjectFacadeService.java
 @Service
-@RequiredArgsConstructor
 public class ProjectFacadeService {
 
 	private final ProjectService projectService;
 	private final ProjectFileService fileService;
 	private final PlotUnitService plotService;
+	private static final Logger logger = LoggerFactory.getLogger(ProjectFacadeService.class);
+	
+	public ProjectFacadeService(ProjectService projectService, ProjectFileService fileService, PlotUnitService plotService) {
+		this.projectService = projectService;
+		this.fileService = fileService;
+		this.plotService = plotService;
+	}
 
 	/**
 	 * The core transactional method. Use the txManager bean explicitly.
@@ -34,6 +41,7 @@ public class ProjectFacadeService {
 		// 1) create project (DB)
 		ProjectDto created = projectService.createProject(dto);
 		UUID project_id = created.getProjectId() ;
+		logger.info("@ProjectFacadeServicecreateProjectWithFilesAndPlots project_id: "+project_id);
 		// 2) save files to temp folder
 		List<FileTemp> temps = fileService.saveFilesToTemp(project_id, files);
 
@@ -60,6 +68,6 @@ public class ProjectFacadeService {
 			fileService.cleanupTempFiles(temps);
 			fileService.cleanupTempFolder(project_id);
 			throw new RuntimeException("Failed during project create orchestration", ex);
-		}
+		} 
 	}
 }

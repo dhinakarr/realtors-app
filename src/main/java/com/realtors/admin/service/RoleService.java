@@ -5,6 +5,11 @@ import com.realtors.admin.dto.RoleDto;
 import com.realtors.admin.dto.RoleHierarchyDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditContext;
+import com.realtors.common.service.AuditTrailService;
+import com.realtors.common.util.AppUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,13 +24,15 @@ import java.util.UUID;
 public class RoleService extends AbstractBaseService<RoleDto, UUID> {
 
     private final JdbcTemplate jdbcTemplate;
+    private final AuditTrailService audit;
     private static final Logger logger = LoggerFactory.getLogger(RoleService.class);
     
 //    List<LookupDefinition> lookupDefs = List.of(new LookupDefinition("roles", "roles", "role_id", "role_name"));
 
-    public RoleService(JdbcTemplate jdbcTemplate) {
+    public RoleService(JdbcTemplate jdbcTemplate, AuditTrailService audit) {
     	super(RoleDto.class, "roles", jdbcTemplate);
         this.jdbcTemplate = jdbcTemplate;
+        this.audit = audit;
         addDependentLookup("parent_role_id", "roles", "role_id", "role_name", "managerRole");
 //        logger.info("Role Service");
     }
@@ -37,6 +44,8 @@ public class RoleService extends AbstractBaseService<RoleDto, UUID> {
 	
 	/** ✅ User form response */
     public DynamicFormResponseDto getRolesFormData() {
+    	audit.auditAsync("roles", null, EnumConstants.FORM.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
     	return super.buildDynamicFormResponse();
     }
     
@@ -44,15 +53,23 @@ public class RoleService extends AbstractBaseService<RoleDto, UUID> {
         Optional<RoleDto> opt = super.findById(roleId);
         DynamicFormResponseDto form = super.buildDynamicFormResponse();
         
+        audit.auditAsync("roles", null, EnumConstants.EDIT_FORM.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        
         return opt.map(user -> new EditResponseDto<>(user, form))
                   .orElse(null);
     }
 	
 	public List<RoleDto> getAllRoles() {
-		return super.findAll();
+		List<RoleDto> list = super.findAll();
+		audit.auditAsync("roles", list.getFirst().getRoleId(), EnumConstants.GET_ALL.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return list;
 	}
 	
 	public List<RoleDto> searchRoles(String searchText) {
+		audit.auditAsync("roles", null, EnumConstants.SEARCH.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return super.search(searchText, List.of("role_name", "description"), null);
 	}
 	
@@ -65,26 +82,43 @@ public class RoleService extends AbstractBaseService<RoleDto, UUID> {
 		 * null), // <-- MUST return PagedResult<AppUserDto>
 		 * super.getLookupData(lookupDefs) // <-- fully dynamic lookup map );
 		 */
-		return super.findAllPaginated(page, size, null);
+		PagedResult<RoleDto> paged = super.findAllPaginated(page, size, null);
+		audit.auditAsync("roles", paged.data().getFirst().getRoleId(), EnumConstants.PAGED.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return paged;
 	}
 	
 	public Optional<RoleDto> getRoleById(UUID id) {
+		Optional<RoleDto> dto = super.findById(id);
+		audit.auditAsync("roles", dto.isPresent() ? dto.get().getRoleId() : null, EnumConstants.BY_ID.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return super.findById(id);
 	}
 	
 	public RoleDto createRole(RoleDto dto) {
-		return super.create(dto);
+		RoleDto data = super.create(dto);
+		audit.auditAsync("roles", data.getRoleId() , EnumConstants.CREATE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return data;
 	}
 	
 	public RoleDto updateRoleById(UUID id, RoleDto dto) {
-		return super.update(id, dto);
+		RoleDto data = super.update(id, dto);
+		audit.auditAsync("roles", data.getRoleId() , EnumConstants.UPDATE.toString(), 
+    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return data;
 	}
 	
 	public RoleDto patchRoleUpdate(UUID id, Map<String, Object> dto) {
-		return super.patch(id, dto);
+		RoleDto data = super.patch(id, dto);
+		audit.auditAsync("roles", data.getRoleId() , EnumConstants.UPDATE.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return data;
 	}
 	
 	public boolean deleteRole(UUID id) {
+		audit.auditAsync("roles", id , EnumConstants.DELETE.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return super.softDelete(id);
 	}
 	

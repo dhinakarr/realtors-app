@@ -84,7 +84,9 @@ public class ProjectFileService {
 	}
 
 	public List<ProjectFileDto> getProjectFiles(UUID projectId) {
-		return repo.findByProjectId(projectId);
+		List<ProjectFileDto> list = repo.findByProjectId(projectId);
+		logger.info("@ProjectFileService.getProjectFiles fileDto.getFilePath(): " + list.getFirst().getProjectFileId());
+		return list;
 	}
 
 	public ProjectFileDto getFileById(UUID fileId) {
@@ -94,8 +96,10 @@ public class ProjectFileService {
 	public boolean deleteFile(UUID fileId) {
 		ProjectFileDto fileDto = repo.findByProjectFileId(fileId);
 		boolean flag = false;
-		logger.info("ProjectFileService.deleteFile fileDto.getFilePath(): " + fileDto.getFilePath());
+		logger.info("@ProjectFileService.deleteFile fileDto.getFilePath(): " + fileDto.getFilePath());
 		boolean fileDeleted = storage.deleteFile(fileDto.getFilePath());
+//		Path fileFolder = getFinalFolder(fileDto.getProjectId()); // this is to consider  deleting the folder if required
+		
 		boolean dataDeleted = repo.deleteFile(fileId);
 		if (fileDeleted && dataDeleted)
 			flag = true;
@@ -148,7 +152,6 @@ public class ProjectFileService {
 				ft.setOriginalFileName(mf.getOriginalFilename());
 				ft.setTempPath(tmp);
 				ft.setFinalPath(finalPath);
-
 				out.add(ft);
 			} catch (IOException e) {
 				// On error during write, clean up already created temp files for this call
@@ -179,7 +182,8 @@ public class ProjectFileService {
 
 		for (FileTemp f : temps) {
 			String publicUrl = ServletUriComponentsBuilder.fromCurrentContextPath().path("/api/projects/file/")
-					.path(f.getId().toString()).toUriString();
+					.path(f.getProjectId().toString()).toUriString();
+			logger.info("@ProjectFileService.insertFileRecordsAsTemp publicUrl: "+publicUrl);
 			jdbc.update(sql, f.getId(), f.getProjectId(), f.getTempPath().toString(), publicUrl,
 					f.getOriginalFileName());
 		}

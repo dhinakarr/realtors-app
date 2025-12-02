@@ -130,8 +130,14 @@ public class PlotUnitRepository {
     // DELETE
     // --------------------------
     public int delete(UUID id) {
-        String sql = "DELETE FROM plot_units WHERE plot_id = ?";
-        return jdbc.update(sql, id);
+        String updateSql = "UPDATE plot_units SET status='CANCELLED' WHERE plot_id = ?";
+        return jdbc.update(updateSql, id);
+    }
+    
+    public boolean deleteByProjectId(UUID projectId) {
+    	String updateSql = "DELETE FROM plot_units WHERE project_id = ?";
+    	int retValue = jdbc.update(updateSql, projectId);
+        return retValue >0;
     }
 }
 

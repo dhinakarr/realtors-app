@@ -12,6 +12,9 @@ import com.realtors.admin.dto.form.LookupDefinition;
 import com.realtors.admin.dto.form.ModuleFormDto;
 import com.realtors.admin.dto.form.PermissionFormDto;
 import com.realtors.admin.dto.form.RoleFormDto;
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditContext;
+import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.AclPermissionRowMapper;
 import com.realtors.common.util.AppUtil;
 
@@ -45,18 +48,20 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	private RoleService roleService;
 	private ModuleService moduleService;
 	private FeatureService featureService;
+	private final AuditTrailService audit;
 
 	List<LookupDefinition> lookupDefs = List.of(
 			new LookupDefinition("roles", "roles", "role_id", "role_name", "roleName"),
 			new LookupDefinition("features", "features", "feature_id", "feature_name", "featureName"));
 
 	public AclPermissionService(JdbcTemplate jdbcTemplate, RoleService roleService, ModuleService moduleService,
-			FeatureService featureService) {
+			FeatureService featureService, AuditTrailService audit) {
 		super(AclPermissionDto.class, TABLE_NAME, jdbcTemplate);
 		this.jdbcTemplate = jdbcTemplate;
 		this.roleService = roleService;
 		this.moduleService = moduleService;
 		this.featureService = featureService;
+		this.audit = audit;
 		addDependentLookup("role_id", "roles", "role_id", "role_name", "roleName");
 		addDependentLookup("feature_id", "features", "feature_id", "feature_name", "featureName");
 	}
@@ -67,13 +72,19 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	}
 
 	@Override
-	@Cacheable(value = CACHE_NAME, key = "'ALL'")
+//	@Cacheable(value = CACHE_NAME, key = "'ALL'")
 	public List<AclPermissionDto> findAll() {
-		return super.findAll();
+		List<AclPermissionDto> retVal = super.findAll();
+		audit.auditAsync(TABLE_NAME, retVal.getFirst().getPermissionId(), EnumConstants.GET_ALL.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return retVal;
 	}
 
 	public List<ModulePermissionDto> getAllByModules() {
-		return findPermissionsByRole(null, false);
+		List<ModulePermissionDto> listModules = findPermissionsByRole(null);
+		audit.auditAsync(TABLE_NAME, listModules.getFirst().moduleId(), EnumConstants.GET_ALL.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return listModules;
 	}
 
 	public PagedResult<AclPermissionDto> getAllPaginated(int page, int size) {
@@ -88,34 +99,50 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 		 * size, null), // <-- MUST return PagedResult<AppUserDto>
 		 * super.getLookupData(lookupDefs) // <-- fully dynamic lookup map );
 		 */
-
-		return super.findAllPaginated(page, size, null);
+		PagedResult<AclPermissionDto> retObj = super.findAllPaginated(page, size, null);
+		UUID record = retObj.data().getFirst().getPermissionId();
+		audit.auditAsync(TABLE_NAME, record, EnumConstants.PAGED.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return retObj;
 	}
 
 	@Override
 //    @Cacheable(value =CACHE_NAME, key = "#id")
 	public Optional<AclPermissionDto> findById(UUID id) {
-		return super.findById(id);
+		Optional<AclPermissionDto> dto = super.findById(id);
+		audit.auditAsync(TABLE_NAME, dto.isPresent() ? dto.get().getPermissionId() : null, EnumConstants.BY_ID.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return dto;
 	}
 
 //    @Cacheable(value = CACHE_NAME, key = "'role:' + #roleId")
 	public List<AclPermissionDto> findAllByRole(UUID roleId) {
 		String sql = "SELECT * FROM acl_permissions WHERE role_id = ?";
-		return jdbcTemplate.query(sql, new AclPermissionRowMapper(), roleId);
+		List<AclPermissionDto> list = jdbcTemplate.query(sql, new AclPermissionRowMapper(), roleId);
+		audit.auditAsync(TABLE_NAME, roleId, EnumConstants.BY_ID.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return list;
 	}
 
 	@Override
 //    @CachePut(value = CACHE_NAME, key = "#result.permissionId")
 //    @CacheEvict(value = CACHE_NAME, key = "'role:' + #dto['roleId']")
 	public AclPermissionDto create(AclPermissionDto dto) {
-		return super.create(dto);
+		AclPermissionDto data = super.create(dto);
+		audit.auditAsync(TABLE_NAME, data.getPermissionId(), EnumConstants.CREATE.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		
+		return data;
 	}
 
 	@Override
 //    @CachePut(value = CACHE_NAME, key = "#id")
 //    @CacheEvict(value = CACHE_NAME, key = "'role:' + #dto['roleId']")
 	public AclPermissionDto update(UUID id, AclPermissionDto dto) {
-		return super.update(id, dto);
+		AclPermissionDto data = super.update(id, dto);
+		audit.auditAsync(TABLE_NAME, data.getPermissionId(), EnumConstants.UPDATE.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return data;
 	}
 
 	/*
@@ -127,7 +154,10 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	public AclPermissionDto partialUpdate(UUID id, Map<String, Object> dto) {
 		UUID roleId = asUuid(dto.get("roleId"));
 		Map<String, Object> compositeId = Map.of("role_id", roleId, "permission_id", id);
-		return super.patch(compositeId, dto);
+		AclPermissionDto data = super.patch(compositeId, dto);
+		audit.auditAsync(TABLE_NAME, id, EnumConstants.PATCH.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return data;
 	}
 
 	private UUID asUuid(Object value) {
@@ -140,7 +170,10 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 
 //    @CacheEvict(value = CACHE_NAME, allEntries = true)
 	public boolean delete(UUID id) {
-		return super.softDelete(id);
+		boolean flag = super.softDelete(id);
+		audit.auditAsync(TABLE_NAME, id, EnumConstants.DELETE.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return flag;
 	}
 
 //    @CacheEvict(value = CACHE_NAME, key = "'ALL'")
@@ -150,30 +183,35 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 
 	public List<AclPermissionDto> searchPage(String searchText, String status) {
 		List<String> searchFields = List.of();
-		return super.search(searchText, searchFields, status);
+		List<AclPermissionDto> list = super.search(searchText, searchFields, status);
+		audit.auditAsync(TABLE_NAME, null, EnumConstants.SEARCH.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return list;
 	}
 
-//    @Cacheable(value = CACHE_NAME, key = "'role:' + #roleId")
-	public List<ModulePermissionDto> findPermissionsByRole(UUID roleId) {
-		List<Map<String, Object>> result = jdbcTemplate.queryForList(permissionbyRoleQuery, roleId);
-		Map<UUID, ModulePermissionDto> moduleMap = new LinkedHashMap<>();
-		for (Map<String, Object> row : result) {
-			UUID moduleId = (UUID) row.get("module_id");
-			String moduleName = (String) row.get("module_name");
-
-			FeaturePermissionDto feature = new FeaturePermissionDto((UUID) row.get("permission_id"),
-					(UUID) row.get("role_id"), (String) row.get("role_name"), (UUID) row.get("feature_id"),
-					(String) row.get("feature_name"), (String) row.get("url"), (String) row.get("feature_type"),
-					(Boolean) row.get("can_create"), (Boolean) row.get("can_read"), (Boolean) row.get("can_update"),
-					(Boolean) row.get("can_delete"), (String) row.get("status"));
-
-			moduleMap.computeIfAbsent(moduleId, id -> new ModulePermissionDto(id, moduleName, new ArrayList<>()))
-					.features().add(feature);
-		}
-
-		return new ArrayList<>(moduleMap.values());
-	}
-
+	/*
+	 * // @Cacheable(value = CACHE_NAME, key = "'role:' + #roleId") public
+	 * List<ModulePermissionDto> findPermissionsByRole(UUID roleId) {
+	 * List<Map<String, Object>> result =
+	 * jdbcTemplate.queryForList(permissionbyRoleQuery, roleId); Map<UUID,
+	 * ModulePermissionDto> moduleMap = new LinkedHashMap<>(); for (Map<String,
+	 * Object> row : result) { UUID moduleId = (UUID) row.get("module_id"); String
+	 * moduleName = (String) row.get("module_name");
+	 * 
+	 * FeaturePermissionDto feature = new FeaturePermissionDto((UUID)
+	 * row.get("permission_id"), (UUID) row.get("role_id"), (String)
+	 * row.get("role_name"), (UUID) row.get("feature_id"), (String)
+	 * row.get("feature_name"), (String) row.get("url"), (String)
+	 * row.get("feature_type"), (Boolean) row.get("can_create"), (Boolean)
+	 * row.get("can_read"), (Boolean) row.get("can_update"), (Boolean)
+	 * row.get("can_delete"), (String) row.get("status"));
+	 * 
+	 * moduleMap.computeIfAbsent(moduleId, id -> new ModulePermissionDto(id,
+	 * moduleName, new ArrayList<>())) .features().add(feature); }
+	 * audit.auditAsync(TABLE_NAME, roleId, "GET By Role",
+	 * AppUtil.getCurrentUserId(), AuditContext.getIpAddress(),
+	 * AuditContext.getUserAgent()); return new ArrayList<>(moduleMap.values()); }
+	 */
 	// ------------------------------------------------------------
 	// BULK INSERT (fast batch)
 	// ------------------------------------------------------------
@@ -216,6 +254,9 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 				return permissionsToProcess.size();
 			}
 		});
+		
+		audit.auditAsync(TABLE_NAME, roleId, EnumConstants.CREATE_BULK.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return rows.length > 0 ? true : false;
 	}
 
@@ -258,14 +299,19 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 				return permissions.size();
 			}
 		});
+		audit.auditAsync(TABLE_NAME, roleId, EnumConstants.UPDATE_BULK.toString(), 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 	}
 
 //    @Cacheable(value = CACHE_NAME, key = "'role:' + #roleId")
-	public List<ModulePermissionDto> findPermissionsByRole(UUID roleId, boolean flag) {
+	public List<ModulePermissionDto> findPermissionsByRole(UUID roleId) {
 		String sql = (roleId == null) ? PERMISSIONS_FOR_ALL : permissionbyRoleQuery;
 		List<Map<String, Object>> rows = (roleId == null) ? jdbcTemplate.queryForList(sql)
 				: jdbcTemplate.queryForList(sql, roleId);
-		return mapToModulePermissionDto(rows);
+		List<ModulePermissionDto> list = mapToModulePermissionDto(rows);
+		audit.auditAsync(TABLE_NAME, roleId, "GET By Role", 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		return list;
 	}
 
 	private List<ModulePermissionDto> mapToModulePermissionDto(List<Map<String, Object>> rows) {
@@ -313,7 +359,6 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 			""";
 
 	public PermissionFormDto getPermissionFormData() {
-
 		List<RoleDto> roles = roleService.getAllRoles();
 		List<ModuleDto> modules = moduleService.getAllModules();
 		List<FeatureDto> features = featureService.getAllFeatures();

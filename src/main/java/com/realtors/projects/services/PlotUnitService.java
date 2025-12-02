@@ -3,6 +3,8 @@ package com.realtors.projects.services;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import com.realtors.admin.dto.form.DynamicFormResponseDto;
+import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.repository.PlotUnitRepository;
@@ -22,7 +24,19 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     
     @Override
     protected String getIdColumn() {
-        return "feature_id";
+        return "plot_id";
+    }
+    
+    /** ✅ Update user form response */
+    public EditResponseDto<PlotUnitDto> editFormResponse(UUID plotId) {
+//    	logger.info("@ProjectService.getEditForm UUID id: "+projectId);
+    	DynamicFormResponseDto form = super.buildDynamicFormResponse();
+    	if (plotId ==null) {
+    		return new EditResponseDto<>(null, form);
+    	}
+        PlotUnitDto opt = super.findById(plotId).stream().findFirst().get();
+        EditResponseDto<PlotUnitDto> result = new EditResponseDto(opt, form);
+        return  result;
     }
 
     public PlotUnitDto createPlot(PlotUnitDto dto) {
@@ -33,13 +47,21 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
         return repo.findByProjectId(projectId);
     }
     
+    public PlotUnitDto getByPlotId(UUID plotId) {
+    	return super.findById(plotId).get();
+    }
+    
     public PlotUnitDto patchUpdate(UUID plotId, Map<String, Object> partialData) {
     	return super.patch(plotId, partialData);
     }
 
     public void delete(UUID id) {
-        //repo.delete(id);
-    	super.softDelete(id);
+        repo.delete(id);
+    	//super.softDelete(id);
+    }
+    
+    public boolean deleteByProjectId(UUID projectId) {
+        return repo.deleteByProjectId(projectId);
     }
 
     public int update(PlotUnitDto dto) {

@@ -49,13 +49,13 @@ import com.realtors.projects.services.ProjectService;
 @RestController
 @RequestMapping("/api/projects")
 public class ProjectController {
-
+	private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
 	private final ProjectService service;
 	private final ProjectFileService fileService;
 	private final PlotUnitService plotService;
 	private final ProjectFacadeService facade;
 
-	private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
+	
 
 	public ProjectController(ProjectService service, ProjectFileService fileService, PlotUnitService plotService, ProjectFacadeService facade) {
 		this.service = service;
@@ -67,25 +67,28 @@ public class ProjectController {
 	@GetMapping("/form")
 	public ResponseEntity<ApiResponse<EditResponseDto<ProjectSummaryDto>>> getForm() {
 		EditResponseDto<ProjectSummaryDto> projects = service.editResponse(null);
-		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", projects, HttpStatus.OK));
+		return ResponseEntity.ok(ApiResponse.success("Projects fetched successfully", projects, HttpStatus.OK));
 	}
 
 	@GetMapping("/form/{id}")
 	public ResponseEntity<ApiResponse<EditResponseDto<ProjectSummaryDto>>> getEditForm(@PathVariable UUID id) {
 //		logger.info("@ProjectController.getEditForm UUID id: "+id);
 		EditResponseDto<ProjectSummaryDto> projects = service.editResponse(id);
-		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", projects, HttpStatus.OK));
+		return ResponseEntity.ok(ApiResponse.success("Projects fetched successfully", projects, HttpStatus.OK));
 	}
 
 	@GetMapping
 	public ResponseEntity<ApiResponse<List<ProjectSummaryDto>>> getAll() {
 		List<ProjectSummaryDto> projects = service.getAciveProjects(); // active projects only
+		
 		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", projects, HttpStatus.OK));
 	}
 	
 	@GetMapping("/details/{id}")
-	public ResponseEntity<ApiResponse<ProjectDetailDto>> getProjectDetails(@PathVariable UUID id) {
-		ProjectDetailDto projects = service.getProjectDetails(id); // active projects only
+	public ResponseEntity<ApiResponse<ProjectDetailDto>> getProjectDetails(@PathVariable String id) {
+		logger.info("@ProjectController.getProjectDetails id:  "+id);
+		UUID projectId = UUID.fromString(id);
+		ProjectDetailDto projects = service.getProjectDetails(projectId); // active projects only
 		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", projects, HttpStatus.OK));
 	}
 
@@ -114,25 +117,23 @@ public class ProjectController {
 		  return ResponseEntity.ok(ApiResponse.success("Projects Fetched", response, HttpStatus.OK));
 	}
 
-	@PostMapping
-	public ResponseEntity<ApiResponse<ProjectDto>> create(@RequestBody ProjectDto dto) {
-		ProjectDto data = service.createProject(dto);
-		return ResponseEntity.ok(ApiResponse.success("Project created", data, HttpStatus.OK));
-	}
-
-	@PutMapping("/{id}")
-	public ResponseEntity<String> update(@PathVariable UUID id, @RequestBody ProjectDto dto) {
-		dto.setProjectId(id);
-		ProjectDto updated = service.updateProject(id, dto);
-		return ResponseEntity.ok("Project updated");
-	}
-
+	/*
+	 * @PostMapping public ResponseEntity<ApiResponse<ProjectDto>>
+	 * create(@RequestBody ProjectDto dto) { ProjectDto data =
+	 * service.createProject(dto); return
+	 * ResponseEntity.ok(ApiResponse.success("Project created", data,
+	 * HttpStatus.OK)); }
+	 * 
+	 * @PutMapping("/{id}") public ResponseEntity<String> update(@PathVariable UUID
+	 * id, @RequestBody ProjectDto dto) { dto.setProjectId(id); ProjectDto updated =
+	 * service.updateProject(id, dto); return ResponseEntity.ok("Project updated");
+	 * }
+	 */
 	@DeleteMapping("/file/delete/{fileId}")
-	public ResponseEntity<ApiResponse<?>> deleteFile(@PathVariable String fileId,
-	        @RequestParam String projectId) {
+	public ResponseEntity<ApiResponse<?>> deleteFile(@PathVariable String fileId) {
 		logger.info("@ProjectController.deleteFile fileId:  "+fileId);
 		UUID file = UUID.fromString(fileId);
-		UUID project = UUID.fromString(projectId);
+//		UUID project = UUID.fromString(projectId);
 		boolean deleted = fileService.deleteFile(file);
 		if (deleted) 
 			return ResponseEntity.ok(ApiResponse.success("File deleted", null, HttpStatus.OK));
@@ -171,16 +172,18 @@ public class ProjectController {
 	
 	@GetMapping("/file/{fileId}")
 	public ResponseEntity<Resource> serveFile(@PathVariable UUID fileId) throws IOException {
+		logger.info("@ProjectController.serveFile fileId: "+fileId);
 	    ProjectFileDto file = fileService.getFileById(fileId);
 	    if (file == null) {
+	    	logger.info("@ProjectController.serveFile file is null: ");
 	        return ResponseEntity.notFound().build();
 	    }
 	    Path path = Paths.get(file.getFilePath());
 	    if (!Files.exists(path)) {
 	        return ResponseEntity.notFound().build();
 	    }
-
 	    Resource resource = new UrlResource(path.toUri());
+	    logger.info("@ProjectController.serveFile fileId: "+fileId+ ": resource: "+resource.getURI());
 	    return ResponseEntity.ok()
 	            .contentType(getMediaType(path))
 	            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFileName() + "\"")

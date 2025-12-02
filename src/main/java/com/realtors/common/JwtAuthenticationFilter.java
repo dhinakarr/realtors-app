@@ -1,6 +1,7 @@
 package com.realtors.common;
 
 import com.realtors.admin.service.TokenCacheService;
+import com.realtors.common.service.AuditContext;
 import com.realtors.common.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -31,6 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.excludeUrls = List.of(
                 "/api/auth/**",
                 "/api/public/**",
+                "/api/projects/file/**",
                 "/",
                 "/index.html",
                 "/favicon.ico",
@@ -54,14 +57,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain chain)
             throws IOException, ServletException {
 
-//    	log.info("@JwtAuthenticationFilter Processing JWT for request: {}", request.getRequestURI());
-    	
         String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-//            log.info("@JwtAuthenticationFilter Processing authHeader: {}", authHeader);
-            try {
+
+        try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+
                 if (jwtUtil.validateToken(token) && !tokenCacheService.isRevoked(token)) {
+
                     Claims claims = jwtUtil.extractClaims(token);
                     String userId = claims.get("userId", String.class);
 
@@ -69,14 +72,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(userId, null, List.of());
 
                     SecurityContextHolder.getContext().setAuthentication(auth);
+
+                    AuditContext.setContext(
+                            request.getRemoteAddr(),
+                            request.getHeader("User-Agent"),
+                            UUID.fromString(userId)
+                    );
                 } else {
-                    log.warn("JWT token is invalid or revoked: {}", token);
+                    log.warn("JWT token invalid or revoked");
                 }
-            } catch (Exception ex) {
-                log.warn("JWT processing failed: {}", ex.getMessage());
             }
+        } catch (Exception e) {
+            log.warn("JWT parsing failed: {}", e.getMessage());
         }
 
+        // 🔥 ALWAYS continue the chain
         chain.doFilter(request, response);
+
+        // 🔥 Clear audit after request completes
+        AuditContext.clear();
     }
+
+    
+	/*
+	 * private String getClientIp(HttpServletRequest request) { // Prioritize
+	 * X-Forwarded-For (for cloud/proxy environments) String ip =
+	 * request.getHeader("X-Forwarded-For"); if (ip == null || ip.isEmpty() ||
+	 * "unknown".equalsIgnoreCase(ip)) { ip = request.getRemoteAddr(); } return ip;
+	 * }
+	 */
 }

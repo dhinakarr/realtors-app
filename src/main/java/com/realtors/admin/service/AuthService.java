@@ -3,6 +3,9 @@ package com.realtors.admin.service;
 
 import com.realtors.admin.dto.LoginResponse;
 import com.realtors.admin.dto.ModulePermissionDto;
+import com.realtors.common.service.AuditContext;
+import com.realtors.common.service.AuditTrailService;
+import com.realtors.common.util.AppUtil;
 import com.realtors.common.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,14 +25,16 @@ public class AuthService {
     private UserService userService;
     private TokenCacheService tokenServce;
     private AclPermissionService permissionService;
+    private final AuditTrailService audit;
     
     public AuthService(JdbcTemplate jdbcTemplate, JwtUtil jwtUtil, UserService userService, 
-    		TokenCacheService tokenServce, AclPermissionService permissionService) {
+    		TokenCacheService tokenServce, AclPermissionService permissionService, AuditTrailService audit) {
     	this.jdbcTemplate = jdbcTemplate;
     	this.jwtUtil = jwtUtil;
     	this.userService = userService;
     	this.tokenServce = tokenServce;
     	this.permissionService = permissionService;
+    	this.audit = audit;
     }
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -60,14 +65,15 @@ public class AuthService {
         this.userService.updateLastLogin(userId);
         
         //Build return Value after successful login
-        List<ModulePermissionDto> returnDto = this.permissionService.findPermissionsByRole(roleId, false);
+        List<ModulePermissionDto> returnDto = this.permissionService.findPermissionsByRole(roleId);
         Map<String, Object> map = Map.of(
                 "accessToken", token,
                 "refreshToken", refToken,
                 "userId", userId.toString(),
                 "email", email
         );
-        
+        audit.auditAsync("AUTH", userId, "LOGIN", 
+				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         return 	new LoginResponse(map, returnDto);
     }
 }

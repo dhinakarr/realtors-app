@@ -35,7 +35,7 @@ public class AclPermissionController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ModulePermissionDto>>> getAll() {
-    	List<ModulePermissionDto> list = this.permissionService.findPermissionsByRole(null, false);
+    	List<ModulePermissionDto> list = this.permissionService.findPermissionsByRole(null);
         return ResponseEntity.ok(ApiResponse.success("Acl Data Fetched", list,  HttpStatus.OK));
     }
     
