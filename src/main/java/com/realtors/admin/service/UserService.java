@@ -35,6 +35,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     @Autowired
     private JdbcTemplate jdbcTemplate;
     private final AuditTrailService audit;
+    private final UserAuthService userAuthService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -45,13 +46,14 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     	    new LookupDefinition("app_users", "app_users", "manager_id", "full_name", "managerName")
     	);
     
-    public UserService(JdbcTemplate jdbcTemplate, AuditTrailService audit) {
+    public UserService(JdbcTemplate jdbcTemplate, AuditTrailService audit, UserAuthService userAuthService) {
     	super(AppUserDto.class, "app_users", jdbcTemplate, Set.of("role_name", "managerName")); 
     	// Add multiple foreign key lookups
         addDependentLookup("role_id", "roles", "role_id", "role_name", "roleName");
         addDependentLookup("manager_id", "app_users", "user_id", "full_name", "managerName");
     	this.jdbcTemplate = jdbcTemplate;
     	this.audit = audit;
+    	this.userAuthService = userAuthService;
     }
     
 	@Override
@@ -158,7 +160,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
 
         // meta is ALREADY a Map<String, Object> → no need to parse!
         Map<String, Object> meta = data.getMeta();  // ← Just get it directly
-
+logger.info("@UserService.createWithFiles meta: {}", meta.toString());
         // If you want a mutable copy (safe)
         Map<String, Object> metaMap = (meta != null) 
             ? new HashMap<>(meta)  // copy it
@@ -166,6 +168,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
         data.setMeta(metaMap);
     	Map<String, Object> updatedMap = mapper.convertValue(data, Map.class);
     	AppUserDto obj = super.createWithFiles( updatedMap);
+    	userAuthService.createUserAuth(obj.getUserId(), obj.getEmail(), null, obj.getRoleId(), null);
     	audit.auditAsync("users", obj.getUserId(), EnumConstants.CREATE_WITH_FILES.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         // You can use a GenericInsertUtil that supports files

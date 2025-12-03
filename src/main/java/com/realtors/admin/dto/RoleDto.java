@@ -17,6 +17,7 @@ public class RoleDto {
         private String roleName;
         private String description;
         private int roleLevel;
+        private boolean isFinanceRole;
         private  @JsonIgnore Timestamp createdAt;
         private  @JsonIgnore Timestamp updatedAt;
         private String status;

@@ -3,6 +3,8 @@ package com.realtors.admin.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.form.DynamicFormMetaRow;
@@ -27,13 +29,15 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	private final Class<T> dtoClass;
 	private final String tableName;
 	protected Set<String> excludeColumns = new HashSet();
+
 	protected AbstractBaseService(Class<T> dtoClass, String tableName, JdbcTemplate jdbcTemplate) {
 		this.dtoClass = dtoClass;
 		this.tableName = tableName;
 		this.jdbcTemplate = jdbcTemplate;
 	}
-	
-	protected AbstractBaseService(Class<T> dtoClass, String tableName, JdbcTemplate jdbcTemplate, Set<String> removeColumns) {
+
+	protected AbstractBaseService(Class<T> dtoClass, String tableName, JdbcTemplate jdbcTemplate,
+			Set<String> removeColumns) {
 		this.dtoClass = dtoClass;
 		this.tableName = tableName;
 		this.jdbcTemplate = jdbcTemplate;
@@ -42,7 +46,6 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 	// Every child service defines its primary key column name
 	protected abstract String getIdColumn();
-	
 
 	/**
 	 * Map of foreign key column -> lookup table info Example: "role_id" -> roles
@@ -64,7 +67,8 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		}
 	}
 
-	protected void addDependentLookup(String fkColumn, String lookupTable, String idColumn, String nameColumn, String resultAlias) {
+	protected void addDependentLookup(String fkColumn, String lookupTable, String idColumn, String nameColumn,
+			String resultAlias) {
 		dependentLookups.put(fkColumn, new DependentLookup(lookupTable, idColumn, nameColumn, resultAlias));
 	}
 
@@ -84,13 +88,12 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	}
 
 	// ---------------- CREATE ----------------
-    public AppUserDto createWithFiles(Map<String, Object> data) {
-        // You can use a GenericInsertUtil that supports files
-        return GenericInsertUtil.insertGenericWithFileSupport(
-                this.tableName, data, jdbcTemplate, AppUserDto.class, this.excludeColumns
-        );
-    }
-	
+	public AppUserDto createWithFiles(Map<String, Object> data) {
+		// You can use a GenericInsertUtil that supports files
+		return GenericInsertUtil.insertGenericWithFileSupport(this.tableName, data, jdbcTemplate, AppUserDto.class,
+				this.excludeColumns);
+	}
+
 	@Override
 	public Optional<T> findById(ID id) {
 		String sql = buildSelectWithLookups("t") + " WHERE t." + getIdColumn() + " = ?";
@@ -122,25 +125,26 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		return GenericUpdateUtil.updateGeneric(tableName, dto, // can be DTO or Map<String, Object>
 				jdbcTemplate, dtoClass, getIdColumn(), idValue);
 	}
-	
-	public T patchUpdateWithFile(ID id, Map<String, Object> updates ) {
+
+	public T patchUpdateWithFile(ID id, Map<String, Object> updates) {
 		Object idValue = id;
 		String idColumn = getIdColumn();
 		// Handle composite key
-				if (idColumn.contains(",")) {
-					List<String> idColumns = Arrays.stream(idColumn.split(",")).map(String::trim).collect(Collectors.toList());
+		if (idColumn.contains(",")) {
+			List<String> idColumns = Arrays.stream(idColumn.split(",")).map(String::trim).collect(Collectors.toList());
 
-					if (id instanceof Map) {
-						idValue = id;
-					} else if (id instanceof List) {
-						idValue = id;
-					} else {
-						// Try to auto-map from dto or updates if possible (optional)
-						throw new IllegalArgumentException("Composite key table requires Map or List for idValue. "
-								+ "Example: Map.of('role_id', val1, 'permission_id', val2)");
-					}
-				}
-		return GenericUpdateUtil.patchGenericWithFileSupport(tableName, updates, jdbcTemplate, dtoClass, getIdColumn(), id);
+			if (id instanceof Map) {
+				idValue = id;
+			} else if (id instanceof List) {
+				idValue = id;
+			} else {
+				// Try to auto-map from dto or updates if possible (optional)
+				throw new IllegalArgumentException("Composite key table requires Map or List for idValue. "
+						+ "Example: Map.of('role_id', val1, 'permission_id', val2)");
+			}
+		}
+		return GenericUpdateUtil.patchGenericWithFileSupport(tableName, updates, jdbcTemplate, dtoClass, getIdColumn(),
+				id);
 	}
 
 	public T patch(Object id, Map<String, Object> updates) {
@@ -198,22 +202,23 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	}
 
 	protected String toCamel(String name) {
-	    if (name == null) return null;
-	    StringBuilder sb = new StringBuilder();
-	    boolean nextUpper = false;
-	    for (char c : name.toCharArray()) {
-	        if (c == '_') {
-	            nextUpper = true;
-	            continue; // important: skip appending underscore and don't reset flag here
-	        }
-	        if (nextUpper) {
-	            sb.append(Character.toUpperCase(c));
-	            nextUpper = false;
-	        } else {
-	            sb.append(c);
-	        }
-	    }
-	    return sb.toString();
+		if (name == null)
+			return null;
+		StringBuilder sb = new StringBuilder();
+		boolean nextUpper = false;
+		for (char c : name.toCharArray()) {
+			if (c == '_') {
+				nextUpper = true;
+				continue; // important: skip appending underscore and don't reset flag here
+			}
+			if (nextUpper) {
+				sb.append(Character.toUpperCase(c));
+				nextUpper = false;
+			} else {
+				sb.append(c);
+			}
+		}
+		return sb.toString();
 	}
 
 	/**
@@ -226,11 +231,11 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		int total = countByStatus(status);
 		int totalPages = (int) Math.ceil((double) total / size);
 		if (totalPages == 0) {
-	        page = 0; // no data at all
-	    } else if (page >= totalPages) {
-	        page = totalPages - 1; // clamp to last page
-	    }
-		
+			page = 0; // no data at all
+		} else if (page >= totalPages) {
+			page = totalPages - 1; // clamp to last page
+		}
+
 		int offset = page * size;
 		String sql = buildSelectWithLookups("t") + " WHERE t.status = ? ORDER BY t.updated_at DESC LIMIT ? OFFSET ?";
 		List<T> results = jdbcTemplate.query(sql, new JsonAwareRowMapper<>(dtoClass), status, size, offset);
@@ -238,43 +243,43 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	}
 
 	// --- HELPER: build SQL with dependent table JOINs ---
-	
+
 	protected String buildSelectWithLookups(String mainAlias) {
-	    if (dependentLookups == null || dependentLookups.isEmpty()) {
-	        return "SELECT " + mainAlias + ".* FROM " + tableName + " " + mainAlias;
-	    }
+		if (dependentLookups == null || dependentLookups.isEmpty()) {
+			return "SELECT " + mainAlias + ".* FROM " + tableName + " " + mainAlias;
+		}
 
-	    StringBuilder sb = new StringBuilder("SELECT " + mainAlias + ".*");
+		StringBuilder sb = new StringBuilder("SELECT " + mainAlias + ".*");
 
-	    int joinIndex = 0;
-	    for (Map.Entry<String, DependentLookup> entry : dependentLookups.entrySet()) {
-	        DependentLookup lookup = entry.getValue();
-	        // Assuming your DependentLookup now has the 'resultAlias' field
-	        String alias = "j" + joinIndex;
+		int joinIndex = 0;
+		for (Map.Entry<String, DependentLookup> entry : dependentLookups.entrySet()) {
+			DependentLookup lookup = entry.getValue();
+			// Assuming your DependentLookup now has the 'resultAlias' field
+			String alias = "j" + joinIndex;
 
-	        // Use lookup.resultAlias for the final SELECT alias
-	        sb.append(", ").append(alias).append(".").append(lookup.nameColumn).append(" AS ")
-	          .append(lookup.resultAlias); // <-- GENERIC CHANGE HERE
+			// Use lookup.resultAlias for the final SELECT alias
+			sb.append(", ").append(alias).append(".").append(lookup.nameColumn).append(" AS ")
+					.append(lookup.resultAlias); // <-- GENERIC CHANGE HERE
 
-	        joinIndex++;
-	    }
+			joinIndex++;
+		}
 
-	    sb.append(" FROM ").append(tableName).append(" ").append(mainAlias);
+		sb.append(" FROM ").append(tableName).append(" ").append(mainAlias);
 
-	    joinIndex = 0;
-	    for (Map.Entry<String, DependentLookup> entry : dependentLookups.entrySet()) {
-	        String fkColumn = entry.getKey();
-	        DependentLookup lookup = entry.getValue();
-	        String alias = "j" + joinIndex;
+		joinIndex = 0;
+		for (Map.Entry<String, DependentLookup> entry : dependentLookups.entrySet()) {
+			String fkColumn = entry.getKey();
+			DependentLookup lookup = entry.getValue();
+			String alias = "j" + joinIndex;
 
-	        // JOIN structure remains the same
-	        sb.append(" LEFT JOIN ").append(lookup.tableName).append(" ").append(alias).append(" ON ").append(mainAlias)
-	          .append(".").append(fkColumn).append(" = ").append(alias).append(".").append(lookup.idColumn);
-	        joinIndex++;
-	    }
-	    return sb.toString();
+			// JOIN structure remains the same
+			sb.append(" LEFT JOIN ").append(lookup.tableName).append(" ").append(alias).append(" ON ").append(mainAlias)
+					.append(".").append(fkColumn).append(" = ").append(alias).append(".").append(lookup.idColumn);
+			joinIndex++;
+		}
+		return sb.toString();
 	}
-	
+
 	protected String buildSelectWithLookups(String mainAlias, String some) {
 		if (dependentLookups == null || dependentLookups.isEmpty()) {
 			return "SELECT " + mainAlias + ".* FROM " + tableName + " " + mainAlias;
@@ -325,14 +330,14 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	 */
 	public List<T> search(String searchText, List<String> searchFields, String stat) {
 		String status = "ACTIVE"; // if (status == null || status.isEmpty()) status = "ACTIVE";
-		
+
 		if (stat != null && !stat.isBlank()) {
-	        status = stat;
-	    }
+			status = stat;
+		}
 		if (searchText == null || searchText.isBlank() || searchFields == null || searchFields.isEmpty()) {
-	        List<T> all = findAll();
-	        return all;
-	    }
+			List<T> all = findAll();
+			return all;
+		}
 		StringBuilder whereClause = new StringBuilder(" WHERE UPPER(status) = ? AND (");
 		List<Object> params = new ArrayList<>();
 		params.add(status.toUpperCase());
@@ -344,10 +349,10 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 				whereClause.append(" OR ");
 		}
 		whereClause.append(")");
-		logger.info("@AbstractBaseService.search params: "+params.toString());
+		logger.info("@AbstractBaseService.search params: " + params.toString());
 		int limit = 10;
-		String sql = "SELECT * FROM " + tableName + whereClause + " ORDER BY updated_at DESC LIMIT "+ limit;
-		logger.info("@AbstractBaseService.search sql: "+sql);
+		String sql = "SELECT * FROM " + tableName + whereClause + " ORDER BY updated_at DESC LIMIT " + limit;
+		logger.info("@AbstractBaseService.search sql: " + sql);
 		return jdbcTemplate.query(sql, new JsonAwareRowMapper<>(dtoClass), params.toArray());
 	}
 
@@ -421,7 +426,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		}
 		return lookupMap;
 	}
-	
+
 	// 2) Load lookup rows for a lookup_table
 	public List<Map<String, Object>> loadLookupData(String lookupTable, String keyColumn, String valueColumn) {
 		String sql = String.format("SELECT %s AS key, %s AS value FROM %s ORDER BY %s", keyColumn, valueColumn,
@@ -439,22 +444,42 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 		List<DynamicFormMetaRow> meta = getMetaRows();
 		List<DynamicFormMetaRow> newMeta = new ArrayList<>();
-		
+
 		for (DynamicFormMetaRow m : meta) {
 			String apiField = toCamel(m.getColumnName());
 			DynamicFormMetaRow row = new DynamicFormMetaRow(m.getTableName(), m.getColumnName(), m.getDisplayLabel(),
 					m.getFieldType(), m.isRequired(), m.isHidden(), m.getLookupTable(), m.getLookupKey(),
-					m.getLookupLabel(),  m.getExtraSettings(), m.getSortOrder(), null, null);
-			
+					m.getLookupLabel(), m.getExtraSettings(), m.getSortOrder(), null, null);
+
 			row.setApiField(apiField);
 			newMeta.add(row);
-			
+
 			// If this column uses a lookup table → load dropdown data
 			if (m.getLookupTable() != null && m.getLookupKey() != null && m.getLookupLabel() != null) {
 
 				List<Map<String, Object>> lookupRows = loadLookupData(m.getLookupTable(), m.getLookupKey(),
 						m.getLookupLabel());
 				row.setLookupData(lookupRows);
+			}
+			if ("radio".equalsIgnoreCase(m.getFieldType()) && m.getLookupTable() == null && m.getLookupKey() != null
+					&& !m.getLookupKey().isBlank()) {
+				try {
+					ObjectMapper mapper = new ObjectMapper();
+					// parse JSON array string -> List<String>
+					List<String> options = mapper.readValue(m.getLookupKey(), new TypeReference<List<String>>() {
+					});
+					// convert List<String> -> List<Map<String,Object>> with key/label
+					List<Map<String, Object>> optionMaps = new ArrayList<>();
+					for (String opt : options) {
+						Map<String, Object> map = new HashMap<>();
+						map.put("key", opt);
+						map.put("label", opt);
+						optionMaps.add(map);
+					}
+					row.setLookupData(optionMaps != null ? optionMaps : Collections.emptyList());
+				} catch (Exception e) {
+					row.setLookupData(Collections.emptyList());
+				}
 			}
 		}
 		String[] idArr = getIdColumn().split(",\\s*");

@@ -8,6 +8,7 @@ import io.jsonwebtoken.Claims;
 import com.realtors.admin.dto.LoginResponse;
 import com.realtors.admin.service.AuthService;
 import com.realtors.admin.service.TokenCacheService;
+import com.realtors.admin.service.UserAuthService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -23,13 +24,15 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+    private UserAuthService userAuthService;
     private final JwtUtil jwtUtil;
     private final TokenCacheService tokenCacheService;
     
-    public AuthController(AuthService authService, JwtUtil jwtUtil, TokenCacheService tokenCacheService) {
+    public AuthController(AuthService authService, JwtUtil jwtUtil, TokenCacheService tokenCacheService, UserAuthService userAuthService) {
     	this.authService = authService;
     	this.jwtUtil = jwtUtil;
     	this.tokenCacheService = tokenCacheService;
+    	this.userAuthService = userAuthService;
     }
 
     @PostMapping("/login")
@@ -40,7 +43,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body(ApiResponse.failure("Email and password are required", HttpStatus.BAD_REQUEST));
         }
         try {
-            LoginResponse token = authService.login(email, password);
+            LoginResponse token = userAuthService.login(email, password);
             
             return ResponseEntity.ok(ApiResponse.success("Login successful", token, HttpStatus.OK));
         } catch (IllegalArgumentException ex) {

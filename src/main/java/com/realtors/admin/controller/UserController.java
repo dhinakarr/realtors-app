@@ -41,6 +41,7 @@ public class UserController {
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<AppUserDto>> createUser(@RequestPart("dto") AppUserDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
+		logger.info("@UserController.createUser meta: {}", dto.getMeta().toString());
 		AppUserDto created = appUserService.createWithFiles(dto, profileImage);
 		return ResponseEntity.ok(ApiResponse.success("Users Created successfully", created, HttpStatus.OK));
 	}
