@@ -21,8 +21,9 @@ public class WebConfig implements WebMvcConfigurer {
 		if (!uploadPath.endsWith("/")) {
 			uploadPath = uploadPath + "/";
 		}
-		System.out.println("@WebConfig.addResourceHandlers uploadPath: "+uploadPath);
-		registry.addResourceHandler("/uploads/**").addResourceLocations("file:" + uploadPath);
+		System.out.println("@WebConfig.addResourceHandlers FINAL UPLOAD PATH MAPPED: file:///" + uploadPath.replace("\\", "/"));
+//		registry.addResourceHandler("/uploads/**").addResourceLocations("file:" + uploadPath);
+		registry.addResourceHandler("/files/**").addResourceLocations("file:///" + uploadPath + "/");
 
 		// Let Spring serve static files correctly
 		registry.addResourceHandler("/assets/**").addResourceLocations("classpath:/static/assets/");
@@ -39,10 +40,10 @@ public class WebConfig implements WebMvcConfigurer {
 		registry.addViewController("/").setViewName("forward:/index.html");
 
 		// 3️⃣ SPA fallback — EXCLUDE uploads!
-		registry.addViewController("/{path:^(?!uploads|assets|api|static|.*\\..*$).*$}")
+		registry.addViewController("/{path:^(?!uploads|files|assets|api|static|.*\\..*$).*$}")
 				.setViewName("forward:/index.html");
 
-		registry.addViewController("/{path:^(?!uploads|assets|api|static|.*\\..*$).*$}/**")
+		registry.addViewController("/{path:^(?!uploads|files|assets|api|static|.*\\..*$).*$}/**")
 				.setViewName("forward:/index.html");
 
 		/*

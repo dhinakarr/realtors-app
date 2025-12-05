@@ -127,6 +127,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
         dto.setPasswordHash(hashedPassword);
         AppUserDto data = super.create(dto);
         
+        userAuthService.createUserAuth(data.getUserId(), data.getEmail(), hashedPassword, data.getRoleId(), null);
+        
         audit.auditAsync("users", data.getUserId(), EnumConstants.CREATE.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         

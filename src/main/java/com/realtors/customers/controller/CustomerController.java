@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
@@ -51,7 +54,7 @@ public class CustomerController {
 		return ResponseEntity.ok(ApiResponse.success("Customer Form Fields", dto, HttpStatus.OK));
 	}
 	
-	@GetMapping("/form{/id}")
+	@GetMapping("/form/{id}")
 	public ResponseEntity<ApiResponse<EditResponseDto<CustomerDto>>> getEditForm(@PathVariable UUID id) {
 		return ResponseEntity.ok(ApiResponse.success("Customer Form Fields",service.getEditForm(id)));
 	}
@@ -64,6 +67,7 @@ public class CustomerController {
 	@PostMapping(consumes = { "multipart/form-data" })	
 	public ResponseEntity<ApiResponse<CustomerDto>> createCustomer(@RequestPart("customer") CustomerDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) throws Exception {
+		
 logger.info("CustomerController.createCustomer data received dto.getName(): "+dto.getCustomerName());
 		CustomerDto created = service.createCustomer(dto, profileImage);
 		logger.info("CustomerController.createCustomer data received data saved: "+created.getCustomerName());
@@ -80,7 +84,9 @@ logger.info("CustomerController.createCustomer data received dto.getName(): "+dt
 
 	@GetMapping("/{customerId}")
 	public ResponseEntity<ApiResponse<CustomerDto>> getCustomer(@PathVariable UUID customerId) {
-		return ResponseEntity.ok(ApiResponse.success("Customer Data", service.getCustomer(customerId)));
+		CustomerDto dto = service.getCustomer(customerId);
+		logger.info("@CustomerController.getCustomer publicUrl: "+dto.getProfileImagePath());
+		return ResponseEntity.ok(ApiResponse.success("Customer Data", dto));
 	}
 	
 	@PatchMapping("/{customerId}")
@@ -93,13 +99,25 @@ logger.info("CustomerController.createCustomer data received dto.getName(): "+dt
 	}
 	
 	@PatchMapping(value = "/{customerId}", consumes = { "multipart/form-data" })
-    public ResponseEntity<?> patchCustomer(@PathVariable UUID customerId,
-            @RequestPart(value = "customer", required = true) CustomerDto dto,
-            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
-    ) {
-        dto.setCustomerId(customerId);
-        service.updateCustomerWithProfileImage(dto, profileImage);
-        return ResponseEntity.ok(Map.of("message", "Customer updated"));
+    public ResponseEntity<ApiResponse<CustomerDto>> patchCustomer(@PathVariable UUID customerId,
+            @RequestPart(value = "customer", required = false) Map<String, Object> otherFields,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage ) {
+		
+		Map<String, Object> updates = new HashMap<String, Object>();
+		
+		if (profileImage != null) {
+			logger.info("@CustomerController.patchCustomer image section profileImage: "+profileImage);
+			updates.put("profileImage", profileImage);
+		}
+		if (otherFields != null && !otherFields.isEmpty()) {
+			updates.putAll(otherFields);
+		}
+		if (updates.isEmpty()) {
+			CustomerDto data = service.getCustomer(customerId);
+			return ResponseEntity.ok(ApiResponse.success("No update happened", data, HttpStatus.OK));
+		}
+        CustomerDto updated = service.updateCustomerWithProfileImage(customerId, updates, profileImage);
+        return ResponseEntity.ok(ApiResponse.success("Customer updated successfully",  updated));
     }
 	
 	@DeleteMapping("/{customerId}")
@@ -112,6 +130,18 @@ logger.info("CustomerController.createCustomer data received dto.getName(): "+dt
 	public ResponseEntity<ApiResponse<?>> deleteDocument(@PathVariable UUID docId) {
 	    service.deleteDocument(docId);
 	    return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
+	}
+	
+	@DeleteMapping("/image/{costomerId}")
+	public ResponseEntity<ApiResponse<?>> deleteImage(@PathVariable UUID costomerId) {
+		logger.info("@CustomeController.deleteImage request received: " + costomerId);
+	    try {
+	    	service.deleteImage(costomerId);
+	    } catch(IOException ioe) {
+	    	ResponseEntity.internalServerError().body(ApiResponse.failure("Unable to delete file", HttpStatus.EXPECTATION_FAILED));
+	    }
+	    logger.info("@CustomeController.deleteImage image deleted for: " + costomerId);
+	    return ResponseEntity.ok(ApiResponse.success("Image deleted", HttpStatus.OK));
 	}
 	
 	// Document download endpoint

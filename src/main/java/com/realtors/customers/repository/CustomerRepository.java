@@ -4,13 +4,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
 
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import com.realtors.common.config.FileStorageProperties;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
 import com.realtors.customers.dto.CustomerDto;
@@ -19,9 +23,11 @@ import com.realtors.customers.dto.CustomerDto;
 public class CustomerRepository {
 
 	private JdbcTemplate jdbc;
+	private final FileStorageProperties props;
 	protected final Logger logger = Logger.getLogger(getClass().getName());
-	public CustomerRepository(JdbcTemplate jdbc) {
+	public CustomerRepository(JdbcTemplate jdbc, FileStorageProperties props) {
 		this.jdbc = jdbc;
+		this.props = props;
 	}
 
 	public void save(CustomerDto dto) {
@@ -30,7 +36,7 @@ public class CustomerRepository {
 				    (customer_name, email, mobile, date_of_birth, gender,
 				     address, city, state, pincode, alt_mobile, occupation,
 				     profile_image_path, notes, status, created_by)
-				    VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				    VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
 				""";
 		logger.info("CustomerRepository.save Data received CustomerName: "+ dto.getCustomerName());
 		jdbc.update(sql, dto.getCustomerName(), dto.getEmail(), dto.getMobile(),
@@ -61,10 +67,34 @@ public class CustomerRepository {
 			dto.setProfileImagePath(rs.getString("profile_image_path"));
 			dto.setNotes(rs.getString("notes"));
 			dto.setStatus(rs.getString("status"));
+			logger.info("@CustomerRepository.findById publicURL: "+dto.getProfileImagePath());
 			return dto;
 		});
 	}
 
+	/*
+	 * private String convertToPublicUrl(String fullPath) { if (fullPath == null)
+	 * return null; // Normalize windows path String normalized =
+	 * fullPath.replace("\\", "/").replace(" ", "%20"); int idx =
+	 * normalized.indexOf("/uploads/"); if (idx != -1) { return "/files" +
+	 * normalized.substring(idx + "/uploads".length()); } return null; }
+	 */
+
+	private String convertToPublicUrl(String fullPath) {
+	    if (fullPath == null) return null;
+
+	    String root = props.getUploadDir().replace("\\", "/");
+	    String normalized = fullPath.replace("\\", "/").replace(" ", "%20");
+
+	    if (normalized.startsWith(root)) {
+	        String relative = normalized.substring(root.length());
+	        if (!relative.startsWith("/")) relative = "/" + relative;
+	        return "/files" + relative;
+	    }
+
+	    return null;
+	}
+	
 	public void updateCustomer(CustomerDto dto) {
 
 		String sql = """
@@ -96,42 +126,56 @@ public class CustomerRepository {
 
 	public String findProfileImagePath(UUID customerId) {
 		try {
-			String sql = "SELECT profile_image_path FROM customer_details WHERE customer_id = ?";
+			String sql = "SELECT profile_image_path FROM customers WHERE customer_id = ?";
 			return jdbc.queryForObject(sql, new Object[] { customerId }, String.class);
 		} catch (EmptyResultDataAccessException ex) {
 			return null;
 		}
 	}
 
-	public int updatePartial(CustomerDto dto) {
-		String sql = """
-				    UPDATE customers
-				    SET
-				        customer_name = COALESCE(?, customer_name),
-				        email = COALESCE(?, email),
-				        mobile = COALESCE(?, mobile),
-				        date_of_birth = COALESCE(?, date_of_birth),
-				        gender = COALESCE(?, gender),
-				        address = COALESCE(?, address),
-				        city = COALESCE(?, city),
-				        state = COALESCE(?, state),
-				        pincode = COALESCE(?, pincode),
-				        alt_mobile = COALESCE(?, alt_mobile),
-				        occupation = COALESCE(?, occupation),
-				        profile_image_path = COALESCE(?, profile_image_pathl),
-				        notes = COALESCE(?, notes),
-				        status = COALESCE(?, status),
-				        updated_at = NOW(),
-				        updated_by = COALESCE(?, updated_by)
-				    WHERE customer_id = ?
-				""";
-
-		return jdbc.update(sql, dto.getCustomerName(), dto.getEmail(), dto.getMobile(), dto.getDataOfBirth(),
-				dto.getGender(), dto.getAddress(), dto.getCity(), dto.getState(), dto.getPincode(), dto.getAltMobile(),
-				dto.getOccupation(), dto.getProfileImagePath(), dto.getNotes(), dto.getStatus(), AppUtil.getCurrentUserId(),
-				dto.getCustomerId() // WHERE customer_id = ?
-		);
+	private String camelToSnake(String field) {
+	    return field.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
 	}
+
+	
+	public CustomerDto updatePartial(UUID customerId, Map<String, Object> updates) {
+
+	    if (updates == null || updates.isEmpty()) {
+	        return findById(customerId); // nothing to update
+	    }
+
+	    Set<String> disallowed = Set.of("customerId", "createdBy", "createdAt");
+	    StringBuilder sql = new StringBuilder("UPDATE customers SET ");
+	    List<Object> params = new ArrayList<>();
+
+	    updates.forEach((key, value) -> {
+	        if (disallowed.contains(key)) {
+	            return;
+	        }
+	        String column = camelToSnake(key);
+	        sql.append(column).append(" = ?, ");
+	        params.add(value);
+	    });
+
+	    // Remove trailing comma + space
+	    if (sql.toString().endsWith(", ")) {
+	        sql.setLength(sql.length() - 2);
+	        sql.append(", "); // optional: ensure spacing before updated_at
+	    }
+
+	    // common fields
+	    sql.append("updated_at = NOW(), updated_by = ? ");
+	    params.add(AppUtil.getCurrentUserId());
+
+	    // WHERE clause
+	    sql.append("WHERE customer_id = ?");
+	    params.add(customerId);
+
+	    jdbc.update(sql.toString(), params.toArray());
+	    return findById(customerId);
+	}
+
+
 
 	public List<CustomerDto> findAllWithDocuments() {
 	    String sql = """
@@ -168,7 +212,7 @@ public class CustomerRepository {
 	                customer.setAltMobile(rs.getLong("alt_mobile"));
 	                customer.setNotes(rs.getString("notes"));
 	                customer.setStatus(rs.getString("status"));
-	                customer.setProfileImagePath(rs.getString("profile_image_path"));
+	                customer.setProfileImagePath(convertToPublicUrl(rs.getString("profile_image_path")));
 	                customerMap.put(cid, customer);
 	            }
 

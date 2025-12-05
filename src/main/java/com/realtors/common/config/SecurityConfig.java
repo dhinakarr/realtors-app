@@ -36,13 +36,14 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .authorizeHttpRequests(auth -> auth
             		// permit API auth/public endpoints
-            	    .requestMatchers("/api/auth/**", "/api/public/**", "/public/**").permitAll()
+            	    .requestMatchers("/api/auth/**", "/api/public/**", "/public/**","/files/**").permitAll()
             	    .requestMatchers("/api/projects/file/**").permitAll()
             	    .requestMatchers("/.well-known/**").permitAll()
             	    
             	 // SPA static files (safe)
             	    .requestMatchers(
             	        "/",                  // root index
+            	        "/files/*",
             	        "/index.html",        // index file
             	        "/favicon.ico",       // favicon
             	        "/vite.svg",

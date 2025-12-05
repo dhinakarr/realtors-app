@@ -15,14 +15,14 @@ public class CustomerDto {
     private UUID customerId;
     private String customerName;
     private String email;
-    private long mobile;
+    private Long mobile;
     private Date dataOfBirth;
     private String gender;
     private String address;
     private String city;
     private String state;
     private String pincode;
-    private long altMobile;
+    private Long altMobile;
     private String occupation;
     private String profileImagePath;
     private String notes;
