@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CustomerDocumentDto {
-    private long documentId;
+    private Long documentId;
     private UUID customerId;
     private String documentNumber;
     private String documentType;

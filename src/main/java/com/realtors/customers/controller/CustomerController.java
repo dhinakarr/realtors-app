@@ -74,11 +74,11 @@ logger.info("CustomerController.createCustomer data received dto.getName(): "+dt
 		return ResponseEntity.ok(ApiResponse.success("Customer Created", created, HttpStatus.CREATED));
 	}
 
-	@PostMapping("/{customerId}/documents")
-	public ResponseEntity<ApiResponse<?>> uploadDocument(@PathVariable UUID customerId, @RequestParam String docType,
-			@RequestParam MultipartFile file) throws Exception {
-		UUID uploadedBy = AppUtil.getCurrentUserId();
-		service.uploadDocument(customerId, docType, file, uploadedBy);
+	@PostMapping(value="/{customerId}/documents", consumes = { "multipart/form-data" })
+	public ResponseEntity<ApiResponse<?>> uploadDocument(@PathVariable UUID customerId, 
+																								@RequestParam String documentType, @RequestParam String documentNumber,
+																								@RequestParam MultipartFile files) throws Exception {
+		service.uploadDocument(customerId, documentType, documentNumber, files);
 		return ResponseEntity.ok(ApiResponse.success("Document uploaded", null));
 	}
 
@@ -126,8 +126,8 @@ logger.info("CustomerController.createCustomer data received dto.getName(): "+dt
 	    return ResponseEntity.ok(ApiResponse.success("Customer marked as INACTIVE", null));
 	}
 	
-	@DeleteMapping("/documents/{docId}")
-	public ResponseEntity<ApiResponse<?>> deleteDocument(@PathVariable UUID docId) {
+	@DeleteMapping(value = "/documents/{docId}", produces = "application/json")
+	public ResponseEntity<ApiResponse<?>> deleteDocument(@PathVariable Long docId) {
 	    service.deleteDocument(docId);
 	    return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
 	}
@@ -146,7 +146,7 @@ logger.info("CustomerController.createCustomer data received dto.getName(): "+dt
 	
 	// Document download endpoint
 		@GetMapping("/documents/{docId}/download")
-		public ResponseEntity<Resource> downloadDocument(@PathVariable UUID docId) throws IOException {
+		public ResponseEntity<Resource> downloadDocument(@PathVariable Long docId) throws IOException {
 			CustomerDocumentDto doc = service.getDocumentById(docId);
 			if (doc == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -165,5 +165,20 @@ logger.info("CustomerController.createCustomer data received dto.getName(): "+dt
 			String disposition = "attachment; filename=\"" + doc.getFileName() + "\"";
 			return ResponseEntity.ok().contentType(MediaType.parseMediaType(contentType))
 					.header(HttpHeaders.CONTENT_DISPOSITION, disposition).body(resource);
+		}
+		
+		@GetMapping("/search")
+		public ResponseEntity<ApiResponse<List<CustomerDto>>> searchCustomer(@RequestParam String searchText) {
+			List<CustomerDto> list = service.search(searchText);
+			return ResponseEntity.ok(ApiResponse.success("Search Data Fetched", list, HttpStatus.OK));
+		}
+		
+		@GetMapping("/{customerId}/documents")
+		public ResponseEntity<ApiResponse<List<CustomerDocumentDto>>> getDocuments(@PathVariable String customerId) {
+			UUID custId = null;
+			if (customerId != null) 
+				custId = UUID.fromString(customerId);
+			List<CustomerDocumentDto> list = service.getAllDocuments(custId);
+			return ResponseEntity.ok(ApiResponse.success("Documents Data Fetched", list, HttpStatus.OK));
 		}
 }

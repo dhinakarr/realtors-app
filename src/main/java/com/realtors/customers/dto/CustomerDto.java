@@ -1,6 +1,7 @@
 package com.realtors.customers.dto;
 
 import java.sql.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,5 +30,5 @@ public class CustomerDto {
     private String status;
     private UUID createdBy;
     private UUID updatedBy;
-    private List<CustomerDocumentDto> documents;
+    private List<CustomerDocumentDto> documents = new ArrayList<>();
 }
