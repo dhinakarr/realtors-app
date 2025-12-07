@@ -17,7 +17,7 @@ public class CustomerDto {
     private String customerName;
     private String email;
     private Long mobile;
-    private Date dataOfBirth;
+    private Date dateOfBirth;
     private String gender;
     private String address;
     private String city;

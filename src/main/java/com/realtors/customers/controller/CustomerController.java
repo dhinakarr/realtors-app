@@ -7,7 +7,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -29,11 +28,9 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
-import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
 import com.realtors.customers.dto.CustomerDto;
 import com.realtors.customers.service.CustomerService;
@@ -68,7 +65,7 @@ public class CustomerController {
 	public ResponseEntity<ApiResponse<CustomerDto>> createCustomer(@RequestPart("customer") CustomerDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) throws Exception {
 		
-logger.info("CustomerController.createCustomer data received dto.getName(): "+dto.getCustomerName());
+logger.info("CustomerController.createCustomer data received dto.getDataOfBirth(): "+dto.getDateOfBirth());
 		CustomerDto created = service.createCustomer(dto, profileImage);
 		logger.info("CustomerController.createCustomer data received data saved: "+created.getCustomerName());
 		return ResponseEntity.ok(ApiResponse.success("Customer Created", created, HttpStatus.CREATED));

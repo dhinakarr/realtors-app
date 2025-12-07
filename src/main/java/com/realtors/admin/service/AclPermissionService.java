@@ -20,7 +20,6 @@ import com.realtors.common.util.AppUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -40,7 +39,7 @@ import java.util.stream.Collectors;
 public class AclPermissionService extends AbstractBaseService<AclPermissionDto, UUID> {
 
 	private static final Logger log = LoggerFactory.getLogger(AclPermissionService.class);
-	private static final String CACHE_NAME = "aclPermissions";
+//	private static final String CACHE_NAME = "aclPermissions";
 	private static final String TABLE_NAME = "acl_permissions";
 	private static final String ID_COLUMNS = "role_id,permission_id";
 

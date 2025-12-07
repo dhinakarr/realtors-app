@@ -110,8 +110,6 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
 
     /** ✅ Create User */
     public AppUserDto createUser(AppUserDto dto) {
-        logger.info("@UserService.createUser Creating user: {} {}", dto.toString());
-
         // Manager validation
         if (dto.getManagerId() != null) {
             String checkManagerSql = "SELECT COUNT(*) FROM app_users WHERE user_id = ?";
@@ -162,13 +160,12 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
 
         // meta is ALREADY a Map<String, Object> → no need to parse!
         Map<String, Object> meta = data.getMeta();  // ← Just get it directly
-logger.info("@UserService.createWithFiles meta: {}", meta.toString());
         // If you want a mutable copy (safe)
         Map<String, Object> metaMap = (meta != null) 
             ? new HashMap<>(meta)  // copy it
             : new HashMap<>();     // or empty map
         data.setMeta(metaMap);
-    	Map<String, Object> updatedMap = mapper.convertValue(data, Map.class);
+    	Map<String, Object> updatedMap =  mapper.convertValue(data, Map.class);
     	AppUserDto obj = super.createWithFiles( updatedMap);
     	userAuthService.createUserAuth(obj.getUserId(), obj.getEmail(), null, obj.getRoleId(), null);
     	audit.auditAsync("users", obj.getUserId(), EnumConstants.CREATE_WITH_FILES.toString(), 
@@ -209,17 +206,6 @@ logger.info("@UserService.createWithFiles meta: {}", meta.toString());
     
     // Get Paged modules data thi
     public PagedResult<AppUserDto> getPaginatedUsers(int page, int size) {
-    	
-		/*
-		 * return new FeatureListResponseDto<>( "Users", "table", List.of("Full Name",
-		 * "Email", "Mobile", "Role Name", "Status"), Map.ofEntries(
-		 * Map.entry("Full Name", "fullName"), Map.entry("Email", "email"),
-		 * Map.entry("Mobile", "mobile"), Map.entry("Role Name", "roleName"),
-		 * Map.entry("Status", "status") ), "userId", true, // pagination enabled
-		 * super.findAllPaginated(page, size, null), // <-- MUST return
-		 * PagedResult<AppUserDto> super.getLookupData(lookupDefs) // <-- fully dynamic
-		 * lookup map );
-		 */
     	PagedResult<AppUserDto> data = super.findAllPaginated(page, size, null);
     	audit.auditAsync("users", data.data().getFirst().getUserId(), EnumConstants.PAGED.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());

@@ -18,7 +18,6 @@ import com.realtors.common.util.JsonAwareRowMapper;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
@@ -127,22 +126,6 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	}
 
 	public T patchUpdateWithFile(ID id, Map<String, Object> updates) {
-		Object idValue = id;
-		String idColumn = getIdColumn();
-		// Handle composite key
-		if (idColumn.contains(",")) {
-			List<String> idColumns = Arrays.stream(idColumn.split(",")).map(String::trim).collect(Collectors.toList());
-
-			if (id instanceof Map) {
-				idValue = id;
-			} else if (id instanceof List) {
-				idValue = id;
-			} else {
-				// Try to auto-map from dto or updates if possible (optional)
-				throw new IllegalArgumentException("Composite key table requires Map or List for idValue. "
-						+ "Example: Map.of('role_id', val1, 'permission_id', val2)");
-			}
-		}
 		return GenericUpdateUtil.patchGenericWithFileSupport(tableName, updates, jdbcTemplate, dtoClass, getIdColumn(),
 				id);
 	}
@@ -151,20 +134,6 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		if (updates == null || updates.isEmpty()) {
 			throw new IllegalArgumentException("No fields to update");
 		}
-		/*
-		 * String idColumn = getIdColumn(); // e.g. "id" or "role_id, permission_id"
-		 * Object idValue;
-		 * 
-		 * // Handle composite key if (idColumn.contains(",")) { List<String> idColumns
-		 * = Arrays.stream(idColumn.split(",")).map(String::trim).collect(Collectors.
-		 * toList());
-		 * 
-		 * if (id instanceof Map) { idValue = id; } else if (id instanceof List) {
-		 * idValue = id; } else { // Try to auto-map from dto or updates if possible
-		 * (optional) throw new
-		 * IllegalArgumentException("Composite key table requires Map or List for idValue. "
-		 * + "Example: Map.of('role_id', val1, 'permission_id', val2)"); } }
-		 */
 		return GenericUpdateUtil.patchGeneric(tableName, updates, jdbcTemplate, dtoClass, getIdColumn(), id);
 	}
 
@@ -260,7 +229,6 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 			// Use lookup.resultAlias for the final SELECT alias
 			sb.append(", ").append(alias).append(".").append(lookup.nameColumn).append(" AS ")
 					.append(lookup.resultAlias); // <-- GENERIC CHANGE HERE
-
 			joinIndex++;
 		}
 
@@ -321,7 +289,6 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		String status = null;
 		if (stat == null || stat.isEmpty())
 			status = "ACTIVE";
-//    	logger.info("@AbstractBaseService.getStatus() status: "+ status);
 		return status;
 	}
 
@@ -349,10 +316,8 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 				whereClause.append(" OR ");
 		}
 		whereClause.append(")");
-		logger.info("@AbstractBaseService.search params: " + params.toString());
 		int limit = 10;
 		String sql = "SELECT * FROM " + tableName + whereClause + " ORDER BY updated_at DESC LIMIT " + limit;
-		logger.info("@AbstractBaseService.search sql: " + sql);
 		return jdbcTemplate.query(sql, new JsonAwareRowMapper<>(dtoClass), params.toArray());
 	}
 

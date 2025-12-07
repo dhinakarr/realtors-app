@@ -86,7 +86,6 @@ public class ProjectController {
 	
 	@GetMapping("/details/{id}")
 	public ResponseEntity<ApiResponse<ProjectDetailDto>> getProjectDetails(@PathVariable String id) {
-		logger.info("@ProjectController.getProjectDetails id:  "+id);
 		UUID projectId = UUID.fromString(id);
 		ProjectDetailDto projects = service.getProjectDetails(projectId); // active projects only
 		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", projects, HttpStatus.OK));
@@ -102,38 +101,13 @@ public class ProjectController {
 	public ResponseEntity<ApiResponse<ProjectResponse>> createProject(@ModelAttribute ProjectDto dto,
 			@RequestPart(value = "files", required = false) MultipartFile[] files) {
 
-		/*
-		 * ProjectDto created = service.createProject(dto);
-		 * logger.info("@ProjectController.createProject file created: ");
-		 * uploadFiles(created.getProjectId(), files);
-		 * logger.info("@ProjectController.createProject file uploaded: ");
-		 * List<ProjectFileDto> fileDto =
-		 * fileService.getProjectFiles(created.getProjectId()); ProjectResponse response
-		 * = new ProjectResponse(dto, fileDto);
-		 * plotService.generatePlots(created.getProjectId(), created.getNoOfPlots(),
-		 * created.getPlotStartNumber());
-		 */			
 		  ProjectResponse response = facade.createProjectWithFilesAndPlots(dto, files);
 		  return ResponseEntity.ok(ApiResponse.success("Projects Fetched", response, HttpStatus.OK));
 	}
 
-	/*
-	 * @PostMapping public ResponseEntity<ApiResponse<ProjectDto>>
-	 * create(@RequestBody ProjectDto dto) { ProjectDto data =
-	 * service.createProject(dto); return
-	 * ResponseEntity.ok(ApiResponse.success("Project created", data,
-	 * HttpStatus.OK)); }
-	 * 
-	 * @PutMapping("/{id}") public ResponseEntity<String> update(@PathVariable UUID
-	 * id, @RequestBody ProjectDto dto) { dto.setProjectId(id); ProjectDto updated =
-	 * service.updateProject(id, dto); return ResponseEntity.ok("Project updated");
-	 * }
-	 */
 	@DeleteMapping("/file/delete/{fileId}")
 	public ResponseEntity<ApiResponse<?>> deleteFile(@PathVariable String fileId) {
-		logger.info("@ProjectController.deleteFile fileId:  "+fileId);
 		UUID file = UUID.fromString(fileId);
-//		UUID project = UUID.fromString(projectId);
 		boolean deleted = fileService.deleteFile(file);
 		if (deleted) 
 			return ResponseEntity.ok(ApiResponse.success("File deleted", null, HttpStatus.OK));
@@ -172,10 +146,8 @@ public class ProjectController {
 	
 	@GetMapping("/file/{fileId}")
 	public ResponseEntity<Resource> serveFile(@PathVariable UUID fileId) throws IOException {
-		logger.info("@ProjectController.serveFile fileId: "+fileId);
 	    ProjectFileDto file = fileService.getFileById(fileId);
 	    if (file == null) {
-	    	logger.info("@ProjectController.serveFile file is null: ");
 	        return ResponseEntity.notFound().build();
 	    }
 	    Path path = Paths.get(file.getFilePath());
@@ -183,7 +155,6 @@ public class ProjectController {
 	        return ResponseEntity.notFound().build();
 	    }
 	    Resource resource = new UrlResource(path.toUri());
-	    logger.info("@ProjectController.serveFile fileId: "+fileId+ ": resource: "+resource.getURI());
 	    return ResponseEntity.ok()
 	            .contentType(getMediaType(path))
 	            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFileName() + "\"")
@@ -204,7 +175,6 @@ public class ProjectController {
 			if (files != null) {
 				fileService.uploadMultipleFiles(projectId, files);
 			}
-			logger.info("@ProjectController.uploadFiles image inserted successfully ");
 			return true;
 		} catch (Exception e) {
 			logger.error("@ProjectController.uploadFiles Failed to insert data: " + e.getMessage());

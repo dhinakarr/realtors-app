@@ -72,7 +72,6 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     // AUTO-GENERATE PLOTS
     // ---------------------------------------------------
     public void generatePlots(UUID projectId, int numberOfPlots, int startNumber) {
-
         List<PlotUnitDto> list = new ArrayList<>();
 
         for (int i = 0; i < numberOfPlots; i++) {
@@ -85,7 +84,6 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
 
             list.add(dto);
         }
-
         repo.bulkInsert(list);
     }
 }

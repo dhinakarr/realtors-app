@@ -43,13 +43,11 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 
 	 /** ✅ Update user form response */
     public EditResponseDto<ProjectSummaryDto> editResponse(UUID projectId) {
-//    	logger.info("@ProjectService.getEditForm UUID id: "+projectId);
     	DynamicFormResponseDto form = super.buildDynamicFormResponse();
     	if (projectId ==null) {
     		return new EditResponseDto<>(null, form);
     	}
         ProjectSummaryDto opt = this.repo.getProjects(projectId).getFirst();
-//        logger.info("@ProjectService.editResponse publicUrl: "+opt.getFiles().getFirst().getPublicUrl());
         audit.auditAsync("projects", opt.getProjectId() , EnumConstants.EDIT_FORM.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
         return  new EditResponseDto<>(opt, form);
@@ -58,8 +56,6 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	// this will get only active projects data 
 	public List<ProjectSummaryDto> getAciveProjects() {
 		List<ProjectSummaryDto> projects = this.repo.getProjects(null);
-		
-//		logger.info("@ProjectService.editResponse id null publicUrl: "+projects.getFirst().getFiles().getFirst().getPublicUrl());
 		
 		audit.auditAsync("projects", projects.getFirst().getProjectId() , EnumConstants.GET_ALL.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
@@ -116,9 +112,7 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 			numPlots = (Integer) dto.get("noOfPlots");
 			plotConfigChanged = true;
 		}
-
 		ProjectDto data = super.patch(projectId, dto);
-		
 		if (plotConfigChanged) {
 			plotService.deleteByProjectId(projectId);
 			plotService.generatePlots(projectId, numPlots, startNum);
@@ -130,7 +124,6 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	}
 
 	public boolean deleteProject(UUID id) {
-		
 		audit.auditAsync("projects", id, EnumConstants.DELETE.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return super.softDelete(id);

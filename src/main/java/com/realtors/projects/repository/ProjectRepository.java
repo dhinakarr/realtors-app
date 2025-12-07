@@ -136,7 +136,6 @@ public class ProjectRepository {
             params = new Object[]{filter};
         }
         List<ProjectSummaryDto> list = jdbc.query(sql, params, projectExtractor);
-        logger.info("@ProjectRepository.getProjects publicUrl: "+list.getFirst().getFiles().getFirst().getPublicUrl());
         return list;
     }
     

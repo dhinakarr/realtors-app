@@ -6,7 +6,6 @@ import com.realtors.common.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 
 import com.realtors.admin.dto.LoginResponse;
-import com.realtors.admin.service.AuthService;
 import com.realtors.admin.service.TokenCacheService;
 import com.realtors.admin.service.UserAuthService;
 
@@ -23,13 +22,11 @@ import java.util.UUID;
 public class AuthController {
 
     @Autowired
-    private AuthService authService;
     private UserAuthService userAuthService;
     private final JwtUtil jwtUtil;
     private final TokenCacheService tokenCacheService;
     
-    public AuthController(AuthService authService, JwtUtil jwtUtil, TokenCacheService tokenCacheService, UserAuthService userAuthService) {
-    	this.authService = authService;
+    public AuthController(JwtUtil jwtUtil, TokenCacheService tokenCacheService, UserAuthService userAuthService) {
     	this.jwtUtil = jwtUtil;
     	this.tokenCacheService = tokenCacheService;
     	this.userAuthService = userAuthService;

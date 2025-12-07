@@ -2,6 +2,7 @@ package com.realtors.projects.services;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -76,16 +77,12 @@ public class ProjectFileService {
 	}
 
 	public void uploadSingleFile(UUID projectId, MultipartFile file) throws IOException {
-
-//		String fullPath = storage.saveProjectFile(projectId, file);
 		ProjectFileDto dto = storage.storeFile(projectId, file);
-//		repo.saveFile(projectId, fullPath, file.getOriginalFilename(), file.getSize());
 		repo.saveFileData(dto);
 	}
 
 	public List<ProjectFileDto> getProjectFiles(UUID projectId) {
 		List<ProjectFileDto> list = repo.findByProjectId(projectId);
-		logger.info("@ProjectFileService.getProjectFiles fileDto.getFilePath(): " + list.getFirst().getProjectFileId());
 		return list;
 	}
 
@@ -96,14 +93,11 @@ public class ProjectFileService {
 	public boolean deleteFile(UUID fileId) {
 		ProjectFileDto fileDto = repo.findByProjectFileId(fileId);
 		boolean flag = false;
-		logger.info("@ProjectFileService.deleteFile fileDto.getFilePath(): " + fileDto.getFilePath());
 		boolean fileDeleted = storage.deleteFile(fileDto.getFilePath());
-//		Path fileFolder = getFinalFolder(fileDto.getProjectId()); // this is to consider  deleting the folder if required
 		
 		boolean dataDeleted = repo.deleteFile(fileId);
 		if (fileDeleted && dataDeleted)
 			flag = true;
-		logger.info("ProjectFileService.deleteFile File& Data Deleted: " + flag);
 		return flag;
 	}
 
@@ -118,10 +112,9 @@ public class ProjectFileService {
 			if (files != null) {
 				uploadMultipleFiles(projectId, files);
 			}
-			logger.info("@ProjectController.uploadFiles image inserted successfully ");
 			return true;
 		} catch (Exception e) {
-			logger.error("@ProjectController.uploadFiles Failed to insert data: " + e.getMessage());
+			logger.error("@ProjectFileService.uploadFiles Failed to insert data: " + e.getMessage());
 			return false;
 		}
 	}
@@ -161,7 +154,7 @@ public class ProjectFileService {
 					} catch (IOException ignored) {
 					}
 				});
-				throw new RuntimeException("Failed to save upload to temp", e);
+				throw new RuntimeException("@ProjectFileService.saveFilesToTemp Failed to save upload to temp", e);
 			}
 		}
 		return out;
@@ -183,7 +176,6 @@ public class ProjectFileService {
 		for (FileTemp f : temps) {
 			String publicUrl = ServletUriComponentsBuilder.fromCurrentContextPath().path("/api/projects/file/")
 					.path(f.getProjectId().toString()).toUriString();
-			logger.info("@ProjectFileService.insertFileRecordsAsTemp publicUrl: "+publicUrl);
 			jdbc.update(sql, f.getId(), f.getProjectId(), f.getTempPath().toString(), publicUrl,
 					f.getOriginalFileName());
 		}
@@ -195,26 +187,59 @@ public class ProjectFileService {
 	 * commits.
 	 */
 	public void registerAfterCommitMoveAndUpdate(List<FileTemp> temps) {
-		if (temps == null || temps.isEmpty())
-			return;
-
-		// ensure a transaction is active
-		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			ProjectFileService.this.moveAndUpdateDirect(temps);
-			return;
-		}
-
-		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-			@Override
-			public void afterCommit() {
-				try {
-					// Use outer class reference
-					ProjectFileService.this.moveAndUpdateDirect(temps);
-				} catch (Exception e) {
-					logger.error("Failed moving files after commit", e);
-				}
-			}
-		});
+	    if (temps == null || temps.isEmpty()) {
+	        return;
+	    }
+	    // Make defensive copy to avoid external mutation
+	    final List<FileTemp> safeTemps = new ArrayList<>(temps);
+	    // If no active transaction → run immediately
+	    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+	        moveAndUpdateDirect(safeTemps);
+			/*
+			 * try { moveFilesAndCleanup(safeTemps); } catch(IOException ioe) { logger.
+			 * error("@ProjectFileService.registerAfterCommitMoveAndUpdate If no active transaction → run immediately: "
+			 * , ioe); }
+			 */
+	    	
+	    }
+	    TransactionSynchronizationManager.registerSynchronization(
+	        new TransactionSynchronization() {
+	            @Override
+	            public void afterCommit() {
+	                try {
+	                    ProjectFileService.this.moveAndUpdateDirect(safeTemps);
+//	                	moveFilesAndCleanup(safeTemps);
+	                } catch (Exception e) {
+	                    logger.error("@ProjectFileService.registerAfterCommitMoveAndUpdate Failed moving files after commit", e);
+	                }
+	            }
+	        }
+	    );
+	}
+	/**
+	 * Move files and update DB accordingly. Runs after commit (separate DB calls
+	 * allowed).
+	 */
+	private void moveFilesAndCleanup(List<FileTemp> temps) throws IOException {
+		String updateSql = "UPDATE projects_files SET file_path = ? WHERE project_file_id = ?";
+	    for (FileTemp temp : temps) {
+	        Path source = temp.getTempPath();      // temp file path
+	        Path target = temp.getFinalPath();     // final location
+	        // Ensure parent directory exists
+	        Files.createDirectories(target.getParent());
+	        // Move the file
+	        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+	        jdbc.update(updateSql, temp.getFinalPath().toString(), temp.getId());
+	        // Delete the temp file if still exists
+	        Files.deleteIfExists(source);
+	        // Delete parent temp folder if empty
+	        Path parentDir = source.getParent();
+	        try {
+	            Files.delete(parentDir); // Only deletes if empty
+	        } catch (DirectoryNotEmptyException ignore) {
+	            // one temp folder may contain multiple uploads → OK if not empty
+	        }
+	    }
 	}
 
 	/**
@@ -225,13 +250,24 @@ public class ProjectFileService {
 		String updateSql = "UPDATE projects_files SET file_path = ? WHERE project_file_id = ?";
 		for (FileTemp f : temps) {
 			try {
+				Path source = f.getTempPath();
 				// ensure final folder exists (created earlier but safe)
 				Files.createDirectories(f.getFinalPath().getParent());
 				Files.move(f.getTempPath(), f.getFinalPath(), StandardCopyOption.REPLACE_EXISTING);
 				// update DB to final path
 				jdbc.update(updateSql, f.getFinalPath().toString(), f.getId());
+				
+				Files.deleteIfExists(source);
+		        // Delete parent temp folder if empty
+		        Path parentDir = source.getParent();
+		        try {
+		            Files.delete(parentDir); // Only deletes if empty
+		        } catch (DirectoryNotEmptyException ignore) {
+		            // one temp folder may contain multiple uploads → OK if not empty
+		        }
+				
 			} catch (IOException ex) {
-				logger.error("Failed moving temp file {} to final {}", f.getTempPath(), f.getFinalPath(), ex);
+				logger.error("@ProjectFileService.moveAndUpdateDirect Failed moving temp file {} to final {}", f.getTempPath(), f.getFinalPath(), ex);
 				// do NOT attempt to rollback — DB already committed. Best effort only.
 			}
 		}
@@ -243,7 +279,6 @@ public class ProjectFileService {
 	public void cleanupTempFiles(List<FileTemp> temps) {
 		if (temps == null)
 			return;
-		
 		temps.forEach(t -> {
 			try {
 				Files.deleteIfExists(t.getTempPath());
@@ -260,13 +295,11 @@ public class ProjectFileService {
 	            try (var files = Files.list(tempFolder)) {
 	                if (files.findAny().isEmpty()) {
 	                    Files.deleteIfExists(tempFolder);
-	                    logger.info("@ProjectFileService.cleanupTempFolder Deleted empty temp folder: " + tempFolder);
 	                }
 	            }
 	        }
 	    } catch (Exception e) {
-	        logger.error("Failed to delete temp folder " + tempFolder, e);
+	        logger.error("@ProjectFileService.cleanupTempFolder Failed to delete temp folder " + tempFolder, e);
 	    }
 	}
-
 }

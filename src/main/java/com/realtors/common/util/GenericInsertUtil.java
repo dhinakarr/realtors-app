@@ -69,8 +69,6 @@ public class GenericInsertUtil {
 		placeholders.setLength(placeholders.length() - 2);
 
 		sql.append(") VALUES (").append(placeholders).append(") RETURNING *");
-		logger.info("@GenericInsertUtil.insertGeneric sql.toString(): "+sql.toString());
-		logger.info("@GenericInsertUtil.insertGeneric params: "+params.toString());
 		// 5️⃣ Execute query
 		return jdbcTemplate.queryForObject(sql.toString(), new JsonAwareRowMapper<>(dtoClass), params.toArray());
 	}
@@ -98,7 +96,6 @@ public class GenericInsertUtil {
 		        "user_id".equalsIgnoreCase(col) ||
 		        "createdAt".equalsIgnoreCase(fieldName) ||
 		        "updatedAt".equalsIgnoreCase(fieldName)) {
-		    	logger.info("@GenericInsertUtil.insertGenericWithFileSupport fieldName: " + fieldName);
 		        continue; // Let DB generate these
 		    }
 		    

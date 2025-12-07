@@ -10,8 +10,6 @@ import java.util.logging.Logger;
 
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import com.realtors.common.config.FileStorageProperties;
@@ -30,21 +28,20 @@ public class CustomerRepository {
 		this.props = props;
 	}
 
-	public void save(CustomerDto dto) {
+	public UUID save(CustomerDto dto) {
 		String sql = """
 				    INSERT INTO customers
 				    (customer_name, email, mobile, date_of_birth, gender,
 				     address, city, state, pincode, alt_mobile, occupation,
 				     profile_image_path, notes, status, created_by)
-				    VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+				    VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)  RETURNING customer_id
 				""";
-		logger.info("CustomerRepository.save Data received CustomerName: "+ dto.getCustomerName());
-		jdbc.update(sql, dto.getCustomerName(), dto.getEmail(), dto.getMobile(),
-				dto.getDataOfBirth(), dto.getGender(), dto.getAddress(), dto.getCity(), dto.getState(),
+		UUID customerId = jdbc.queryForObject(sql, UUID.class, dto.getCustomerName(), dto.getEmail(), dto.getMobile(),
+				dto.getDateOfBirth(), dto.getGender(), dto.getAddress(), dto.getCity(), dto.getState(),
 				dto.getPincode(), dto.getAltMobile(), dto.getOccupation(), dto.getProfileImagePath(), dto.getNotes(),
 				dto.getStatus(), AppUtil.getCurrentUserId() // created_by (placeholder)
 		);
-		logger.info("CustomerRepository.save Data received Customer data saved: ");
+		return customerId;
 	}
 
 	public CustomerDto findById(UUID id) {
@@ -56,7 +53,7 @@ public class CustomerRepository {
 			dto.setCustomerName(rs.getString("customer_name"));
 			dto.setEmail(rs.getString("email"));
 			dto.setMobile(rs.getLong("mobile"));
-			dto.setDataOfBirth(rs.getDate("date_of_birth"));
+			dto.setDateOfBirth(rs.getDate("date_of_birth"));
 			dto.setGender(rs.getString("gender"));
 			dto.setAddress(rs.getString("address"));
 			dto.setCity(rs.getString("city"));
@@ -118,7 +115,7 @@ public class CustomerRepository {
 				    WHERE customer_id = ?
 				""";
 
-		jdbc.update(sql, dto.getCustomerName(), dto.getEmail(), dto.getMobile(), dto.getDataOfBirth(), dto.getGender(),
+		jdbc.update(sql, dto.getCustomerName(), dto.getEmail(), dto.getMobile(), dto.getDateOfBirth(), dto.getGender(),
 				dto.getAddress(), dto.getCity(), dto.getState(), dto.getPincode(), dto.getAltMobile(),
 				dto.getOccupation(), dto.getProfileImagePath(), dto.getNotes(), dto.getStatus(),
 				AppUtil.getCurrentUserId(), AppUtil.getCurrentUserId());
@@ -202,7 +199,7 @@ public class CustomerRepository {
 	                customer.setCustomerName(rs.getString("customer_name"));
 	                customer.setEmail(rs.getString("email"));
 	                customer.setMobile(rs.getLong("mobile"));
-	                customer.setDataOfBirth(rs.getDate("date_of_birth"));
+	                customer.setDateOfBirth(rs.getDate("date_of_birth"));
 	                customer.setGender(rs.getString("gender"));
 	                customer.setOccupation(rs.getString("occupation"));
 	                customer.setAddress(rs.getString("address"));
@@ -215,7 +212,6 @@ public class CustomerRepository {
 	                customer.setProfileImagePath(convertToPublicUrl(rs.getString("profile_image_path")));
 	                customerMap.put(cid, customer);
 	            }
-
 	            Long docId = rs.getLong("document_id");
 	            if (docId != 0) {
 	                CustomerDocumentDto doc = new CustomerDocumentDto();
@@ -227,7 +223,6 @@ public class CustomerRepository {
 	                customer.getDocuments().add(doc);
 	            }
 	        }
-
 	        return new ArrayList<>(customerMap.values());
 	    });
 	}

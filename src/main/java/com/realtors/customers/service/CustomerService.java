@@ -10,6 +10,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -39,7 +40,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 
 	public CustomerService(CustomerRepository customerRepo, CustomerDocumentRepository documentRepo,
 			FileStorageProperties fileStorageProperties, JdbcTemplate jdbc) {
-		super(CustomerDto.class, "customers", jdbc);
+		super(CustomerDto.class, "customers", jdbc, Set.of("documents"));
 		this.customerRepo = customerRepo;
 		this.documentRepo = documentRepo;
 		this.fileStorageProperties = fileStorageProperties;
@@ -62,10 +63,6 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	}
 
 	public List<CustomerDto> getAllCustomers() {
-		List<CustomerDto> list = super.findAll();
-		for(CustomerDto dto: list) {
-			
-		}
 		return customerRepo.findAllWithDocuments();
 	}
 	
@@ -102,11 +99,11 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	
 	@Transactional(value="txManager")
 	public CustomerDto createCustomer(CustomerDto dto, MultipartFile profileImage) throws Exception {
-		CustomerDto created = super.create(dto);
-		UUID customerId = created.getCustomerId(); 
+		UUID customerId =  customerRepo.save(dto);
+		
 		String imagePathUrl = saveFile(profileImage, customerId, "/profile/");
 	
-		customerRepo.updatePartial(customerId, Map.of("profile_image_path", imagePathUrl));
+		CustomerDto created = customerRepo.updatePartial(customerId, Map.of("profile_image_path", imagePathUrl));
 		created.setProfileImagePath(imagePathUrl);
 		return created;
 	}
@@ -185,9 +182,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		CustomerDocumentDto dto = documentRepo.findById(docId);
 		UUID customerId = dto.getCustomerId();
 		String filePath = getFolderPath(customerId, "/documents/");
-		logger.info("@CustomerService.deleteDocument filePath: "+ filePath);
 		String fullPath = filePath+dto.getFileName();
-		logger.info("@CustomerService.deleteDocument fullPath with file name: "+ fullPath);
 		if (fullPath != null) {
 			File file = new File(fullPath);
 			if (file.exists())

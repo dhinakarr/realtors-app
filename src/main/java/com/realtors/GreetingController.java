@@ -44,7 +44,6 @@ public class GreetingController {
     
     @GetMapping("/projects/details/{id}")
 	public ResponseEntity<ApiResponse<ProjectDetailDto>> getProjectDetails(@PathVariable String id) {
-		logger.info("@GreetingController.getProjectDetails id:  "+id);
 		UUID projectId = UUID.fromString(id);
 		ProjectDetailDto projects = service.getProjectDetails(projectId); // active projects only
 		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", projects, HttpStatus.OK));
@@ -52,7 +51,6 @@ public class GreetingController {
     
     @GetMapping("/plots/{id}")
 	public ResponseEntity<ApiResponse<PlotUnitDto>> getPlotData(@PathVariable String id) {
-		logger.info("@GreetingController.getProjectDetails id:  "+id);
 		UUID plotId = UUID.fromString(id);
 		PlotUnitDto plot = plotService.getByPlotId(plotId); // active projects only
 		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", plot, HttpStatus.OK));
