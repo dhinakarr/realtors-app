@@ -41,7 +41,7 @@ public class UserController {
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<AppUserDto>> createUser(@RequestPart("dto") AppUserDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
-		logger.info("@UserController.createUser meta: {}", dto.getMeta().toString());
+//		logger.info("@UserController.createUser meta: {}", dto.getMeta().toString());
 		AppUserDto created = appUserService.createWithFiles(dto, profileImage);
 		return ResponseEntity.ok(ApiResponse.success("Users Created successfully", created, HttpStatus.OK));
 	}
@@ -113,7 +113,7 @@ public class UserController {
 				Map<String, Object> metaMap = new ObjectMapper().readValue(meta,
 						new TypeReference<Map<String, Object>>() {
 						});
-				logger.info("@UserController.patch metaMap: "+metaMap.toString());
+//				logger.info("@UserController.patch metaMap: "+metaMap.toString());
 				updates.put("meta", metaMap);
 			} catch (Exception e) {
 				// Consider logging the error and returning a 400 Bad Request
@@ -145,7 +145,7 @@ public class UserController {
 
 		// Call your service method with only the changed fields
 		AppUserDto updated = appUserService.updateWithFiles(id, updates);
-		logger.info("@UserController.patch data updated: " + updated);
+//		logger.info("@UserController.patch data updated: " + updated);
 		return ResponseEntity.ok(ApiResponse.success("Updated successfully", updated, HttpStatus.OK));
 	}
 

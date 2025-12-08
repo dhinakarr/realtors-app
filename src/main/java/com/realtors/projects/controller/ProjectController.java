@@ -25,8 +25,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -41,7 +39,6 @@ import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.dto.ProjectFileDto;
 import com.realtors.projects.dto.ProjectResponse;
 import com.realtors.projects.dto.ProjectSummaryDto;
-import com.realtors.projects.services.PlotUnitService;
 import com.realtors.projects.services.ProjectFacadeService;
 import com.realtors.projects.services.ProjectFileService;
 import com.realtors.projects.services.ProjectService;
@@ -52,15 +49,11 @@ public class ProjectController {
 	private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
 	private final ProjectService service;
 	private final ProjectFileService fileService;
-	private final PlotUnitService plotService;
 	private final ProjectFacadeService facade;
 
-	
-
-	public ProjectController(ProjectService service, ProjectFileService fileService, PlotUnitService plotService, ProjectFacadeService facade) {
+	public ProjectController(ProjectService service, ProjectFileService fileService, ProjectFacadeService facade) {
 		this.service = service;
 		this.fileService = fileService;
-		this.plotService = plotService;
 		this.facade = facade;
 	}
 
@@ -133,7 +126,6 @@ public class ProjectController {
 		if (otherFields != null && !otherFields.isEmpty()) {
 			Set<String> integerFields = Set.of("noOfPlots", "plotStartNumber", "pricePerSqft", "regCharges", "docCharges", "otherCharges", "guidanceValue"); 
 			updates = Utils.castNumberFields(otherFields, integerFields);
-//			updates = castNumberFields(otherFields);
 		}
 		if (updates.isEmpty()) {
 			updated = service.getProject(id).get();

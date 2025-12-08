@@ -8,7 +8,6 @@ import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.common.Utils;
 import com.realtors.projects.dto.PlotUnitDto;
-import com.realtors.projects.dto.ProjectSummaryDto;
 import com.realtors.projects.services.PlotUnitService;
 
 import java.util.*;

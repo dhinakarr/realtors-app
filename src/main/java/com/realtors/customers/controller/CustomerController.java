@@ -65,9 +65,7 @@ public class CustomerController {
 	public ResponseEntity<ApiResponse<CustomerDto>> createCustomer(@RequestPart("customer") CustomerDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) throws Exception {
 		
-logger.info("CustomerController.createCustomer data received dto.getDataOfBirth(): "+dto.getDateOfBirth());
 		CustomerDto created = service.createCustomer(dto, profileImage);
-		logger.info("CustomerController.createCustomer data received data saved: "+created.getCustomerName());
 		return ResponseEntity.ok(ApiResponse.success("Customer Created", created, HttpStatus.CREATED));
 	}
 
@@ -82,7 +80,7 @@ logger.info("CustomerController.createCustomer data received dto.getDataOfBirth(
 	@GetMapping("/{customerId}")
 	public ResponseEntity<ApiResponse<CustomerDto>> getCustomer(@PathVariable UUID customerId) {
 		CustomerDto dto = service.getCustomer(customerId);
-		logger.info("@CustomerController.getCustomer publicUrl: "+dto.getProfileImagePath());
+//		logger.info("@CustomerController.getCustomer publicUrl: "+dto.getProfileImagePath());
 		return ResponseEntity.ok(ApiResponse.success("Customer Data", dto));
 	}
 	
@@ -103,7 +101,7 @@ logger.info("CustomerController.createCustomer data received dto.getDataOfBirth(
 		Map<String, Object> updates = new HashMap<String, Object>();
 		
 		if (profileImage != null) {
-			logger.info("@CustomerController.patchCustomer image section profileImage: "+profileImage);
+//			logger.info("@CustomerController.patchCustomer image section profileImage: "+profileImage);
 			updates.put("profileImage", profileImage);
 		}
 		if (otherFields != null && !otherFields.isEmpty()) {
@@ -131,13 +129,13 @@ logger.info("CustomerController.createCustomer data received dto.getDataOfBirth(
 	
 	@DeleteMapping("/image/{costomerId}")
 	public ResponseEntity<ApiResponse<?>> deleteImage(@PathVariable UUID costomerId) {
-		logger.info("@CustomeController.deleteImage request received: " + costomerId);
+//		logger.info("@CustomeController.deleteImage request received: " + costomerId);
 	    try {
 	    	service.deleteImage(costomerId);
 	    } catch(IOException ioe) {
 	    	ResponseEntity.internalServerError().body(ApiResponse.failure("Unable to delete file", HttpStatus.EXPECTATION_FAILED));
 	    }
-	    logger.info("@CustomeController.deleteImage image deleted for: " + costomerId);
+//	    logger.info("@CustomeController.deleteImage image deleted for: " + costomerId);
 	    return ResponseEntity.ok(ApiResponse.success("Image deleted", HttpStatus.OK));
 	}
 	

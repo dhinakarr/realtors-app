@@ -17,7 +17,6 @@ import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
 import com.realtors.common.util.AppUtil;
-import com.realtors.projects.controller.ProjectController;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.dto.ProjectFileDto;
 import com.realtors.projects.dto.ProjectSummaryDto;
@@ -182,7 +181,6 @@ public class ProjectRepository {
                     file.setFileName(rs.getString("file_name"));
                     file.setPublicUrl(rs.getString("public_url"));
                     file.setSizeByts(rs.getInt("size_bytes"));
-                    Timestamp fCreatedAt = rs.getTimestamp("f_created_at");
                     project.getFiles().add(file);
                 }
             }
