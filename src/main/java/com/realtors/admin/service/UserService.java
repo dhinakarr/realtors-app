@@ -144,8 +144,12 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
  // ---------------- CREATE ----------------
     public AppUserDto createWithFiles(AppUserDto data, MultipartFile profileImage) {
     	// Hash password
-        String hashedPassword = passwordEncoder.encode(data.getPasswordHash()==null? "Test@123":data.getPasswordHash());
+        String hashedPassword = passwordEncoder.encode(data.getPasswordHash()==null? null:data.getPasswordHash());
         data.setPasswordHash(hashedPassword);
+        
+        if(userExists(data.getEmail(), data.getMobile())) {
+        	throw new IllegalArgumentException("Register with different mobile.");
+        }
         
     	byte[] imageBytes = null;
     	try {
@@ -201,7 +205,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     	
     	audit.auditAsync("users", null, EnumConstants.SEARCH.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
-    	return super.search(searchText, List.of("full_name", "email"), null);
+    	return super.search(searchText, List.of("full_name", "email", "mobile"), null);
     }
     
     // Get Paged modules data thi
@@ -249,6 +253,17 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID>{
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
     	
     	return super.findById(id);
+    }
+    
+    public boolean userExists(String email, String mobile) {
+        String sql = """
+            SELECT COUNT(*) 
+            FROM app_users 
+            WHERE status = 'ACTIVE'
+              AND (email = ? OR mobile = ?)
+            """;
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email, mobile);
+        return count != null && count > 0;
     }
 }
 

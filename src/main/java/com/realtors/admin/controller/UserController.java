@@ -41,9 +41,16 @@ public class UserController {
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<AppUserDto>> createUser(@RequestPart("dto") AppUserDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
-//		logger.info("@UserController.createUser meta: {}", dto.getMeta().toString());
-		AppUserDto created = appUserService.createWithFiles(dto, profileImage);
-		return ResponseEntity.ok(ApiResponse.success("Users Created successfully", created, HttpStatus.OK));
+		
+		if (dto.getEmail() == null || dto.getMobile() == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure("Email and Mobile are required", HttpStatus.BAD_REQUEST));
+        }
+		try {
+			AppUserDto created = appUserService.createWithFiles(dto, profileImage);
+			return ResponseEntity.ok(ApiResponse.success("Users Created successfully", created, HttpStatus.OK));
+		}  catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage(), HttpStatus.UNAUTHORIZED));
+        }
 	}
 
 	@GetMapping("/form")

@@ -310,7 +310,8 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		params.add(status.toUpperCase());
 
 		for (int i = 0; i < searchFields.size(); i++) {
-			whereClause.append(searchFields.get(i)).append(" ILIKE ?");
+//			whereClause.append(searchFields.get(i)).append(" ILIKE ?");
+			whereClause.append("CAST(").append(searchFields.get(i)).append(" AS TEXT) ILIKE ?");
 			params.add("%" + searchText + "%");
 			if (i < searchFields.size() - 1)
 				whereClause.append(" OR ");

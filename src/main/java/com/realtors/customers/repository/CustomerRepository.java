@@ -1,5 +1,7 @@
 package com.realtors.customers.repository;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,8 +12,15 @@ import java.util.logging.Logger;
 
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.realtors.admin.dto.AppUserDto;
+import com.realtors.admin.service.UserService;
 import com.realtors.common.config.FileStorageProperties;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
@@ -22,10 +31,12 @@ public class CustomerRepository {
 
 	private JdbcTemplate jdbc;
 	private final FileStorageProperties props;
+	private final UserService userService;
 	protected final Logger logger = Logger.getLogger(getClass().getName());
-	public CustomerRepository(JdbcTemplate jdbc, FileStorageProperties props) {
+	public CustomerRepository(JdbcTemplate jdbc, FileStorageProperties props, UserService userService) {
 		this.jdbc = jdbc;
 		this.props = props;
+		this.userService = userService;
 	}
 
 	public UUID save(CustomerDto dto) {
@@ -225,6 +236,79 @@ public class CustomerRepository {
 	        }
 	        return new ArrayList<>(customerMap.values());
 	    });
+	}
+	
+	public List<Map<String, Object>> getCommentsByCustomerId(UUID customerId) {
+	    String sql = "SELECT comments FROM customers WHERE customer_id = ?";
+	    return jdbc.query(sql, new ResultSetExtractor<List<Map<String, Object>>>() {
+	        @Override
+	        public List<Map<String, Object>> extractData(ResultSet rs) throws SQLException {
+	            if (!rs.next()) return new ArrayList<>();
+
+	            String json = rs.getString("comments");
+	            if (json == null || json.isBlank()) return new ArrayList<>();
+	            try {
+	                ObjectMapper mapper = new ObjectMapper();
+	                return mapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
+	            } catch (Exception e) {
+	                logger.severe("Unable to parse comments JSON: " + e.getMessage());
+	                return new ArrayList<>();
+	            }
+	        }
+	    }, customerId);
+	}
+	
+            
+	public List<Map<String, Object>> addComment(UUID customerId, Map<String, Object> newComment) {
+	    try {
+	        // 1. Load current comments
+	        List<Map<String, Object>> comments = getCommentsByCustomerId(customerId);
+
+	        // 2. Prepare new comment
+	        UUID currentUserId = AppUtil.getCurrentUserId();
+	        AppUserDto userDto = userService.getUserById(currentUserId).orElse(null);
+
+	        newComment.put("userId", currentUserId.toString());
+	        newComment.put("userName", userDto != null ? userDto.getFullName() : "Unknown");
+	        newComment.put("addedAt", java.time.LocalDateTime.now().toString());
+
+	        // 3. Add to comment list
+	        comments.add(newComment);
+
+	        // 4. Convert to JSON
+	        ObjectMapper mapper = new ObjectMapper();
+	        String json = mapper.writeValueAsString(comments);
+
+	        // 5. Update the table (audit columns included)
+	        String sql = "UPDATE customers SET comments = ?::jsonb, updated_by = ?, updated_at = NOW() WHERE customer_id = ? ORDER BY ASC";
+
+	        jdbc.update(sql, json, currentUserId, customerId);
+
+	        return comments;
+
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to update comments", e);
+	    }
+	}
+	
+	public List<Map<String, Object>> deleteComment(UUID customerId, int index) {
+	    List<Map<String,Object>> comments = getCommentsByCustomerId(customerId);
+
+	    if (index < 0 || index >= comments.size()) {
+	        throw new IllegalArgumentException("Invalid comment index");
+	    }
+	    comments.remove(index);
+	    ObjectMapper mapper = new ObjectMapper();
+	    String json = null;
+	    try {
+	    	json = mapper.writeValueAsString(comments);
+	    } catch(JsonProcessingException jpe) {
+	    	
+	    }
+	    String sql = "UPDATE customers SET comments = ?::jsonb, updated_by = ?, updated_at = NOW() WHERE customer_id = ?";
+	    UUID currentUser = AppUtil.getCurrentUserId();
+	    jdbc.update(sql, json, currentUser.toString(), customerId);
+	    return comments;
 	}
 
 }

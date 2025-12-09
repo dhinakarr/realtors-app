@@ -94,7 +94,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	}
 	
 	public List<CustomerDto> search(String searchText) {
-		return super.search(searchText, List.of("customer_name", "email", "address", "occupation"), null);
+		return super.search(searchText, List.of("customer_name", "email", "address", "mobile"), null);
 	}
 	
 	@Transactional(value="txManager")
@@ -200,5 +200,24 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	// Document download helper
 	public CustomerDocumentDto getDocumentById(Long docId) {
 		return documentRepo.findById(docId);
+	}
+	
+	public List<Map<String, Object>> getComments(String customerId) {
+		
+		List<Map<String, Object>> comments = customerRepo.getCommentsByCustomerId(UUID.fromString(customerId));
+		comments.sort((a, b) -> {
+	        LocalDateTime t1 = LocalDateTime.parse((String)a.get("addedAt"));
+	        LocalDateTime t2 = LocalDateTime.parse((String)b.get("addedAt"));
+	        return t2.compareTo(t1); // newest first
+	    });
+		return comments;
+	}
+	
+	public List<Map<String, Object>> addComment(String customerId, Map<String, Object> comment) {
+		return customerRepo.addComment(UUID.fromString(customerId), comment);
+	}
+	
+	public List<Map<String, Object>> deleteComment(String customerId, int index) {
+		return customerRepo.deleteComment(UUID.fromString(customerId), index);
 	}
 }

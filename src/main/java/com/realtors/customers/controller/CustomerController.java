@@ -176,4 +176,20 @@ public class CustomerController {
 			List<CustomerDocumentDto> list = service.getAllDocuments(custId);
 			return ResponseEntity.ok(ApiResponse.success("Documents Data Fetched", list, HttpStatus.OK));
 		}
+		
+		@GetMapping("/{customerId}/comments")
+		public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getComments(@PathVariable String customerId) {
+			return ResponseEntity.ok(ApiResponse.success("Comments fetched", service.getComments(customerId), HttpStatus.OK));
+		}
+		
+		@PostMapping("/{customerId}/comments")
+		public ResponseEntity<ApiResponse<List<Map<String, Object>>>> addComments(@PathVariable String customerId, 
+																																			@RequestBody Map<String, Object> comment) {
+			return ResponseEntity.ok(ApiResponse.success("Comments fetched", service.addComment(customerId, comment), HttpStatus.OK));
+		}
+		
+		@DeleteMapping("/{customerId}/comments")
+		public ResponseEntity<ApiResponse<List<Map<String, Object>>>> deleteComment(@PathVariable String customerId, @RequestParam  int index) {
+			return ResponseEntity.ok(ApiResponse.success("Comments fetched", service.deleteComment(customerId, index), HttpStatus.OK));
+		}
 }
