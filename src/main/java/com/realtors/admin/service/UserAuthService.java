@@ -43,7 +43,7 @@ public class UserAuthService {
 	public LoginResponse login(String email, String password) {
 		String authSql = "SELECT  * FROM user_auth where username=? ";
 		List<Map<String, Object>> authData = jdbcTemplate.queryForList(authSql, email);
-		if (authData == null)
+		if (authData.isEmpty())
 			throw new IllegalArgumentException("Invalid email or password");
 
 		String hashedPassword = (String) authData.get(0).get("password_hash");

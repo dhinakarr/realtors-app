@@ -36,9 +36,9 @@ public class RoleController {
 	}
     
     @GetMapping("/editForm/{id}")
-	public ResponseEntity<ApiResponse<EditResponseDto<RoleDto>>> getUserEditForm(@PathVariable UUID id) {
-		EditResponseDto<RoleDto> users = rolesService.editRolesResponse(id);
-		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
+	public ResponseEntity<ApiResponse<EditResponseDto<RoleDto>>> getRoleEditForm(@PathVariable UUID id) {
+		EditResponseDto<RoleDto> roles = rolesService.editRolesResponse(id);
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", roles, HttpStatus.OK));
 	}
 
     @GetMapping

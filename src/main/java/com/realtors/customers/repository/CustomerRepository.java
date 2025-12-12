@@ -1,8 +1,10 @@
 package com.realtors.customers.repository;
 
+import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import com.realtors.common.config.FileStorageProperties;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
 import com.realtors.customers.dto.CustomerDto;
+import com.realtors.customers.dto.CustomerMiniDto;
 
 @Repository
 public class CustomerRepository {
@@ -310,5 +313,40 @@ public class CustomerRepository {
 	    jdbc.update(sql, json, currentUser.toString(), customerId);
 	    return comments;
 	}
+	
+	public List<CustomerMiniDto> findCustomersByCreatedBy(Set<UUID> userIds) {
 
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        String inClause = String.join(",", Collections.nCopies(userIds.size(), "?"));
+        String sql = """
+            SELECT customer_id, customer_name, mobile, created_by
+            FROM customers
+            WHERE created_by IN (""" + inClause + ")";
+
+        return jdbc.query(sql,
+                userIds.toArray(),
+                (rs, rowNum) -> new CustomerMiniDto(
+                        rs.getObject("customer_id",  java.util.UUID.class),
+                        rs.getString("customer_name"),
+                        rs.getLong("mobile"),
+                        rs.getObject("created_by",  java.util.UUID.class)
+                )
+        );
+    }
+	
+	/*
+	 * public List<CustomerDto> listByHierarchy(Set<UUID> visibleUserIds) {
+	 * 
+	 * String sql = """ SELECT c.customer_id, c.customer_name, c.mobile, c.email,
+	 * c.address, c.created_at FROM customers c WHERE c.created_by = ANY(?) """;
+	 * 
+	 * return jdbc.query(sql, ps -> { Array array =
+	 * ps.getConnection().createArrayOf("UUID", visibleUserIds.toArray());
+	 * ps.setArray(1, array); }, (rs, row) -> new CustomerDto(
+	 * UUID.fromString(rs.getString("customer_id")), rs.getString("customer_name"),
+	 * rs.getString("mobile"), rs.getString("email"), rs.getString("address"),
+	 * rs.getTimestamp("created_at").toLocalDateTime() ) ); }
+	 */
 }

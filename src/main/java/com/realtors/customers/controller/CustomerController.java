@@ -31,8 +31,10 @@ import org.springframework.web.multipart.MultipartFile;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
+import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
 import com.realtors.customers.dto.CustomerDto;
+import com.realtors.customers.dto.CustomerMiniDto;
 import com.realtors.customers.service.CustomerService;
 
 @RestController
@@ -54,6 +56,13 @@ public class CustomerController {
 	@GetMapping("/form/{id}")
 	public ResponseEntity<ApiResponse<EditResponseDto<CustomerDto>>> getEditForm(@PathVariable UUID id) {
 		return ResponseEntity.ok(ApiResponse.success("Customer Form Fields",service.getEditForm(id)));
+	}
+	
+	@GetMapping("/hierarchy-visible")
+	public ResponseEntity<?> getHierarchyVisibleCustomers() {
+	    UUID userId = AppUtil.getCurrentUserId();
+	    List<CustomerMiniDto> customers = service.getCustomersVisibleToUser(userId);
+	    return ResponseEntity.ok(Map.of("success", true, "data", customers));
 	}
 	
 	@GetMapping

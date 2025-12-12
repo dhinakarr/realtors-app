@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
         if (request.getRequestURI().startsWith("/.well-known/")) {
             return ResponseEntity.notFound().build();
         }
-
+        log.error("handleNoResource Exception: {}", ex);
         // otherwise your existing logic
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.failure("Resource not found", HttpStatus.NOT_FOUND));
@@ -36,14 +36,14 @@ public class GlobalExceptionHandler {
     					EmptyResultDataAccessException.class, 
     					ResourceNotFoundException.class})
     public ResponseEntity<ApiResponse> handleNotFound(Exception ex) {
-        log.error("Resource not found: {}", ex.getMessage());
+        log.error("handleNotFound Exception: {}", ex);
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.failure("Resource not found", HttpStatus.NOT_FOUND));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse> handleGeneric(Exception ex) {
-        log.error("Unexpected error: ", ex);
+        log.error("handleGeneric error: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR));
     }

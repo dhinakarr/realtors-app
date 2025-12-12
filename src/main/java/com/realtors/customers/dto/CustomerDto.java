@@ -7,11 +7,11 @@ import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@RequiredArgsConstructor
 public class CustomerDto {
     private UUID customerId;
     private String customerName;
@@ -31,4 +31,11 @@ public class CustomerDto {
     private UUID createdBy;
     private UUID updatedBy;
     private List<CustomerDocumentDto> documents = new ArrayList<>();
+    
+    public CustomerDto(UUID customerId, String customerName, Long mobile, UUID createdBy) {
+    	this.customerId = customerId;
+    	this.customerName = customerName;
+    	this.mobile = mobile;
+    	this.createdBy = createdBy;
+    }
 }

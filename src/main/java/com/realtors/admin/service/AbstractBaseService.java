@@ -446,7 +446,14 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 				} catch (Exception e) {
 					row.setLookupData(Collections.emptyList());
 				}
-			}
+			}  else if ("checkbox".equalsIgnoreCase(m.getFieldType())) {
+		        row.setLookupData(Collections.emptyList());
+
+		        Map<String, Object> extra = new HashMap<>();
+		        extra.put("booleanField", true);
+		        extra.put("inputType", "checkbox"); // frontend hint
+		        row.setExtraSettings(extra);
+		    }
 		}
 		String[] idArr = getIdColumn().split(",\\s*");
 		return new DynamicFormResponseDto(this.tableName, idArr, newMeta);

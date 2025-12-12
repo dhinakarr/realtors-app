@@ -41,7 +41,6 @@ public class UserController {
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<AppUserDto>> createUser(@RequestPart("dto") AppUserDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
-		
 		if (dto.getEmail() == null || dto.getMobile() == null) {
             return ResponseEntity.badRequest().body(ApiResponse.failure("Email and Mobile are required", HttpStatus.BAD_REQUEST));
         }

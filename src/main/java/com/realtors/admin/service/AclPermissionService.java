@@ -322,8 +322,8 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 			String moduleName = (String) row.get("module_name");
 
 			FeaturePermissionDto feature = new FeaturePermissionDto((UUID) row.get("permission_id"),
-					(UUID) row.get("role_id"), (String) row.get("role_name"), (UUID) row.get("feature_id"),
-					(String) row.get("feature_name"), (String) row.get("url"), (String) row.get("feature_type"),
+					(UUID) row.get("role_id"), (String) row.get("role_name"), (Integer)row.get("role_level"), Boolean.TRUE.equals(row.get("finance_role")),
+					(UUID) row.get("feature_id"), (String) row.get("feature_name"), (String) row.get("url"), (String) row.get("feature_type"),
 					Boolean.TRUE.equals(row.get("can_create")), Boolean.TRUE.equals(row.get("can_read")),
 					Boolean.TRUE.equals(row.get("can_update")), Boolean.TRUE.equals(row.get("can_delete")),
 					(String) row.get("status"));
@@ -336,7 +336,7 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	}
 
 	private static final String permissionbyRoleQuery = """
-			SELECT m.module_id, m.module_name, p.permission_id, r.role_id, r.role_name, f.feature_id, f.feature_name, f.url, f.feature_type,
+			SELECT m.module_id, m.module_name, p.permission_id, r.role_id, r.role_name, r.role_level, r.finance_role, f.feature_id, f.feature_name, f.url, f.feature_type,
 			    p.can_create, p.can_read, p.can_update, p.can_delete, p.status
 			FROM acl_permissions p
 			JOIN roles r ON r.role_id = p.role_id JOIN features f ON f.feature_id = p.feature_id
@@ -348,7 +348,7 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	// Query for ALL permissions (no role filtering)
 	private static final String PERMISSIONS_FOR_ALL = """
 			    SELECT
-			        m.module_id, m.module_name, p.permission_id, r.role_id, r.role_name, f.feature_id, f.feature_name, f.url, f.feature_type,
+			        m.module_id, m.module_name, p.permission_id, r.role_id, r.role_name, r.role_level, r.finance_role, f.feature_id, f.feature_name, f.url, f.feature_type,
 			        p.can_create, p.can_read, p.can_update, p.can_delete, p.status
 			    FROM acl_permissions p
 			    JOIN roles r ON r.role_id = p.role_id JOIN features f ON f.feature_id = p.feature_id

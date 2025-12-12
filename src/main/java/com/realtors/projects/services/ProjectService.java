@@ -86,6 +86,8 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	}
 
 	public ProjectDto createProject(ProjectDto dto) {
+		
+		
 		ProjectDto data = super.create(dto);
 		audit.auditAsync("projects", data.getProjectId(), EnumConstants.CREATE.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());

@@ -7,19 +7,27 @@ import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.projects.dto.PlotUnitDto;
+import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.repository.PlotUnitRepository;
+import com.realtors.projects.repository.ProjectRepository;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 @Service
 public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
 
     private final PlotUnitRepository repo;
+    private final PlotPricingService pricingService;
+    private ProjectRepository projectRepository;
     private JdbcTemplate jdbcTemplate;
     
-    public PlotUnitService(PlotUnitRepository repo, JdbcTemplate jdbcTemplate) {
+    public PlotUnitService(PlotUnitRepository repo, JdbcTemplate jdbcTemplate, 
+    		PlotPricingService pricingService, ProjectRepository projectRepository) {
     	super(PlotUnitDto.class, "plot_units", jdbcTemplate);
     	this.repo = repo;
+    	this.pricingService = pricingService;
+    	this.projectRepository = projectRepository;
     }
     
     @Override
@@ -52,6 +60,21 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     }
     
     public PlotUnitDto patchUpdate(UUID plotId, Map<String, Object> partialData) {
+    	PlotUnitDto plotDto = getByPlotId(plotId);
+    	ProjectDto projectDto = projectRepository.findById(plotDto.getProjectId());
+    	
+    	BigDecimal width = BigDecimal.valueOf(Long.valueOf(partialData.get("width").toString()));
+    	BigDecimal breath = BigDecimal.valueOf(Long.valueOf(partialData.get("breath").toString()));
+
+    	BigDecimal area = pricingService.calculateArea(width, breath);
+        BigDecimal basePrice = pricingService.calculateBasePrice(area, projectDto.getPricePerSqft());
+        BigDecimal totalPrice = basePrice.add(projectDto.getRegCharges())
+        											.add(projectDto.getDocCharges())
+        											.add(projectDto.getOtherCharges());
+    	
+    	partialData.put("area", area);
+    	partialData.put("basePrice", basePrice);
+    	partialData.put("totalPrice", totalPrice);
     	return super.patch(plotId, partialData);
     }
 
