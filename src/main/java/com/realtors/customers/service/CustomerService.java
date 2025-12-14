@@ -20,9 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.realtors.admin.dto.RoleType;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
+import com.realtors.admin.service.RoleService;
+import com.realtors.admin.service.UserAuthService;
 import com.realtors.common.config.FileStorageProperties;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
@@ -40,16 +43,21 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	private CustomerDocumentRepository documentRepo;
 	private final FileStorageProperties fileStorageProperties;
 	private final UserHierarchyService hierarchyService;
+	private final RoleService roleService;
+	private final UserAuthService authService;
 	private final JdbcTemplate jdbc;
 
 	public CustomerService(CustomerRepository customerRepo, CustomerDocumentRepository documentRepo,
-			FileStorageProperties fileStorageProperties, JdbcTemplate jdbc, UserHierarchyService hierarchyService) {
+			FileStorageProperties fileStorageProperties, JdbcTemplate jdbc, UserAuthService authService,
+			RoleService roleService, UserHierarchyService hierarchyService) {
 		super(CustomerDto.class, "customers", jdbc, Set.of("documents"));
 		this.customerRepo = customerRepo;
 		this.documentRepo = documentRepo;
 		this.fileStorageProperties = fileStorageProperties;
 		this.jdbc = jdbc;
 		this.hierarchyService = hierarchyService;
+		this.roleService = roleService;
+		this.authService = authService;
 	}
 
 	@Override
@@ -104,12 +112,19 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 
 	@Transactional(value = "txManager")
 	public CustomerDto createCustomer(CustomerDto dto, MultipartFile profileImage) throws Exception {
+		UUID roleId = roleService.getRoleIdByType(RoleType.CUSTOMER.toString());
+		dto.setRoleId(roleId);
 		UUID customerId = customerRepo.save(dto);
-
-		String imagePathUrl = saveFile(profileImage, customerId, "/profile/");
-
-		CustomerDto created = customerRepo.updatePartial(customerId, Map.of("profile_image_path", imagePathUrl));
-		created.setProfileImagePath(imagePathUrl);
+		CustomerDto created = customerRepo.findById(customerId);
+		logger.info("@CustomerService.createCustomer profileImage: "+ profileImage);
+		if (profileImage != null) {
+			String imagePathUrl = saveFile(profileImage, customerId, "/profile/");
+			created = customerRepo.updatePartial(customerId, Map.of("profile_image_path", imagePathUrl));
+			created.setProfileImagePath(imagePathUrl);
+		}
+		
+		authService.createUserAuth(customerId, created.getEmail(), "Test@123", roleId, RoleType.CUSTOMER.toString());
+		
 		return created;
 	}
 
@@ -181,6 +196,10 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		customerRepo.updateCustomer(dto);
 		return getCustomer(dto.getCustomerId());
 	}
+	
+	public CustomerDto patchUpdate(UUID customerId, Map<String, Object> updates) {
+		return super.patch(customerId, updates);
+	}
 
 	public boolean deleteCustomer(UUID customerId) {
 		return super.softDelete(customerId);
@@ -202,8 +221,12 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 
 	public CustomerDto updateCustomerWithProfileImage(UUID customerId, Map<String, Object> updates,
 			MultipartFile profileImage) {
-		String publicUrl = saveFile(profileImage, customerId, "/profile/");
-		return customerRepo.updatePartial(customerId, Map.of("profile_image_path", publicUrl));
+		if (profileImage != null) {
+			String publicUrl = saveFile(profileImage, customerId, "/profile/");
+			updates.put("profile_image_path", publicUrl);
+		}
+		
+		return customerRepo.updatePartial(customerId, updates);
 	}
 
 	// Document download helper

@@ -58,7 +58,7 @@ public class SalesModuleTest {
         // Payment 1: Booking Advance
         PaymentDTO payment1 = new PaymentDTO();
         payment1.setSaleId(sale.getSaleId());
-        payment1.setStageId(stageBooking);
+//        payment1.setStageId(stageBooking);
         payment1.setAmount(new BigDecimal("50000"));
         payment1.setPaymentMode("ONLINE");
         payment1.setTransactionRef("TXN123456");
@@ -69,7 +69,7 @@ public class SalesModuleTest {
         // Payment 2: Stage 1
         PaymentDTO payment2 = new PaymentDTO();
         payment2.setSaleId(sale.getSaleId());
-        payment2.setStageId(stage1);
+//        payment2.setStageId(stage1);
         payment2.setAmount(new BigDecimal("100000"));
         payment2.setPaymentMode("CHEQUE");
         payment2.setTransactionRef("CHQ7890");

@@ -36,7 +36,11 @@ public class SaleService {
 	public SaleDTO getSaleById(UUID saleId) {
 		return saleRepository.findById(saleId);
 	}
-
+	
+	public SaleDTO getSaleByPlotId(UUID plotId) {
+		return saleRepository.findById(plotId);
+	}
+	
 	@Transactional("txManager")
 	public SaleDTO createSale(SaleCreateRequest request) {
 		// 1. Fetch plot
@@ -81,6 +85,10 @@ public class SaleService {
 		saleRepository.updateSaleStatus(saleId, "CONFIRMED", LocalDateTime.now());
 		// Optionally recalc commission (if dynamic)
 		commissionService.distributeCommission(sale);
+	}
+	
+	public BigDecimal getTotalAmount(UUID saleId) {
+		return saleRepository.getTotalAmount(saleId);
 	}
 
 	private BigDecimal calculateExtraCharges(ProjectDto project) {

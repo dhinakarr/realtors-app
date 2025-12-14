@@ -7,7 +7,7 @@ public record FeaturePermissionDto(
 		UUID roleId,
 		String roleName,
 		Integer roleLevel,
-		boolean financeRole,
+		String financeRole,
         UUID featureId,
         String featureName,
         String url,

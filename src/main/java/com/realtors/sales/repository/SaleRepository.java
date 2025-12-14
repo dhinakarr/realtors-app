@@ -18,5 +18,8 @@ public interface SaleRepository {
             BigDecimal totalPrice);
     SaleDTO findById(UUID saleId);
     void updateSaleStatus(UUID saleId, String status, LocalDateTime confirmedAt);
+    public BigDecimal getTotalAmount(UUID saleId);
+    SaleDTO findSaleByPlotId(UUID plotId);
 }
+
 

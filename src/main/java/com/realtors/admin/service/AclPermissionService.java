@@ -322,7 +322,9 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 			String moduleName = (String) row.get("module_name");
 
 			FeaturePermissionDto feature = new FeaturePermissionDto((UUID) row.get("permission_id"),
-					(UUID) row.get("role_id"), (String) row.get("role_name"), (Integer)row.get("role_level"), Boolean.TRUE.equals(row.get("finance_role")),
+					(UUID) row.get("role_id"), 
+					(String) row.get("role_name"), 
+					(Integer)row.get("role_level"), (String)(row.get("finance_role")),
 					(UUID) row.get("feature_id"), (String) row.get("feature_name"), (String) row.get("url"), (String) row.get("feature_type"),
 					Boolean.TRUE.equals(row.get("can_create")), Boolean.TRUE.equals(row.get("can_read")),
 					Boolean.TRUE.equals(row.get("can_update")), Boolean.TRUE.equals(row.get("can_delete")),

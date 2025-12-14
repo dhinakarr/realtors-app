@@ -74,14 +74,6 @@ public class RoleService extends AbstractBaseService<RoleDto, UUID> {
 	}
 	
 	public PagedResult<RoleDto> getPaginatedData(int page, int size) {
-		/*
-		 * return new FeatureListResponseDto<>("Roles", "table", List.of("Role Name",
-		 * "Description", "Status"), Map.ofEntries(Map.entry("Role Name", "roleName"),
-		 * Map.entry("Description", "description"), Map.entry("Status", "status")),
-		 * "roleId", true, // pagination enabled super.findAllPaginated(page, size,
-		 * null), // <-- MUST return PagedResult<AppUserDto>
-		 * super.getLookupData(lookupDefs) // <-- fully dynamic lookup map );
-		 */
 		PagedResult<RoleDto> paged = super.findAllPaginated(page, size, null);
 		audit.auditAsync("roles", paged.data().getFirst().getRoleId(), EnumConstants.PAGED.toString(), 
     			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
@@ -114,6 +106,14 @@ public class RoleService extends AbstractBaseService<RoleDto, UUID> {
 		audit.auditAsync("roles", data.getRoleId() , EnumConstants.UPDATE.toString(), 
 				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return data;
+	}
+	
+	public UUID getRoleIdByType(String roleType) {
+	    if (roleType == null || roleType.isBlank()) {
+	        return null;
+	    }
+	    String sql = "SELECT role_id FROM roles WHERE finance_role = ?";
+	    return jdbcTemplate.queryForObject(sql, UUID.class, roleType);
 	}
 	
 	public boolean deleteRole(UUID id) {

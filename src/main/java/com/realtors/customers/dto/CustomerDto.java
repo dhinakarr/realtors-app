@@ -17,6 +17,7 @@ public class CustomerDto {
     private String customerName;
     private String email;
     private Long mobile;
+    private UUID roleId;
     private Date dateOfBirth;
     private String gender;
     private String address;

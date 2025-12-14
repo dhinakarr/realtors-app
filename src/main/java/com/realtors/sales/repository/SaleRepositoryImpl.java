@@ -36,6 +36,17 @@ public class SaleRepositoryImpl implements SaleRepository {
                 plotId, projectId, customerId, soldBy, area,
                 basePrice, extraCharges, totalPrice, SalesStatus.BOOKED.toString());
     }
+    
+    @Override
+    public SaleDTO findSaleByPlotId(UUID plotId) {
+    	String sql = """
+                SELECT sale_id, plot_id, project_id, customer_id, sold_by, area,
+                base_price, extra_charges, total_price, sale_status, confirmed_at
+         FROM sales WHERE plot_id = ?
+     """;
+    	
+    	return jdbc.queryForObject(sql, new SaleRowMapper(), plotId);
+    }
 
     @Override
     public SaleDTO findById(UUID saleId) {
@@ -56,5 +67,15 @@ public class SaleRepositoryImpl implements SaleRepository {
             WHERE sale_id = ?
         """;
         jdbc.update(sql, status, Timestamp.valueOf(confirmedAt), saleId);
+    }
+    
+    public BigDecimal getTotalAmount(UUID saleId) {
+        String sql = """
+            SELECT  total_amount
+            FROM sales
+            WHERE sale_id = ?
+        """;
+
+        return jdbc.queryForObject(sql, BigDecimal.class, saleId);
     }
 }
