@@ -4,9 +4,11 @@ package com.realtors.projects.repository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.rowmapper.PlotUnitRowMapper;
 
+import java.time.LocalTime;
 import java.util.*;
 
 @Repository
@@ -124,6 +126,11 @@ public class PlotUnitRepository {
                 dto.getRemarks(),
                 dto.getPlotId()
         );
+    }
+    
+    public void updatePlotStatus(UUID plotId, String status) {
+    	String sql = "UPDATE plot_units set status=?, updated_at=?, updated_by=? where plot_id=?";
+    	jdbc.update(sql, status, LocalTime.now(), AppUtil.getCurrentUserId(), plotId);
     }
 
     // --------------------------

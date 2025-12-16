@@ -54,13 +54,13 @@ public class CustomerRepository {
 				    INSERT INTO customers
 				    (customer_name, email, mobile, date_of_birth, gender,
 				     address, city, state, pincode, alt_mobile, occupation,
-				     profile_image_path, notes, status, created_by)
-				    VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)  RETURNING customer_id
+				     profile_image_path, notes, status, created_by, role_id)
+				    VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)  RETURNING customer_id
 				""";
 		UUID customerId = jdbc.queryForObject(sql, UUID.class, dto.getCustomerName(), dto.getEmail(), dto.getMobile(),
 				dto.getDateOfBirth(), dto.getGender(), dto.getAddress(), dto.getCity(), dto.getState(),
 				dto.getPincode(), dto.getAltMobile(), dto.getOccupation(), dto.getProfileImagePath(), dto.getNotes(),
-				dto.getStatus(), AppUtil.getCurrentUserId() // created_by (placeholder)
+				dto.getStatus(), AppUtil.getCurrentUserId(), dto.getRoleId() // created_by (placeholder)
 		);
 		return customerId;
 	}

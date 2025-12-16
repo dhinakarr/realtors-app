@@ -1,6 +1,8 @@
 package com.realtors.sales.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -11,6 +13,9 @@ import com.realtors.admin.dto.AppUserDto;
 import com.realtors.sales.dto.CommissionRuleDTO;
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleDTO;
+import com.realtors.sales.finance.dto.CashFlowItemDTO;
+import com.realtors.sales.finance.dto.CashFlowStatus;
+import com.realtors.sales.finance.dto.PayableDetailsDTO;
 import com.realtors.sales.repository.CommissionRuleRepository;
 import com.realtors.sales.repository.SaleCommissionRepository;
 
@@ -61,5 +66,33 @@ public class CommissionService {
 
 	public List<SaleCommissionDTO> getCommissions(UUID saleId, UUID userId) {
 		return saleCommissionRepository.findBySale(saleId, userId);
+	}
+	
+	public BigDecimal getTotalPayable() {
+		return saleCommissionRepository.getTotalPayable();
+	}
+
+	public BigDecimal getPaidThisMonth() {
+		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+		LocalDateTime to   = LocalDateTime.now();
+		return saleCommissionRepository.getPaidBetween(from, to);
+	}
+
+	public List<CashFlowItemDTO> getPayables(
+			LocalDate from,
+			LocalDate to,
+			CashFlowStatus status
+	) {
+		List<CashFlowItemDTO> list = saleCommissionRepository.getPayables(from, to);
+
+		if (status == null) return list;
+
+		return list.stream()
+				.filter(i -> i.getStatus() == status)
+				.toList();
+	}
+	
+	public List<PayableDetailsDTO> getPayableDetails() {
+		return saleCommissionRepository.getPayableDetails();
 	}
 }

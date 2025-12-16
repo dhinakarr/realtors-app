@@ -1,0 +1,72 @@
+package com.realtors.dashboard.service;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.realtors.sales.finance.dto.CashFlowItemDTO;
+import com.realtors.sales.finance.dto.CashFlowStatus;
+import com.realtors.sales.finance.dto.CashFlowType;
+import com.realtors.sales.finance.dto.FinanceSummaryDTO;
+import com.realtors.sales.finance.dto.PayableDetailsDTO;
+import com.realtors.sales.finance.dto.ReceivableDetailsDTO;
+import com.realtors.sales.service.CommissionService;
+import com.realtors.sales.service.PaymentService;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class FinanceDashboardService {
+
+	private final PaymentService paymentService;
+	private final CommissionService commissionService;
+
+	public FinanceSummaryDTO getSummary(UUID saleId) {
+
+		return FinanceSummaryDTO.builder().totalReceivable(paymentService.getOutstanding(saleId))
+				.receivedThisMonth(paymentService.getReceivedThisMonth())
+				.expectedToday(paymentService.getExpectedToday()).commissionPayable(commissionService.getTotalPayable())
+				.commissionPaidThisMonth(commissionService.getPaidThisMonth()).build();
+	}
+	
+	public FinanceSummaryDTO getSummary() {
+	    return FinanceSummaryDTO.builder()
+	        .totalReceivable(paymentService.getTotalReceivable())   // ALL sales
+	        .receivedThisMonth(paymentService.getReceivedThisMonth())
+	        .expectedToday(paymentService.getExpectedToday())
+	        .commissionPayable(commissionService.getTotalPayable())
+	        .commissionPaidThisMonth(paymentService.getPaidThisMonth())
+	        .build();
+	}
+	
+	public List<ReceivableDetailsDTO> getReceivableDetails() {
+		return paymentService.getReceivableDetails();
+	}
+	
+	public List<PayableDetailsDTO> getPayableDetails() {
+		return commissionService.getPayableDetails();
+	}
+
+	public List<CashFlowItemDTO> getCashFlow(LocalDate from, LocalDate to,
+																			CashFlowType type, CashFlowStatus status) {
+
+		List<CashFlowItemDTO> items = new ArrayList<>();
+
+		if (type == null || type == CashFlowType.RECEIVABLE) {
+			items.addAll(paymentService.getReceivables(from, to, status));
+		}
+		if (type == null || type == CashFlowType.PAYABLE) {
+			items.addAll(commissionService.getPayables(from, to, status));
+		}
+
+		return items.stream()
+				.sorted(Comparator.comparing(CashFlowItemDTO::getAmount).reversed()).toList();
+	}
+}

@@ -112,11 +112,10 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 
 	@Transactional(value = "txManager")
 	public CustomerDto createCustomer(CustomerDto dto, MultipartFile profileImage) throws Exception {
-		UUID roleId = roleService.getRoleIdByType(RoleType.CUSTOMER.toString());
+		UUID roleId = roleService.getRoleIdByType(RoleType.CUSTOMER.name());
 		dto.setRoleId(roleId);
 		UUID customerId = customerRepo.save(dto);
 		CustomerDto created = customerRepo.findById(customerId);
-		logger.info("@CustomerService.createCustomer profileImage: "+ profileImage);
 		if (profileImage != null) {
 			String imagePathUrl = saveFile(profileImage, customerId, "/profile/");
 			created = customerRepo.updatePartial(customerId, Map.of("profile_image_path", imagePathUrl));

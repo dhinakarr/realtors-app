@@ -1,7 +1,6 @@
 package com.realtors.sales.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -15,6 +14,7 @@ import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.repository.PlotUnitRepository;
 import com.realtors.projects.services.ProjectService;
+import com.realtors.sales.dto.PlotStatus;
 import com.realtors.sales.dto.SaleCreateRequest;
 import com.realtors.sales.dto.SaleDTO;
 import com.realtors.sales.dto.SalesStatus;
@@ -30,17 +30,17 @@ public class SaleService {
 	private final ProjectService projectService;
 	private final SaleRepository saleRepository;
 	private final CommissionService commissionService;
+	private final CustomerService customerService;
 	private final UserAuthService authService;
-	private final CustomerService customerServie;
 
 	public SaleDTO getSaleById(UUID saleId) {
 		return saleRepository.findById(saleId);
 	}
-	
+
 	public SaleDTO getSaleByPlotId(UUID plotId) {
 		return saleRepository.findById(plotId);
 	}
-	
+
 	@Transactional("txManager")
 	public SaleDTO createSale(SaleCreateRequest request) {
 		// 1. Fetch plot
@@ -67,8 +67,8 @@ public class SaleService {
 		plotRepository.update(plot);
 
 		// insert customer into user_auth table to enable login access to customer
-//	    CustomerDto custoerDto = customerServie.getCustomer(request.getCustomerId());
-//	    authService.
+		CustomerDto customerDto = customerService.getCustomer(request.getCustomerId());
+		authService.createUserAuth(customerDto.getCustomerId(), customerDto.getEmail(), "Test@123", customerDto.getRoleId(), "CUSTOMER");
 
 		// 6. Distribute commission after sale creation
 		commissionService.distributeCommission(sale);
@@ -78,17 +78,21 @@ public class SaleService {
 
 	public void confirmSale(UUID saleId) {
 		SaleDTO sale = saleRepository.findById(saleId);
-		PlotUnitDto plot = plotRepository.findByPlotId(sale.getPlotId());
-		if (sale == null)
-			throw new RuntimeException("Sale not found");
 		// Update sale status
-		saleRepository.updateSaleStatus(saleId, "CONFIRMED", LocalDateTime.now());
+		saleRepository.updateSaleStatus(saleId, "CONFIRMED");
 		// Optionally recalc commission (if dynamic)
 		commissionService.distributeCommission(sale);
 	}
-	
+
 	public BigDecimal getTotalAmount(UUID saleId) {
 		return saleRepository.getTotalAmount(saleId);
+	}
+
+	@Transactional
+	public void cancelSale(UUID saleId) {
+		SaleDTO sale = saleRepository.findById(saleId);
+		saleRepository.updateSaleStatus(saleId, SalesStatus.CANCELLED.name());
+		plotRepository.updatePlotStatus(sale.getPlotId(), PlotStatus.CANCELLED.name());
 	}
 
 	private BigDecimal calculateExtraCharges(ProjectDto project) {
