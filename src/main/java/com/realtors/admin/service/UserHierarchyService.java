@@ -1,4 +1,4 @@
-package com.realtors.sales.service;
+package com.realtors.admin.service;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.realtors.admin.dto.AppUserDto;
-import com.realtors.admin.service.UserService;
+
 import lombok.RequiredArgsConstructor;
 
 @Service

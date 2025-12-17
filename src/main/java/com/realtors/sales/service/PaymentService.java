@@ -114,6 +114,11 @@ public class PaymentService {
 		return paymentRepo.getTotalPaidThisMonth();
 	}
 	
+	public BigDecimal getPaidTotal() {
+		return paymentRepo.getTotalPaid();
+	}
+	
+	
 	public BigDecimal getReceivedThisMonth() {
 		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
 		LocalDateTime to   = LocalDateTime.now();

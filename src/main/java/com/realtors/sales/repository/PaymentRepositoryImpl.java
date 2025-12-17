@@ -87,6 +87,11 @@ public class PaymentRepositoryImpl {
 		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
 	}
 	
+	public BigDecimal getTotalPaid() {
+		String sql = "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_type = 'PAID'" ;
+		return jdbc.queryForObject(sql, BigDecimal.class);
+	}
+	
 	public BigDecimal getTotalReceivables() {
 		String sql = """
 		        SELECT COALESCE(SUM(s.total_price), 0) - COALESCE(SUM(p.total_received), 0) AS total_receivable

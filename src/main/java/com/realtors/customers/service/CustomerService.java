@@ -26,6 +26,7 @@ import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.admin.service.RoleService;
 import com.realtors.admin.service.UserAuthService;
+import com.realtors.admin.service.UserHierarchyService;
 import com.realtors.common.config.FileStorageProperties;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
@@ -33,7 +34,6 @@ import com.realtors.customers.dto.CustomerDto;
 import com.realtors.customers.dto.CustomerMiniDto;
 import com.realtors.customers.repository.CustomerDocumentRepository;
 import com.realtors.customers.repository.CustomerRepository;
-import com.realtors.sales.service.UserHierarchyService;
 
 @Service
 public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
@@ -122,7 +122,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 			created.setProfileImagePath(imagePathUrl);
 		}
 		
-		authService.createUserAuth(customerId, created.getEmail(), "Test@123", roleId, RoleType.CUSTOMER.toString());
+		//authService.createUserAuth(customerId, created.getEmail(), "Test@123", roleId, RoleType.CUSTOMER.toString());
 		
 		return created;
 	}

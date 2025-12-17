@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.realtors.admin.dto.AppUserDto;
+import com.realtors.admin.service.UserHierarchyService;
 import com.realtors.sales.dto.CommissionRuleDTO;
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleDTO;

@@ -41,7 +41,7 @@ public class FinanceDashboardService {
 	        .totalReceivable(paymentService.getTotalReceivable())   // ALL sales
 	        .receivedThisMonth(paymentService.getReceivedThisMonth())
 	        .expectedToday(paymentService.getExpectedToday())
-	        .commissionPayable(commissionService.getTotalPayable())
+	        .commissionPayable(commissionService.getTotalPayable().subtract(paymentService.getPaidTotal()))
 	        .commissionPaidThisMonth(paymentService.getPaidThisMonth())
 	        .build();
 	}

@@ -129,10 +129,8 @@ public class GenericUpdateUtil {
                 sql.append(", ");
             }
             sql.append(column).append(" = ?");
-            logger.info("@GenericInsertUtil.insertGenericWithFileSupport isJsonbType: " + isJsonbType);
             if (isJsonbType) {
                 sql.append("::jsonb"); // Add the explicit cast ONLY for JSON/Map/List
-                logger.info("@GenericInsertUtil.insertGenericWithFileSupport sql.toString(): " + sql.toString());
             } else if (requiresUuidCast) {
                 sql.append("::uuid");
             }

@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.UserBasicDto;
+import com.realtors.admin.dto.UserFlatDto;
+import com.realtors.admin.dto.UserTreeDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.dto.form.LookupDefinition;
@@ -16,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +41,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	private JdbcTemplate jdbcTemplate;
 	private final AuditTrailService audit;
 	private final UserAuthService userAuthService;
+	@Autowired
+	private NamedParameterJdbcTemplate namedJdbcTemplate;
 
 	@Autowired
 	private ObjectMapper objectMapper;
@@ -267,23 +274,18 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	}
 
 	public List<UUID> getHierarchyUpwards(UUID userId) {
-
 		List<UUID> list = new ArrayList<>();
 		UUID current = userId;
-
 		String sql = "SELECT manager_id FROM app_users WHERE user_id = ?";
 
 		while (true) {
 			List<UUID> results = jdbcTemplate.query(sql, new Object[] { current },
 					(rs, rowNum) -> (UUID) rs.getObject("manager_id"));
-
 			if (results.isEmpty())
 				break; // no such user
 			UUID managerId = results.get(0);
-
 			if (managerId == null)
 				break; // reached top of hierarchy
-
 			list.add(managerId);
 			current = managerId;
 		}
@@ -299,4 +301,89 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 			findSubordinatesRecursive(sub, result);
 		}
 	}
+
+	public List<UserTreeDto> findUserTree() {
+		UUID rootUserId = AppUtil.getCurrentUserId();
+		String sql = """
+				    SELECT user_id, full_name, manager_id
+				    FROM app_users
+				    WHERE status = 'ACTIVE'
+				""";
+		List<UserFlatDto> flatList = namedJdbcTemplate.query(sql,
+				(rs, rowNum) -> new UserFlatDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
+						rs.getObject("manager_id", UUID.class)));
+		
+		UserTreeDto root = buildTree(flatList, rootUserId);
+		return root == null ? List.of() : List.of(root);
+	}
+
+	private UserTreeDto buildTree(List<UserFlatDto> flatList, UUID rootUserId) {
+		Set<UUID> allowedIds = collectDescendants(rootUserId, flatList);
+		Map<UUID, UserTreeDto> map = new HashMap<>();
+
+		// Create nodes ONLY for allowed users
+		for (UserFlatDto u : flatList) {
+			if (allowedIds.contains(u.getUserId())) {
+				map.put(u.getUserId(), new UserTreeDto(u.getUserId(), u.getFullName()));
+			}
+		}
+		// Build hierarchy ONLY within subtree
+		for (UserFlatDto u : flatList) {
+			if (!allowedIds.contains(u.getUserId()))
+				continue;
+
+			UserTreeDto node = map.get(u.getUserId());
+			UUID managerId = u.getManagerId();
+			if (managerId != null && map.containsKey(managerId)) {
+				map.get(managerId).getChildren().add(node);
+			}
+		}
+		return map.get(rootUserId);
+	}
+
+	private Set<UUID> collectDescendants(UUID rootUserId, List<UserFlatDto> flatList) {
+		Map<UUID, List<UUID>> childrenMap = new HashMap<>();
+		for (UserFlatDto u : flatList) {
+			if (u.getManagerId() != null) {
+				childrenMap.computeIfAbsent(u.getManagerId(), k -> new ArrayList<>()).add(u.getUserId());
+			}
+		}
+		Set<UUID> result = new HashSet<>();
+		Deque<UUID> stack = new ArrayDeque<>();
+		stack.push(rootUserId);
+
+		while (!stack.isEmpty()) {
+			UUID current = stack.pop();
+			result.add(current);
+
+			for (UUID child : childrenMap.getOrDefault(current, List.of())) {
+				if (!result.contains(child)) {
+					stack.push(child);
+				}
+			}
+		}
+		return result;
+	}
+
+	public List<UserBasicDto> findSubordinates() {
+		UUID userId = AppUtil.getCurrentUserId();
+		AppUserDto user = getUserById(userId).orElse(null);
+		UUID managerId = user.getManagerId();
+		String sql = """
+				 		WITH RECURSIVE subordinates AS (
+				    SELECT user_id, full_name
+				    FROM app_users
+				    WHERE manager_id = :managerId
+				    UNION ALL
+				    SELECT u.user_id, u.full_name
+				    FROM app_users u
+				    JOIN subordinates s ON u.manager_id = s.user_id
+				)
+				SELECT * FROM subordinates;
+				 		""";
+		MapSqlParameterSource params = new MapSqlParameterSource("managerId", managerId);
+		return namedJdbcTemplate.query(sql, params,
+				(rs, rowNum) -> new UserBasicDto(rs.getObject("user_id", UUID.class), rs.getString("full_name")));
+	}
+
 }

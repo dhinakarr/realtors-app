@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.UserBasicDto;
+import com.realtors.admin.dto.UserTreeDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
@@ -68,6 +70,12 @@ public class UserController {
 	@GetMapping
 	public ResponseEntity<ApiResponse<List<AppUserDto>>> getAllUsers() {
 		List<AppUserDto> users = appUserService.getAllUsers();
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
+	}
+	
+	@GetMapping("/tree")
+	public ResponseEntity<ApiResponse<List<UserTreeDto>>> getUserTree() {
+		List<UserTreeDto> users = appUserService.findUserTree();
 		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
 	}
 
