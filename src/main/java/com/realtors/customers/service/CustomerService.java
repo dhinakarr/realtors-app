@@ -257,13 +257,13 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		List<UUID> subordinates = hierarchyService.getAllSubordinates(userId);
 
 		// 2. Logged-in user's managers
-		List<UUID> managers = hierarchyService.getUpwardsHierarchy(userId);
+		//List<UUID> managers = hierarchyService.getUpwardsHierarchy(userId);
 
 		// 3. Combine all
 		Set<UUID> visible = new HashSet<>();
 		visible.add(userId);
 		visible.addAll(subordinates);
-		visible.addAll(managers);
+		//visible.addAll(managers);
 
 		// 4. Fetch customers created by these users
 		return customerRepo.findCustomersByCreatedBy(visible);

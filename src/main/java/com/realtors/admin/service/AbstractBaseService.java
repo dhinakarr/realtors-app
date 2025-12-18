@@ -379,7 +379,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	// ---------------------------
 	// 1) Fetch metadata rows and parse extra_settings
 	public List<DynamicFormMetaRow> getMetaRows() {
-		String sql = "SELECT table_name, column_name, display_label, field_type, is_required, is_hidden, lookup_table, lookup_key, lookup_label, extra_settings, sort_order FROM form_metadata WHERE table_name = ? ORDER BY sort_order";
+		String sql = "SELECT table_name, column_name, display_label, field_type, is_required AS required, is_hidden AS hidden, lookup_table, lookup_key, lookup_label, extra_settings, sort_order FROM form_metadata WHERE table_name = ? ORDER BY sort_order";
 		return jdbcTemplate.query(sql, new JsonAwareRowMapper<>(DynamicFormMetaRow.class), this.tableName);
 	}
 
@@ -414,7 +414,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		for (DynamicFormMetaRow m : meta) {
 			String apiField = toCamel(m.getColumnName());
 			DynamicFormMetaRow row = new DynamicFormMetaRow(m.getTableName(), m.getColumnName(), m.getDisplayLabel(),
-					m.getFieldType(), m.isRequired(), m.isHidden(), m.getLookupTable(), m.getLookupKey(),
+					m.getFieldType(), m.getRequired(), m.getHidden(), m.getLookupTable(), m.getLookupKey(),
 					m.getLookupLabel(), m.getExtraSettings(), m.getSortOrder(), null, null);
 
 			row.setApiField(apiField);

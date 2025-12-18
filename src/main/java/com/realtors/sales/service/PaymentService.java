@@ -75,6 +75,7 @@ public class PaymentService {
 		}
 		validatePayment(dto, sale);
 		paymentRepo.save(dto);
+		saleLifecycleService.recalculate(sale.getSaleId());
 		return dto;
 	}
 

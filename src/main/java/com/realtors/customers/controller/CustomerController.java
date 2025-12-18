@@ -66,8 +66,9 @@ public class CustomerController {
 	}
 	
 	@GetMapping
-	public ResponseEntity<ApiResponse<List<CustomerDto>>> getAiiCustomers() {
-		return ResponseEntity.ok(ApiResponse.success("Customer Form Fields",service.getAllCustomers()));
+	public ResponseEntity<ApiResponse<List<CustomerMiniDto>>> getAiiCustomers() {
+		UUID userId = AppUtil.getCurrentUserId();
+		return ResponseEntity.ok(ApiResponse.success("Customer Form Fields",service.getCustomersVisibleToUser(userId)));
 	}
 
 	@PostMapping(consumes = { "multipart/form-data" })	

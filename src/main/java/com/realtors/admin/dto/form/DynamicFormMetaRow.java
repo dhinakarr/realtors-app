@@ -15,8 +15,8 @@ public class DynamicFormMetaRow {
     private String columnName;
     private String displayLabel;
     private String fieldType;
-    private boolean isRequired;
-    private boolean isHidden;
+    private Boolean required;
+    private Boolean hidden;
     private String lookupTable;
     private String lookupKey;
     private String lookupLabel;

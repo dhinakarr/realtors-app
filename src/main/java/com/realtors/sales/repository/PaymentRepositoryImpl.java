@@ -101,7 +101,7 @@ public class PaymentRepositoryImpl {
 					    WHERE payment_type = 'RECEIVED'
 					    GROUP BY sale_id
 					) p ON p.sale_id = s.sale_id
-					WHERE s.sale_status = 'BOOKED';
+					WHERE s.sale_status in ( 'BOOKED', 'IN_PROGRESS');
 		    """;
 		    return jdbc.queryForObject(sql, BigDecimal.class);
 	}

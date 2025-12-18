@@ -129,8 +129,8 @@ public class PlotUnitRepository {
     }
     
     public void updatePlotStatus(UUID plotId, String status) {
-    	String sql = "UPDATE plot_units set status=?, updated_at=?, updated_by=? where plot_id=?";
-    	jdbc.update(sql, status, LocalTime.now(), AppUtil.getCurrentUserId(), plotId);
+    	String sql = "UPDATE plot_units set status=?, updated_at=CURRENT_TIMESTAMP, updated_by=? where plot_id=?";
+    	jdbc.update(sql, status, AppUtil.getCurrentUserId(), plotId);
     }
 
     // --------------------------
