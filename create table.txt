@@ -1,0 +1,763 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE roles (
+    role_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role_name VARCHAR(55) NOT NULL,
+    description VARCHAR(255),
+	parent_role_id UUID,
+	role_level int,
+	finance_role VARCHAR(50) DEFAULT 'INTERNAL'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE app_users (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role_id UUID NOT NULL REFERENCES roles(role_id),
+    email VARCHAR(55) UNIQUE NOT NULL,
+	mobile VARCHAR(15),
+    password_hash TEXT NOT NULL,
+    full_name VARCHAR(55),
+    address TEXT,
+	profile_image BYTEA,
+    last_login TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+	meta JSONB DEFAULT '{}'::jsonb,
+	manager_id UUID REFERENCES app_users(user_id),
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE user_auth (
+    auth_id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL UNIQUE,
+	role_id UUID NOT NULL,
+    username VARCHAR(150) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    last_login TIMESTAMP,
+    failed_attempts INT DEFAULT 0,
+    is_locked BOOLEAN DEFAULT FALSE,
+	user_type VARCHAR(50) DEFAULT 'INTERNAL',
+	force_password_change BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO public.app_users(
+	user_id, role_id, email, mobile, password_hash, full_name)
+	VALUES (f8f0f7ca-05e4-4092-8271-0328b0ed2982, '', 'dhina@xyz.com', 98798797979, 
+	'$2a$10$1FR8E/uB3y08vimDTKZpYeEUjJMS9oRl6QLEO1UCbbjR0vfyapEpC', 'Dhinakaran');
+
+insert into user_auth (user_id, username, password_hash, role_id, user_type)
+values('f8f0f7ca-05e4-4092-8271-0328b0ed2982', 'dhina@xyz.com', 
+'$2a$10$1FR8E/uB3y08vimDTKZpYeEUjJMS9oRl6QLEO1UCbbjR0vfyapEpC'
+'', 'INTERNAL')
+
+
+CREATE TABLE upload_test (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(55) UNIQUE NOT NULL,
+	mobile VARCHAR(15),
+    full_name VARCHAR(55),
+    address TEXT,
+	profile_image BYTEA,
+	meta JSONB DEFAULT '{}'::jsonb,
+);
+
+CREATE TABLE modules (
+    module_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    module_name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+	created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE features (
+    feature_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    module_id UUID NOT NULL REFERENCES modules(module_id) ON DELETE CASCADE,
+    feature_name VARCHAR(255) NOT NULL,  -- e.g., 'user_list', 'user_edit'
+    description TEXT,  -- e.g., 'View list of users in the app screen'
+	feature_type VARCHAR(30) NOT NULL DEFAULT 'MENU',
+	URL VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+	created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE acl_permissions (
+    permission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role_id UUID NOT NULL REFERENCES roles(role_id),
+    feature_id UUID NOT NULL REFERENCES features(feature_id),
+    can_create BOOLEAN DEFAULT FALSE,
+    can_read BOOLEAN DEFAULT FALSE,
+    can_update BOOLEAN DEFAULT FALSE,
+    can_delete BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_by UUID,
+    updated_by UUID,
+    CONSTRAINT unique_role_feature UNIQUE (role_id, feature_id)
+);
+
+CREATE TABLE dynamic_form_meta (
+    meta_id UUID PRIMARY KEY,
+    table_name VARCHAR(100) NOT NULL,
+    column_name VARCHAR(100) NOT NULL,
+    label VARCHAR(100),
+    input_type VARCHAR(50),   -- text, number, email, select, textarea, file
+    is_required BOOLEAN DEFAULT FALSE,
+    is_hidden BOOLEAN DEFAULT FALSE,
+    lookup_table VARCHAR(100),     -- null if no lookup
+    lookup_key VARCHAR(100),       -- e.g., "user_id"
+    lookup_value VARCHAR(100),     -- e.g., "full_name"
+    sort_order INT DEFAULT 0
+);
+
+CREATE TABLE form_metadata (
+    id SERIAL PRIMARY KEY,
+    table_name VARCHAR(50) NOT NULL,
+    column_name VARCHAR(50) NOT NULL,
+    display_label VARCHAR(100),
+    field_type VARCHAR(20) NOT NULL,    -- text, number, date, select, checkbox
+    is_required BOOLEAN DEFAULT FALSE,
+    is_hidden BOOLEAN DEFAULT FALSE,
+    lookup_table VARCHAR(50),
+    lookup_key VARCHAR(50),
+    lookup_label VARCHAR(50),
+	extra_settings JSONB DEFAULT '{}'::jsonb,
+    sort_order INT DEFAULT 0
+);
+
+CREATE TABLE audit_trail (
+    log_id BIGSERIAL PRIMARY KEY,
+    table_name VARCHAR(100) NOT NULL,
+    record_id UUID,
+    action VARCHAR(20) NOT NULL,
+	user_agent TEXT,
+    performed_by UUID,
+    performed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45)
+);
+
+CREATE INDEX idx_audit_table ON audit_trail(table_name);
+CREATE INDEX idx_audit_record ON audit_trail(record_id);
+CREATE INDEX idx_audit_action ON audit_trail(action);
+
+CREATE TABLE projects (
+    project_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_name VARCHAR(50) NOT NULL,
+    location_details TEXT,
+	survey_number VARCHAR(50),
+    start_date DATE,
+    end_date DATE,
+	no_of_plots int,
+	plot_start_number int,
+	price_per_sqft DECIMAL(12, 2),
+	reg_charges DECIMAL(12, 2),
+	doc_charges DECIMAL(12, 2),
+	other_charges DECIMAL(12, 2),
+	guidance_value DECIMAL(12, 2),
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE INDEX idx_projects_status ON projects(status);
+CREATE INDEX idx_projects_created_at ON projects(created_at);
+
+CREATE TABLE projects_files (
+	project_file_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	project_id UUID REFERENCES projects(project_id) NOT NULL,
+	file_path VARCHAR(255),
+	file_name VARCHAR(255),
+	size_bytes int,
+	public_url VARCHAR(255),
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+)
+CREATE INDEX idx_project_files_project_id ON projects_files(project_id);
+CREATE TABLE project_ownership (
+	project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE NOT NULL,
+	user_id UUID REFERENCES app_users(user_id) ON DELETE CASCADE NOT NULL,
+	role_id UUID REFERENCES roles(role_id) ON DELETE CASCADE NOT NULL,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY(project_id, user_id, role_id)
+);
+
+CREATE TABLE plot_units (
+    plot_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE,
+    plot_number VARCHAR(10),
+    area DECIMAL(10, 2),
+    base_price DECIMAL(10,2),
+	road_width VARCHAR(20),
+	survey_num VARCHAR(30),
+	facing VARCHAR(10),
+	width DECIMAL(10, 2),
+	breath DECIMAL(10,2),
+	total_price DECIMAL(10,2),
+	is_prime BOOLEAN DEFAULT FALSE,
+    status TEXT DEFAULT 'AVAILABLE',
+    customer_id UUID ,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	updated_by UUID,
+	remarks TEXT,
+    sold_at TIMESTAMP
+);
+CREATE INDEX idx_plot_units_project_id ON plot_units(project_id);
+CREATE INDEX idx_plot_units_status ON plot_units(status);
+CREATE INDEX idx_plot_units_customer_id ON plot_units(customer_id);
+
+CREATE TABLE sales (
+    sale_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    plot_id UUID NOT NULL REFERENCES plots(plot_id),
+    project_id UUID NOT NULL REFERENCES projects(project_id),
+    customer_id UUID NOT NULL REFERENCES customers(customer_id),
+    sold_by UUID NOT NULL REFERENCES app_users(user_id), 
+    area NUMERIC(12,2) NOT NULL,
+    base_price NUMERIC(12,2) NOT NULL, 
+    extra_charges NUMERIC(12,2) NOT NULL,
+    total_price NUMERIC(12,2) NOT NULL,
+    sale_status VARCHAR(20) DEFAULT 'AVAILABLE', 
+    confirmed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE payments (
+    payment_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    payment_type VARCHAR(20) NOT NULL,  
+    sale_id UUID REFERENCES sales(sale_id), 
+    amount NUMERIC(12,2) NOT NULL,
+    payment_date TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    payment_mode VARCHAR(20),    
+    transaction_ref VARCHAR(100),
+    remarks TEXT,
+    collected_by UUID REFERENCES app_users(user_id),
+    paid_to UUID REFERENCES app_users(user_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE commission_rules (
+    rule_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(project_id),
+    role_id UUID NOT NULL REFERENCES roles(role_id),
+    percentage NUMERIC(5,2) NOT NULL,          -- ex: 40.00%
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	created_by UUID,
+	updated_by UUID
+);
+
+CREATE TABLE payment_stages (
+    stage_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(project_id),
+    stage_name VARCHAR(50) NOT NULL,  
+    description TEXT,
+	percentage DECIMAL(5, 2),
+    sequence INT NOT NULL, 
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+	created_by UUID
+);
+
+CREATE TYPE payment_type_enum AS ENUM ('RECEIVED', 'PAID');
+
+CREATE TABLE sale_commissions (
+    commission_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sale_id UUID NOT NULL REFERENCES sales(sale_id),
+    user_id UUID NOT NULL REFERENCES app_users(user_id),
+    role_id UUID NOT NULL REFERENCES roles(role_id),
+    percentage NUMERIC(5,2) NOT NULL,
+    commission_amount NUMERIC(12,2) NOT NULL,
+    is_released BOOLEAN DEFAULT FALSE,
+	released_at TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Fetch all users up the hierarchy
+WITH RECURSIVE manager_tree AS (
+    SELECT user_id, manager_id
+    FROM app_users
+    WHERE user_id = :currentUser
+
+    UNION ALL
+
+    SELECT au.user_id, au.manager_id
+    FROM app_users au
+    INNER JOIN manager_tree mt ON au.user_id = mt.manager_id
+)
+SELECT *
+FROM sales
+WHERE sold_by IN (SELECT user_id FROM manager_tree);
+
+CREATE VIEW v_receivable_details AS
+SELECT
+    s.sale_id,
+    s.project_id,
+    pr.project_name,
+	pl.plot_id,
+    pl.plot_number,
+    s.customer_id,
+    c.customer_name,
+    s.sold_by AS agent_id,
+    u.full_name AS agent_name,
+    s.total_price AS sale_amount,
+    COALESCE(p.total_received, 0) AS total_received,
+    (s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
+    s.confirmed_at
+FROM sales s
+JOIN projects pr ON pr.project_id = s.project_id
+JOIN plot_units pl ON pl.plot_id = s.plot_id
+JOIN customers c ON c.customer_id = s.customer_id
+JOIN app_users u ON u.user_id = s.sold_by
+LEFT JOIN (
+    SELECT sale_id, SUM(amount) AS total_received
+    FROM payments
+    WHERE payment_type = 'RECEIVED'
+    GROUP BY sale_id
+) p ON p.sale_id = s.sale_id
+WHERE s.sale_status in('BOOKED', 'IN_PROGRESS');
+
+
+CREATE OR REPLACE VIEW v_commission_payable_details AS
+SELECT
+    sc.commission_id,
+    sc.sale_id,
+    sc.user_id AS agent_id,
+    u.full_name           AS agent_name,
+    pr.project_id,
+    pr.project_name,
+    pl.plot_id,
+    pl.plot_number,
+    s.total_price         AS sale_amount,
+	COALESCE(cr.total_received) AS customer_paid,
+    sc.commission_amount  AS total_commission,
+    
+    COALESCE(cp.total_paid)    AS commission_paid,
+	ROUND(
+    LEAST(
+        sc.commission_amount,
+        CASE
+            WHEN s.total_price > 0 THEN
+                (COALESCE(cr.total_received, 0) / s.total_price)
+                * sc.commission_amount
+            ELSE 0
+        END
+		),
+		0
+    ) AS commission_eligible,
+	ROUND(
+    GREATEST(
+        LEAST(
+            sc.commission_amount,
+            CASE
+                WHEN s.total_price > 0 THEN
+                    (COALESCE(cr.total_received, 0) / s.total_price)
+                    * sc.commission_amount
+                ELSE 0
+            END
+        ) - COALESCE(cp.total_paid, 0),
+        0
+		),
+		0
+    ) AS commission_payable,
+    s.sale_status,
+    s.confirmed_at
+FROM sale_commissions sc
+JOIN sales s           ON s.sale_id = sc.sale_id
+JOIN app_users u       ON u.user_id = sc.user_id
+JOIN plot_units pl     ON pl.plot_id = s.plot_id
+JOIN projects pr       ON pr.project_id = pl.project_id
+LEFT JOIN (
+    SELECT
+        sale_id,
+        SUM(amount) AS total_received
+    FROM payments
+    WHERE payment_type = 'RECEIVED'
+    GROUP BY sale_id
+) cr ON cr.sale_id = s.sale_id
+LEFT JOIN (
+    SELECT
+        sale_id,
+        paid_to AS agent_id,
+        SUM(amount) AS total_paid
+    FROM payments
+    WHERE payment_type = 'PAID'
+    GROUP BY sale_id, paid_to
+) cp
+  ON cp.sale_id = sc.sale_id
+ AND cp.agent_id = sc.user_id
+WHERE
+    s.sale_status IN ('BOOKED', 'SOLD', 'COMPLETED')
+    AND sc.commission_amount > 0;
+
+
+
+CREATE INDEX idx_sales_booked ON sales(sale_status);
+CREATE INDEX idx_sales_project ON sales(project_id);
+CREATE INDEX idx_sales_customer ON sales(customer_id);
+CREATE INDEX idx_payments_received ON payments(sale_id, payment_type);
+CREATE INDEX idx_payments_sale_id ON payments(sale_id);
+CREATE INDEX idx_payments_type ON payments(payment_type);
+
+-- sales
+CREATE INDEX idx_sales_project_id ON sales(project_id);
+
+CREATE OR REPLACE VIEW v_sale_payments_summary AS
+SELECT
+    s.sale_id,
+    s.project_id,
+    s.plot_id,
+    s.customer_id,
+    s.total_amount AS sale_amount,
+
+    COALESCE(SUM(CASE WHEN p.payment_type = 'RECEIVED' THEN p.amount END), 0) AS total_received,
+    COALESCE(SUM(CASE WHEN p.payment_type = 'PAID' THEN p.amount END), 0) AS total_paid,
+
+    (s.total_amount
+     - COALESCE(SUM(CASE WHEN p.payment_type = 'RECEIVED' THEN p.amount END), 0)
+    ) AS balance_receivable
+
+FROM sales s
+LEFT JOIN payments p ON p.sale_id = s.sale_id
+GROUP BY
+    s.sale_id, s.project_id, s.plot_id, s.customer_id, s.total_amount;
+
+
+CREATE OR REPLACE VIEW v_project_finance_summary AS
+SELECT
+    project_id,
+    SUM(sale_amount) AS total_sale_amount,
+    SUM(total_received) AS total_received,
+    SUM(total_paid) AS total_paid,
+    SUM(balance_receivable) AS total_balance_receivable
+FROM v_sale_payments_summary
+GROUP BY project_id;
+
+CREATE OR REPLACE VIEW v_finance_summary AS
+SELECT
+    SUM(sale_amount) AS total_receivable,
+    SUM(total_received) AS total_received,
+    SUM(total_paid) AS total_paid,
+    SUM(balance_receivable) AS pending_receivable
+FROM v_sale_payments_summary;
+
+
+
+
+
+
+
+CREATE TABLE customers (
+    customer_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+	customer_name VARCHAR(80),
+	email VARCHAR(80),
+	mobile BIGINT, 
+    date_of_birth DATE,
+    gender VARCHAR(10),
+    address TEXT,
+    city VARCHAR(100),
+    state VARCHAR(100),
+    pincode VARCHAR(10),
+    alt_mobile BIGINT,
+    occupation VARCHAR(100),
+    profile_image_path VARCHAR(300),   -- ONLY profile picture
+    notes TEXT,
+	status VARCHAR(10),
+	comments JSONB DEFAULT '[]',
+	created_by UUID,
+	updated_by UUID,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE customer_documents (
+    document_id BIGSERIAL PRIMARY KEY,
+    customer_id UUID NOT NULL REFERENCES customers(customer_id),
+    document_type VARCHAR(50) NOT NULL,   -- AADHAAR, PAN, PASSPORT, RATION CARD etc.
+    document_number VARCHAR(100),         -- optional
+    file_path VARCHAR(300),      -- file path on disk
+	file_name VARCHAR(300),
+	uploaded_by UUID,
+    uploaded_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE order_items (
+	id BIGSERIAL PRIMARY KEY,
+	order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE,
+	customer_id BIGINT REFERENCES app_users(user_id) NOT NULL,
+	plot_unit_id BIGINT REFERENCES plot_units(id) ON DELETE RESTRICT,
+	unit_price NUMERIC(18,2) NOT NULL,
+	discount NUMERIC(10,2) DEFAULT 0,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	meta JSONB,-- can hold the financial transaction data as it can happen multiple times
+	net_amount NUMERIC(18,2) NOT NULL -- (unit_price * qty - discount)
+);
+
+CREATE OR REPLACE FUNCTION set_role_level()
+RETURNS TRIGGER AS $body$
+DECLARE
+    parent_level INT;
+BEGIN
+    IF NEW.parent_role_id IS NULL THEN
+        -- Top-level role
+        NEW.role_level := 1;
+    ELSE
+        -- Get parent's level
+        SELECT role_level INTO parent_level
+        FROM roles
+        WHERE role_id = NEW.parent_role_id;
+        -- Handle invalid parent
+        IF parent_level IS NULL THEN
+            RAISE EXCEPTION 'Parent role not found for id %', NEW.parent_role_id;
+        END IF;
+        NEW.role_level := parent_level + 1;
+    END IF;
+    RETURN NEW;
+END;
+$body$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_insert_roles
+BEFORE INSERT ON roles
+FOR EACH ROW
+EXECUTE FUNCTION set_role_level();
+
+CREATE TRIGGER before_update_roles
+BEFORE UPDATE OF parent_role_id ON roles
+FOR EACH ROW
+EXECUTE FUNCTION set_role_level();
+
+
+
+
+
+CREATE INDEX idx_acl_permissions_role_id ON acl_permissions(role_id);
+CREATE EXTENSION IF NOT EXISTS hstore;
+
+SELECT * FROM public.app_users 
+SELECT * FROM public.roles
+SELECT * FROM public.modules
+SELECT * FROM public.features
+SELECT * FROM public.acl_permissions
+
+DELETE FROM public.app_users where email <> 'dhina@xyz.com'
+DELETE FROM public.roles where role_id <> 'e3e12691-648c-48d4-bea7-f220463d32e1'
+DELETE FROM public.modules
+DELETE FROM public.features
+DELETE FROM public.acl_permissions
+
+UPDATE form_metadata 
+SET extra_settings = jsonb_set(
+    extra_settings, 
+    '{pattern}', 
+    '"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"', 
+    true  -- create path if not exists
+)
+
+UPDATE form_metadata
+SET extra_settings = jsonb_set(
+    extra_settings,
+    '{message}',
+    '"Valid URL data is required"',
+    true
+)
+WHERE id = 58;
+
+ALTER TABLE plot_units ADD updated_by UUID;
+ALTER TABLE plot_units ADD updated_at UUID;
+
+INSERT INTO form_metadata
+(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
+VALUES
+('app_users', 'email', 'Email Address', 'email', TRUE, FALSE,  NULL, NULL, NULL,
+ '{"pattern": "^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$",
+   "maxLength": 55, "placeholder": "user@example.com", "patternMessage": "Please enter valid mail address"}'::jsonb,
+ 1),
+ ('app_users', 'mobile', 'Mobile Number', 'number', TRUE, FALSE, NULL, NULL, NULL,
+ '{"pattern": "^[0-9]+$", "required": true, "maxLength": 15, "minLength": 10, "placeholder": "9999999999",
+  "patternMessage": "Please enter only numbers of minimum 10 digits"}'::jsonb,
+ 2),
+ ('app_users', 'full_name', 'User Name', 'text', TRUE, FALSE, NULL, NULL, NULL,
+ '{"message": "Your name is required", "required": true, "maxLength": 55, "minLength": 5, "placeholder": "Your Name"}'::jsonb,
+ 3),
+('app_users', 'password_hash', 'Password', 'password', TRUE, FALSE, NULL, NULL, NULL,
+ '{"minLength":8,"componentHint":"password-strength","placeholder":"Choose a strong password"}'::jsonb,
+ 4),
+('app_users', 'role_id', 'Role', 'select', TRUE, FALSE, 'roles', 'role_id', 'role_name',
+ '{"hint":"Assign role to user"}'::jsonb,
+ 5),
+('app_users', 'manager_id', 'Manager', 'select', TRUE, FALSE, 'app_users', 'user_id', 'full_name',
+ '{"searchable":true,"placeholder":"Search manager by name"}'::jsonb,
+ 6),
+('app_users', 'address', 'Address', 'textarea', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Your complete address"}'::jsonb,
+ 7),
+('app_users', 'profile_image', 'Profile Picture', 'File', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Assign role to user"}'::jsonb,
+ 8),
+ ('app_users', 'meta', 'Additional Data', 'jsonb', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Add any additional Details"}'::jsonb,
+ 9),
+ ('roles', 'role_name', 'Role Name', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Role name is required", "required": true, "placeholder": "Role Name"}'::jsonb,
+ 1),
+ ('roles', 'description', 'Description', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Description"}'::jsonb,
+ 2),
+ ('roles', 'parent_role_id', 'Superior Role', 'select', FALSE, TRUE, 'roles', 'role_id', 'role_name',
+ '{"placeholder":"Superior Role"}'::jsonb,
+ 3),
+ ('roles', 'is_finance_role', 'Is Finance Role?', 'checkbox', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Check if a finance role"}'::jsonb,
+ 4),
+ ('modules', 'module_name', 'Module Name', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Module name is required", "required": true, "placeholder": "Module Name"}'::jsonb,
+ 1),
+ ('modules', 'description', 'Description', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Description"}'::jsonb,
+ 2),
+ ('features', 'feature_name', 'Feature Name', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Feature name is required", "required": true, "placeholder": "Feature Name"}'::jsonb,
+ 1),
+ ('features', 'description', 'Description', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Description"}'::jsonb,
+ 2),
+ ('features', 'module_id', 'Select Module Name', 'select', FALSE, FALSE, 'modules', 'module_id', 'module_name',
+ '{"placeholder":"Description"}'::jsonb,
+ 3),
+ ('features', 'url', 'URL', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"message": "Valid URL data is required","required": true, "placeholder": "Description"}'::jsonb,
+ 4),
+ ('projects', 'project_name', 'Project Name', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Project name is required", "placeholder": "Project Name"}'::jsonb,
+ 1),
+ ('projects', 'location_details', 'Project Description', 'textarea', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Project Location Details"}'::jsonb,
+ 2),
+ ('projects', 'survey_number', 'Survey Number', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Survey Number"}'::jsonb,
+ 3),
+ ('projects', 'start_date', 'Start Date', 'date', FALSE, TRUE, NULL, NULL, NULL,
+ '{
+  "message": "Please provide your Project start date", "placeholder": "Project start date"}'::jsonb,
+ 4),
+ ('projects', 'end_date', 'End Date', 'date', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Project start date"}'::jsonb,
+ 5),
+ ('projects', 'no_of_plots', 'Number of Plots', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Please enter number of plots", "placeholder": "Number of Plots"}'::jsonb,
+ 6),
+ ('projects', 'plot_start_number', 'Starting Plot Number of Project', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Please enter starting plot number", "placeholder": "Number of Plots"}'::jsonb,
+ 7),
+ ('projects', 'price_per_sqft', 'Price/Square Feet', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Please enter per sqft price", "placeholder": "Price"}'::jsonb,
+ 8),
+ ('projects', 'reg_charges', 'Registration Charge', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Please enter Registration Charge","placeholder": "Registration Charge"}'::jsonb,
+ 9),
+ ('projects', 'doc_charges', 'Documentation Charge', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Please enter Documentation Charge", "placeholder": "Documentation Charge"}'::jsonb,
+ 10),
+ ('projects', 'other_charges', 'Other Charge', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Documentation Charge"}'::jsonb,
+ 11),
+ ('projects', 'image', 'Image Upload', 'file', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Upload image files"}'::jsonb,
+ 12),
+ ('plot_units', 'base_price', 'Rate/sqft', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Base Price"}'::jsonb,
+ 1),
+ ('plot_units', 'road_width', 'Road Width', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Road Width"}'::jsonb,
+ 2),
+ ('plot_units', 'survey_num', 'Survey Number', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Survey Number"}'::jsonb,
+ 3),
+ ('plot_units', 'facing', 'Facing', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Facing"}'::jsonb,
+ 4),
+ ('plot_units', 'width', 'Width', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Plot Width"}'::jsonb,
+ 5),
+ ('plot_units', 'breath', 'Length', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Plot Length"}'::jsonb,
+ 6),
+ ('plot_units', 'is_prime', 'Prime Plot?', 'checkbox', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Prime Plot"}'::jsonb,
+ 7),
+ ('customers', 'customer_name', 'Customer Name', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"placeholder": "Customer Name"}'::jsonb,
+ 1),
+ ('customers', 'email', 'Email', 'email', FALSE, TRUE, NULL, NULL, NULL,
+ '{"pattern": "^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$",
+   "maxLength": 55, "placeholder": "user@example.com", "patternMessage": "Please enter valid mail address"}'::jsonb,
+ 2),
+ ('customers', 'mobile', 'Mobile', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"maxLength": 15, "minLength":10, "placeholder": "9999999999"}'::jsonb,
+ 3),
+ ('customers', 'date_of_birth', 'Date Of Birth', 'date', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "03-12-2025"}'::jsonb,
+ 4),
+ ('customers', 'gender', 'Gender', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Gender"}'::jsonb,
+ 6),
+ ('customers', 'address', 'Address', 'textarea', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Please enter your address"}'::jsonb,
+ 7),
+ ('customers', 'city', 'City', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Please enter your City"}'::jsonb,
+ 8),
+ ('customers', 'state', 'State', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Please enter your State"}'::jsonb,
+ 9),
+ ('customers', 'pincode', 'Pincode', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Please enter your Zip Code"}'::jsonb,
+ 10),
+ ('customers', 'alt_mobile', 'Alternate Mobile', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "9999999999"}'::jsonb,
+ 11),
+ ('customers', 'occupation', 'Occupation', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Your Occupation"}'::jsonb,
+ 12),
+ ('customers', 'notes', 'Notes', 'textarea', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": ""}'::jsonb,
+ 13),
+ ('customers', 'profile_image_path', 'Profile Image', 'file', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": ""}'::jsonb,
+ 14);
+
+
+
+
+UPDATE form_metadata
+SET field_type = 'radio',
+    lookup_key = '["Male","Female","Others"]'::jsonb,
+    lookup_label = '["Male","Female","Others"]'::jsonb
+WHERE table_name = 'customers'
+  AND column_name = 'gender';
+  
+UPDATE form_metadata
+SET field_type = 'radio', display_label='Role Type',
+    lookup_key = '["INTERNAL","CUSTOMER","FINANCE"]'::jsonb,
+    lookup_label = '["INTERNAL","CUSTOMER","FINANCE"]'::jsonb
+WHERE table_name = 'roles'
+  AND column_name = 'finance_role';  
