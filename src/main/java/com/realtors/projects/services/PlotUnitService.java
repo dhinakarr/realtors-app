@@ -63,11 +63,20 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	PlotUnitDto plotDto = getByPlotId(plotId);
     	ProjectDto projectDto = projectRepository.findById(plotDto.getProjectId());
     	
-    	BigDecimal width = BigDecimal.valueOf(Long.valueOf(partialData.get("width").toString()));
-    	BigDecimal breath = BigDecimal.valueOf(Long.valueOf(partialData.get("breath").toString()));
+    	Object areaObj = partialData.get("area");
+    	BigDecimal area = areaObj != null ? new BigDecimal(areaObj.toString()) : null;
 
-    	BigDecimal area = pricingService.calculateArea(width, breath);
-        BigDecimal basePrice = pricingService.calculateBasePrice(area, projectDto.getPricePerSqft());
+    	Object basePriceObj = partialData.get("basePrice");
+    	BigDecimal sqftRate = BigDecimal.ZERO;
+
+    	Boolean isPrime = Boolean.TRUE.equals(partialData.get("prime"));
+
+    	if (isPrime && basePriceObj != null) {
+    	    sqftRate = new BigDecimal(basePriceObj.toString());
+    	} else {
+    	    sqftRate = projectDto.getPricePerSqft();
+    	}
+        BigDecimal basePrice = pricingService.calculateBasePrice(area, sqftRate);
         BigDecimal totalPrice = basePrice.add(projectDto.getRegCharges())
         											.add(projectDto.getDocCharges())
         											.add(projectDto.getOtherCharges());
@@ -75,6 +84,7 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	partialData.put("area", area);
     	partialData.put("basePrice", basePrice);
     	partialData.put("totalPrice", totalPrice);
+    	partialData.put("isPrime", isPrime);
     	return super.patch(plotId, partialData);
     }
 

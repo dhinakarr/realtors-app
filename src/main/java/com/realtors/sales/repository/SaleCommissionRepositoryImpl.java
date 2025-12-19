@@ -14,9 +14,7 @@ import com.realtors.sales.finance.dto.CashFlowItemDTO;
 import com.realtors.sales.finance.dto.CashFlowStatus;
 import com.realtors.sales.finance.dto.CashFlowType;
 import com.realtors.sales.finance.dto.PayableDetailsDTO;
-import com.realtors.sales.finance.dto.ReceivableDetailsDTO;
 import com.realtors.sales.rowmapper.PayableDetailsRowMapper;
-import com.realtors.sales.rowmapper.ReceivableDetailsRowMapper;
 
 import lombok.RequiredArgsConstructor;
 

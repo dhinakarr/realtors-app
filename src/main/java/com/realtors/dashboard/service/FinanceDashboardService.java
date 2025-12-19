@@ -1,5 +1,6 @@
 package com.realtors.dashboard.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -35,38 +36,44 @@ public class FinanceDashboardService {
 				.expectedToday(paymentService.getExpectedToday()).commissionPayable(commissionService.getTotalPayable())
 				.commissionPaidThisMonth(commissionService.getPaidThisMonth()).build();
 	}
-	
+
 	public FinanceSummaryDTO getSummary() {
+		BigDecimal totalReceivable      = nz(paymentService.getTotalReceivable());
+	    BigDecimal receivedThisMonth    = nz(paymentService.getReceivedThisMonth());
+	    BigDecimal expectedToday        = nz(paymentService.getExpectedToday());
+	    BigDecimal totalPayable         = nz(commissionService.getTotalPayable());
+	    BigDecimal paidTotal            = nz(paymentService.getPaidTotal());
+	    BigDecimal paidThisMonth        = nz(paymentService.getPaidThisMonth());
+
 	    return FinanceSummaryDTO.builder()
-	        .totalReceivable(paymentService.getTotalReceivable())   // ALL sales
-	        .receivedThisMonth(paymentService.getReceivedThisMonth())
-	        .expectedToday(paymentService.getExpectedToday())
-	        .commissionPayable(commissionService.getTotalPayable().subtract(paymentService.getPaidTotal()))
-	        .commissionPaidThisMonth(paymentService.getPaidThisMonth())
+	        .totalReceivable(totalReceivable)
+	        .receivedThisMonth(receivedThisMonth)
+	        .expectedToday(expectedToday)
+	        .commissionPayable(totalPayable.subtract(paidTotal))
+	        .commissionPaidThisMonth(paidThisMonth)
 	        .build();
 	}
-	
+
+	private BigDecimal nz(BigDecimal value) {
+		return value == null ? BigDecimal.ZERO : value;
+	}
+
 	public List<ReceivableDetailsDTO> getReceivableDetails() {
 		return paymentService.getReceivableDetails();
 	}
-	
+
 	public List<PayableDetailsDTO> getPayableDetails() {
 		return commissionService.getPayableDetails();
 	}
 
-	public List<CashFlowItemDTO> getCashFlow(LocalDate from, LocalDate to,
-																			CashFlowType type, CashFlowStatus status) {
-
+	public List<CashFlowItemDTO> getCashFlow(LocalDate from, LocalDate to, CashFlowType type, CashFlowStatus status) {
 		List<CashFlowItemDTO> items = new ArrayList<>();
-
 		if (type == null || type == CashFlowType.RECEIVABLE) {
 			items.addAll(paymentService.getReceivables(from, to, status));
 		}
 		if (type == null || type == CashFlowType.PAYABLE) {
 			items.addAll(commissionService.getPayables(from, to, status));
 		}
-
-		return items.stream()
-				.sorted(Comparator.comparing(CashFlowItemDTO::getAmount).reversed()).toList();
+		return items.stream().sorted(Comparator.comparing(CashFlowItemDTO::getAmount).reversed()).toList();
 	}
 }

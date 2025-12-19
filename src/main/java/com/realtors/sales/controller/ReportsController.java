@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleDTO;
-import com.realtors.sales.service.CommissionService;
-import com.realtors.sales.service.SaleService;
+//import com.realtors.sales.service.CommissionService;
+//import com.realtors.sales.service.SaleService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,8 +21,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReportsController {
 
-    private final SaleService saleService;
-    private final CommissionService commissionService;
+//    private final SaleService saleService;
+//    private final CommissionService commissionService;
 
     @GetMapping("/sales")
     public ResponseEntity<List<SaleDTO>> salesReport(@RequestParam String fromDate,

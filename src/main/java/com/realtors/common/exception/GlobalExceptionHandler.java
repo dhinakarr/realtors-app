@@ -19,33 +19,38 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     
-    @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ApiResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
+    /* ---------------- 404 ---------------- */
 
-        // Ignore Chrome devtools probing request
-        if (request.getRequestURI().startsWith("/.well-known/")) {
-            return ResponseEntity.notFound().build();
-        }
-        log.error("handleNoResource Exception: {}", ex);
-        // otherwise your existing logic
+    @ExceptionHandler({
+        NoSuchElementException.class,
+        EmptyResultDataAccessException.class,
+        ResourceNotFoundException.class
+    })
+    public ResponseEntity<ApiResponse> handleNotFound(RuntimeException ex) {
+        log.error("Resource not found", ex);
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.failure("Resource not found", HttpStatus.NOT_FOUND));
+                .body(ApiResponse.failure(ex.getMessage(), HttpStatus.NOT_FOUND));
     }
 
-    @ExceptionHandler({NoSuchElementException.class, 
-    					EmptyResultDataAccessException.class, 
-    					ResourceNotFoundException.class})
-    public ResponseEntity<ApiResponse> handleNotFound(Exception ex) {
-        log.error("handleNotFound Exception: {}", ex);
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.failure("Resource not found", HttpStatus.NOT_FOUND));
+    /* ---------------- 400 ---------------- */
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse> handleBadRequest(IllegalArgumentException ex) {
+        log.warn("Bad request", ex);
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.failure(ex.getMessage(), HttpStatus.BAD_REQUEST));
     }
+
+    /* ---------------- 500 ---------------- */
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse> handleGeneric(Exception ex) {
-        log.error("handleGeneric error: ", ex);
+        log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.failure("Internal server error", HttpStatus.INTERNAL_SERVER_ERROR));
+                .body(ApiResponse.failure(
+                        "Internal server error",
+                        HttpStatus.INTERNAL_SERVER_ERROR
+                ));
     }
 }
 

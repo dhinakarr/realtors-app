@@ -404,7 +404,7 @@ LEFT JOIN (
   ON cp.sale_id = sc.sale_id
  AND cp.agent_id = sc.user_id
 WHERE
-    s.sale_status IN ('BOOKED', 'SOLD', 'COMPLETED')
+    s.sale_status IN ('BOOKED','SOLD','COMPLETED', 'IN_PROGRESS')
     AND sc.commission_amount > 0;
 
 
@@ -680,9 +680,12 @@ VALUES
  ('projects', 'other_charges', 'Other Charge', 'number', FALSE, FALSE, NULL, NULL, NULL,
  '{"placeholder": "Documentation Charge"}'::jsonb,
  11),
+ ('projects', 'guidance_value', 'Guideline Value', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Guideline Value"}'::jsonb,
+ 12),
  ('projects', 'image', 'Image Upload', 'file', FALSE, FALSE, NULL, NULL, NULL,
  '{"placeholder": "Upload image files"}'::jsonb,
- 12),
+ 13),
  ('plot_units', 'base_price', 'Rate/sqft', 'number', FALSE, FALSE, NULL, NULL, NULL,
  '{"placeholder": "Base Price"}'::jsonb,
  1),
@@ -756,8 +759,46 @@ WHERE table_name = 'customers'
   AND column_name = 'gender';
   
 UPDATE form_metadata
-SET field_type = 'radio', display_label='Role Type',
-    lookup_key = '["INTERNAL","CUSTOMER","FINANCE"]'::jsonb,
-    lookup_label = '["INTERNAL","CUSTOMER","FINANCE"]'::jsonb
+SET field_type = 'select', display_label='Role Type',
+    lookup_key = '["INTERNAL","CUSTOMER","FINANCE", "HR"]'::jsonb,
+    lookup_label = '["INTERNAL","CUSTOMER","FINANCE", "HR"]'::jsonb
 WHERE table_name = 'roles'
   AND column_name = 'finance_role';  
+
+
+delete from form_metadata where sort_order=12 AND table_name='projects'
+delete from form_metadata where table_name='plot_units'
+
+
+INSERT INTO form_metadata
+(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
+VALUES  
+('projects', 'guidance_value', 'Guideline Value', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Guideline Value"}'::jsonb,
+ 12),
+ ('projects', 'image', 'Image Upload', 'file', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Upload image files"}'::jsonb,
+ 13),
+ 
+ INSERT INTO form_metadata
+(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, 
+lookup_label, extra_settings, sort_order)
+VALUES  
+ ('plot_units', 'base_price', 'Rate/sqft', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Base Price", "maxLength":"10"}'::jsonb,
+ 5),
+ ('plot_units', 'area', 'Total Area', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"placeholder": "Total Area", "maxLength":"5"}'::jsonb,
+ 2),
+ ('plot_units', 'survey_num', 'Survey Number', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Survey Number", "maxLength":"30"}'::jsonb,
+ 3),
+ ('plot_units', 'facing', 'Facing', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Facing", "maxLength":"10"}'::jsonb,
+ 4),
+ ('plot_units', 'plot_number', 'Plot Number', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"placeholder": "Plot Number", "maxLength":"10"}'::jsonb,
+ 1),
+ ('plot_units', 'is_prime', 'Prime Plot?', 'checkbox', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Prime Plot"}'::jsonb,
+ 6)

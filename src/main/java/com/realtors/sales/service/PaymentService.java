@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.realtors.common.util.AppUtil;
@@ -28,7 +28,7 @@ public class PaymentService {
 	private final PaymentRepositoryImpl paymentRepo;
 	private final SaleRepository salestRepo;
 	private final SaleLifecycleService saleLifecycleService;
-	private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+//	private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
 	public PaymentDTO addPayment(PaymentDTO dto) {
 	    PaymentDTO saved = paymentRepo.save(dto);

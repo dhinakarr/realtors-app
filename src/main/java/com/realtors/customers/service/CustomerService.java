@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.realtors.admin.dto.RoleDto;
 import com.realtors.admin.dto.RoleType;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
@@ -44,7 +45,6 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	private final FileStorageProperties fileStorageProperties;
 	private final UserHierarchyService hierarchyService;
 	private final RoleService roleService;
-	private final UserAuthService authService;
 	private final JdbcTemplate jdbc;
 
 	public CustomerService(CustomerRepository customerRepo, CustomerDocumentRepository documentRepo,
@@ -57,7 +57,6 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		this.jdbc = jdbc;
 		this.hierarchyService = hierarchyService;
 		this.roleService = roleService;
-		this.authService = authService;
 	}
 
 	@Override
@@ -251,21 +250,28 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	public List<Map<String, Object>> deleteComment(String customerId, int index) {
 		return customerRepo.deleteComment(UUID.fromString(customerId), index);
 	}
-
-	public List<CustomerMiniDto> getCustomersVisibleToUser(UUID userId) {
-		// 1. Logged-in user's subordinates
-		List<UUID> subordinates = hierarchyService.getAllSubordinates(userId);
-
-		// 2. Logged-in user's managers
-		//List<UUID> managers = hierarchyService.getUpwardsHierarchy(userId);
-
-		// 3. Combine all
-		Set<UUID> visible = new HashSet<>();
-		visible.add(userId);
-		visible.addAll(subordinates);
-		//visible.addAll(managers);
-
-		// 4. Fetch customers created by these users
-		return customerRepo.findCustomersByCreatedBy(visible);
+	
+	public List<CustomerMiniDto> getCustomersVisibleToUser(UUID userId) { 
+		return getCustomersVisibleToUser(userId, null);
 	}
+
+	public List<CustomerMiniDto> getCustomersVisibleToUser(UUID userId, String roleId) {
+	    if (roleId != null && !roleId.isBlank()) {
+	        RoleDto role = roleService.getRoleById(UUID.fromString(roleId)).orElse(null);
+	        if (role != null && role.getFinanceRole() != null) {
+	            String roleType = role.getFinanceRole();
+	            if (RoleType.FINANCE.name().equalsIgnoreCase(roleType)
+	             || RoleType.HR.name().equalsIgnoreCase(roleType)) {
+	                return customerRepo.getAllCustomers();
+	            }
+	        }
+	    }
+	    // Non-finance users
+	    List<UUID> subordinates = hierarchyService.getAllSubordinates(userId);
+	    Set<UUID> visible = new HashSet<>();
+	    visible.add(userId);
+	    visible.addAll(subordinates);
+	    return customerRepo.findCustomersByCreatedBy(visible);
+	}
+
 }

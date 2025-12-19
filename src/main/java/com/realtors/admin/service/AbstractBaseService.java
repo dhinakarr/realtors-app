@@ -427,26 +427,35 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 						m.getLookupLabel());
 				row.setLookupData(lookupRows);
 			}
-			if ("radio".equalsIgnoreCase(m.getFieldType()) && m.getLookupTable() == null && m.getLookupKey() != null
-					&& !m.getLookupKey().isBlank()) {
-				try {
-					ObjectMapper mapper = new ObjectMapper();
-					// parse JSON array string -> List<String>
-					List<String> options = mapper.readValue(m.getLookupKey(), new TypeReference<List<String>>() {
-					});
-					// convert List<String> -> List<Map<String,Object>> with key/label
-					List<Map<String, Object>> optionMaps = new ArrayList<>();
-					for (String opt : options) {
-						Map<String, Object> map = new HashMap<>();
-						map.put("key", opt);
-						map.put("label", opt);
-						optionMaps.add(map);
-					}
-					row.setLookupData(optionMaps != null ? optionMaps : Collections.emptyList());
-				} catch (Exception e) {
-					row.setLookupData(Collections.emptyList());
+			if (
+				    ("radio".equalsIgnoreCase(m.getFieldType()) || "select".equalsIgnoreCase(m.getFieldType()))
+				    && m.getLookupTable() == null
+				    && m.getLookupKey() != null
+				    && !m.getLookupKey().isBlank()
+				) {
+				    try {
+				        ObjectMapper mapper = new ObjectMapper();
+
+				        List<String> options = mapper.readValue(
+				            m.getLookupKey(),
+				            new TypeReference<List<String>>() {}
+				        );
+
+				        List<Map<String, Object>> optionMaps = new ArrayList<>();
+
+				        for (String opt : options) {
+				            Map<String, Object> map = new HashMap<>();
+				            map.put("key", opt);
+				            map.put("value", opt); // 🔑 IMPORTANT: frontend expects "value"
+				            optionMaps.add(map);
+				        }
+
+				        row.setLookupData(optionMaps);
+				    } catch (Exception e) {
+				        row.setLookupData(Collections.emptyList());
+				    }
 				}
-			}  else if ("checkbox".equalsIgnoreCase(m.getFieldType())) {
+				else if ("checkbox".equalsIgnoreCase(m.getFieldType())) {
 		        row.setLookupData(Collections.emptyList());
 
 		        Map<String, Object> extra = new HashMap<>();

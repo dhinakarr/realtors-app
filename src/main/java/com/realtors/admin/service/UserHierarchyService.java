@@ -27,7 +27,6 @@ public class UserHierarchyService {
 			logger.error("User not found for ID: " + userId);
 			return chain;
 		}
-
 		while (current.getManagerId() != null) {
 			UUID managerId = current.getManagerId();
 			AppUserDto manager = userService.findById(managerId).orElse(null);
@@ -40,7 +39,7 @@ public class UserHierarchyService {
 		}
 		return chain;
 	}
-
+	
 	public List<UUID> getAllSubordinates(UUID userId) {
 		List<UUID> list = new ArrayList<>();
 		userService.findSubordinatesRecursive(userId, list);

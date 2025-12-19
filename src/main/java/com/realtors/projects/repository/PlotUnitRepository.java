@@ -8,7 +8,6 @@ import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.rowmapper.PlotUnitRowMapper;
 
-import java.time.LocalTime;
 import java.util.*;
 
 @Repository
@@ -61,8 +60,8 @@ public class PlotUnitRepository {
 
         String sql = """
             INSERT INTO plot_units 
-            (plot_id, project_id, plot_number, status, is_prime)
-            VALUES (?, ?, ?, ?, ?)
+            (plot_id, project_id, plot_number, base_price, status, is_prime,)
+            VALUES (?, ?, ?, ?, ?, ?)
         """;
 
         List<Object[]> batch = new ArrayList<>();
@@ -72,6 +71,7 @@ public class PlotUnitRepository {
                     p.getPlotId(),
                     p.getProjectId(),
                     p.getPlotNumber(),
+                    p.getBasePrice(),
                     p.getStatus(),
                     p.getIsPrime()
             });
@@ -84,7 +84,11 @@ public class PlotUnitRepository {
     // GET BY PROJECT
     // --------------------------
     public List<PlotUnitDto> findByProjectId(UUID projectId) {
-        String sql = "SELECT * FROM plot_units WHERE project_id = ? ORDER BY plot_number::int";
+        String sql = """
+        		SELECT * FROM plot_units WHERE project_id = ?  
+        		ORDER BY CAST(NULLIF(regexp_replace(plot_number, '[^0-9]', '', 'g'), '') AS INTEGER) NULLS LAST,
+        			regexp_replace(plot_number, '[0-9]', '', 'g');
+        		""";
 
         return jdbc.query(sql, new PlotUnitRowMapper(), projectId);
     }
@@ -93,7 +97,11 @@ public class PlotUnitRepository {
     // GET BY PLOT
     // --------------------------
     public PlotUnitDto findByPlotId(UUID plotId) {
-        String sql = "SELECT * FROM plot_units WHERE plot_id = ? ORDER BY plot_number::int";
+        String sql = """
+        		SELECT * FROM plot_units WHERE plot_id = ?  
+        		ORDER BY  CAST(NULLIF(regexp_replace(plot_number, '[^0-9]', '', 'g'), '') AS INTEGER) NULLS LAST,
+        			regexp_replace(plot_number, '[0-9]', '', 'g');
+        		""";
         return jdbc.query(sql, new PlotUnitRowMapper(), plotId).getFirst();
     }
 

@@ -31,7 +31,6 @@ public class CommissionService {
 	private final SaleCommissionRepository saleCommissionRepository;
 
 	public void distributeCommission(SaleDTO sale) {
-
 		// 1. Fetch salesperson
 		UUID soldBy = sale.getSoldBy();
 		// 2. Get hierarchy upwards (PA → PM → PH → MD ...)
@@ -51,6 +50,9 @@ public class CommissionService {
 					new SaleCommissionDTO(sale.getSaleId(), user.getUserId(), user.getRoleId(), pct, amt));
 		}
 	}
+	
+	
+
 
 	public SaleCommissionDTO insertCommission(SaleCommissionDTO dto) {
 		return saleCommissionRepository.insertCommission(dto);

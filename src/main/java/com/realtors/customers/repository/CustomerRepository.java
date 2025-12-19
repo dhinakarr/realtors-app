@@ -288,24 +288,18 @@ public class CustomerRepository {
 			// 1. Load current comments
 			List<Map<String, Object>> comments = Optional.ofNullable(getCommentsByCustomerId(customerId))
 					.orElseGet(ArrayList::new);
-
 			// 2. Prepare new comment
 			UUID currentUserId = AppUtil.getCurrentUserId();
 			AppUserDto userDto = userService.getUserById(currentUserId).orElse(null);
-
 			newComment.put("userId", currentUserId.toString());
 			newComment.put("userName", userDto != null ? userDto.getFullName() : "Unknown");
 			newComment.put("addedAt", java.time.LocalDateTime.now().toString());
-
 			// 3. Add to comment list
 			comments.add(newComment);
-
 			// 4. Convert to JSON
 			String json = mapper.writeValueAsString(comments);
-
 			// 5. Update the table (audit columns included)
 			String sql = "UPDATE customers SET comments = ?::jsonb, updated_by = ?, updated_at = NOW() WHERE customer_id = ?";
-
 			jdbc.update(sql, json, currentUserId, customerId);
 			comments.sort(
 				    Comparator.comparing(
@@ -313,9 +307,7 @@ public class CustomerRepository {
 				        Comparator.reverseOrder()
 				    )
 				);
-
 			return comments;
-
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to update comments", e);
 		}
@@ -358,17 +350,11 @@ public class CustomerRepository {
 						rs.getObject("created_by", java.util.UUID.class)));
 	}
 
-	/*
-	 * public List<CustomerDto> listByHierarchy(Set<UUID> visibleUserIds) {
-	 * 
-	 * String sql = """ SELECT c.customer_id, c.customer_name, c.mobile, c.email,
-	 * c.address, c.created_at FROM customers c WHERE c.created_by = ANY(?) """;
-	 * 
-	 * return jdbc.query(sql, ps -> { Array array =
-	 * ps.getConnection().createArrayOf("UUID", visibleUserIds.toArray());
-	 * ps.setArray(1, array); }, (rs, row) -> new CustomerDto(
-	 * UUID.fromString(rs.getString("customer_id")), rs.getString("customer_name"),
-	 * rs.getString("mobile"), rs.getString("email"), rs.getString("address"),
-	 * rs.getTimestamp("created_at").toLocalDateTime() ) ); }
-	 */
+	public List<CustomerMiniDto> getAllCustomers() {
+		String sql = "SELECT customer_id, customer_name, mobile, created_by FROM customers";
+		return jdbc.query(sql, (rs, rowNum) -> new CustomerMiniDto(rs.getObject("customer_id", java.util.UUID.class),
+						rs.getString("customer_name"), rs.getLong("mobile"),
+						rs.getObject("created_by", java.util.UUID.class)));
+		
+	}
 }

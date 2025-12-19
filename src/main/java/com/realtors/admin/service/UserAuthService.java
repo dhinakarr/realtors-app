@@ -54,8 +54,6 @@ public class UserAuthService {
 		if (!passwordEncoder.matches(password, hashedPassword)) {
 			throw new IllegalArgumentException("Invalid username or password");
 		}
-			
-		
 		// Handling Token
 		String token = jwtUtil.generateToken(email, userId.toString(), roleId);
 		String refToken = jwtUtil.generateRefreshToken(userId.toString());
@@ -98,5 +96,13 @@ public class UserAuthService {
 	                ps.setString(5, type);
 	            }
 	        });
+	 }
+	 
+	 public boolean isUserPresent(UUID userId) {
+		 String authSql = "SELECT  * FROM user_auth where user_id=? ";
+			List<Map<String, Object>> authData = jdbcTemplate.queryForList(authSql, userId);
+			if (authData.isEmpty())
+				return false;
+			else return true;
 	 }
 }

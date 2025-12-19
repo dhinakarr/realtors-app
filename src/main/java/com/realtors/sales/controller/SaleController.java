@@ -3,9 +3,8 @@ package com.realtors.sales.controller;
 import java.util.List;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,14 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.realtors.common.ApiResponse;
-import com.realtors.common.exception.ResourceNotFoundException;
-import com.realtors.customers.dto.CustomerDto;
-import com.realtors.customers.repository.CustomerRepository;
-import com.realtors.projects.dto.PlotUnitDto;
-import com.realtors.projects.dto.ProjectDto;
-import com.realtors.projects.repository.PlotUnitRepository;
-import com.realtors.projects.repository.ProjectRepository;
-import com.realtors.projects.services.FileStorageService;
 import com.realtors.sales.dto.PaymentDTO;
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleCreateRequest;
@@ -45,7 +36,7 @@ public class SaleController {
 	private final CommissionService commissionService;
 	private final PaymentService paymentService;
 	private final VisibilityService visibilityService;
-	private static final Logger logger = LoggerFactory.getLogger(SaleController.class);
+//	private static final Logger logger = LoggerFactory.getLogger(SaleController.class);
 
 	@PostMapping
 	public ResponseEntity<ApiResponse<SaleDTO>> createSale(@RequestBody SaleCreateRequest request) {

@@ -3,6 +3,8 @@ package com.realtors.sales.service;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +34,8 @@ public class SaleService {
 	private final CommissionService commissionService;
 	private final CustomerService customerService;
 	private final UserAuthService authService;
+	private final CommissionPaymentService comPayService;
+//	private static final Logger logger = LoggerFactory.getLogger(SaleService.class);
 
 	public SaleDTO getSaleById(UUID saleId) {
 		return saleRepository.findById(saleId);
@@ -68,11 +72,10 @@ public class SaleService {
 
 		// insert customer into user_auth table to enable login access to customer
 		CustomerDto customerDto = customerService.getCustomer(request.getCustomerId());
-		authService.createUserAuth(customerDto.getCustomerId(), customerDto.getEmail(), "Test@123", customerDto.getRoleId(), "CUSTOMER");
-
+		if(!authService.isUserPresent(customerDto.getCustomerId()))
+			authService.createUserAuth(customerDto.getCustomerId(), customerDto.getEmail(), "Test@123", customerDto.getRoleId(), "CUSTOMER");
 		// 6. Distribute commission after sale creation
-		commissionService.distributeCommission(sale);
-
+		comPayService.distributeCommission(sale.getSaleId(), area);
 		return sale;
 	}
 

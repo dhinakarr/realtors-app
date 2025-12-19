@@ -29,16 +29,6 @@ public class PlotUnitController {
 		return ResponseEntity.ok(ApiResponse.success("Plots fetched successfully", projects, HttpStatus.OK));
 	}
 
-
-	// AUTO GENERATE PLOTS AFTER PROJECT CREATION
-	@PostMapping("/generate")
-	public ResponseEntity<ApiResponse<PlotUnitDto>> generate(@RequestParam UUID projectId, @RequestParam int total,
-			@RequestParam int startNumber) {
-
-		service.generatePlots(projectId, total, startNumber);
-		return ResponseEntity.ok(ApiResponse.success("Plots generated successfully", null, HttpStatus.OK));
-	}
-
 	@GetMapping("/{plotId}")
 	public ResponseEntity<ApiResponse<PlotUnitDto>> getByPlot(@PathVariable UUID plotId) {
 		PlotUnitDto dto = service.getByPlotId(plotId);

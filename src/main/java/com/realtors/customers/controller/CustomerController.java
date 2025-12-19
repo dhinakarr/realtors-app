@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -32,19 +33,25 @@ import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.common.util.AppUtil;
+import com.realtors.common.util.JwtUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
 import com.realtors.customers.dto.CustomerDto;
 import com.realtors.customers.dto.CustomerMiniDto;
 import com.realtors.customers.service.CustomerService;
+
+import io.jsonwebtoken.Claims;
 
 @RestController
 @RequestMapping("/api/customers")
 public class CustomerController {
 
 	private CustomerService service;
+	private final JwtUtil jwtUtil;
 	protected final Logger logger = Logger.getLogger(getClass().getName());
-	public CustomerController(CustomerService service) {
+	
+	public CustomerController(CustomerService service, JwtUtil jwtUtil) {
 		this.service = service;
+		this.jwtUtil = jwtUtil;
 	}
 	
 	@GetMapping("/form")
@@ -59,16 +66,24 @@ public class CustomerController {
 	}
 	
 	@GetMapping("/hierarchy-visible")
-	public ResponseEntity<?> getHierarchyVisibleCustomers() {
+	public ResponseEntity<?> getHierarchyVisibleCustomers(@RequestHeader("Authorization") String header) {
+        String roleId = getRoleId(header);
 	    UUID userId = AppUtil.getCurrentUserId();
-	    List<CustomerMiniDto> customers = service.getCustomersVisibleToUser(userId);
+	    List<CustomerMiniDto> customers = service.getCustomersVisibleToUser(userId, roleId);
 	    return ResponseEntity.ok(Map.of("success", true, "data", customers));
 	}
 	
+	private String getRoleId(String header) {
+		String token = header.substring(7);
+        Claims claims = jwtUtil.extractClaims(token);
+        return claims.get("roleId", String.class);
+	}
+	
 	@GetMapping
-	public ResponseEntity<ApiResponse<List<CustomerMiniDto>>> getAiiCustomers() {
+	public ResponseEntity<ApiResponse<List<CustomerMiniDto>>> getAllCustomers(@RequestHeader("Authorization") String header) {
 		UUID userId = AppUtil.getCurrentUserId();
-		return ResponseEntity.ok(ApiResponse.success("Customer Form Fields",service.getCustomersVisibleToUser(userId)));
+		String roleId = getRoleId(header);
+		return ResponseEntity.ok(ApiResponse.success("Customer Form Fields",service.getCustomersVisibleToUser(userId, roleId)));
 	}
 
 	@PostMapping(consumes = { "multipart/form-data" })	

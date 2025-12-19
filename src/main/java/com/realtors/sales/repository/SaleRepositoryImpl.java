@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -25,11 +25,11 @@ import lombok.RequiredArgsConstructor;
 public class SaleRepositoryImpl implements SaleRepository {
 
 	private final JdbcTemplate jdbc;
-	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
+//	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
+	
 	@Override
 	public SaleDTO createSale(UUID plotId, UUID projectId, UUID customerId, UUID soldBy, BigDecimal area,
 			BigDecimal basePrice, BigDecimal extraCharges, BigDecimal totalPrice) {
-
 		String sql = """
 				    INSERT INTO sales
 				    (plot_id, project_id, customer_id, sold_by, area, base_price, extra_charges, total_price, sale_status)
@@ -37,7 +37,6 @@ public class SaleRepositoryImpl implements SaleRepository {
 				    RETURNING sale_id, plot_id, project_id, customer_id, sold_by,
 				              area, base_price, extra_charges, total_price, sale_status, confirmed_at
 				""";
-
 		return jdbc.queryForObject(sql, new SaleRowMapper(), plotId, projectId, customerId, soldBy, area, basePrice,
 				extraCharges, totalPrice, SalesStatus.BOOKED.toString());
 	}
@@ -49,7 +48,6 @@ public class SaleRepositoryImpl implements SaleRepository {
 				           base_price, extra_charges, total_price, sale_status, confirmed_at
 				    FROM sales WHERE plot_id = ?
 				""";
-//		logger.info("@SaleRpositoryImpl.findSaleByPlotId sql: "+sql);
 		return jdbc.queryForObject(sql, new SaleRowMapper(), plotId);
 	}
 
@@ -60,7 +58,6 @@ public class SaleRepositoryImpl implements SaleRepository {
 				           base_price, extra_charges, total_price, sale_status, confirmed_at
 				    FROM sales WHERE sale_id = ?
 				""";
-
 		return jdbc.queryForObject(sql, new SaleRowMapper(), saleId);
 	}
 
@@ -84,25 +81,16 @@ public class SaleRepositoryImpl implements SaleRepository {
 	}
 	
 	@Override
-	public List<CashFlowItemDTO> findReceivables(
-			LocalDate from,
-			LocalDate to
-	) {
+	public List<CashFlowItemDTO> findReceivables(LocalDate from, LocalDate to) {
 		String sql = """
-			SELECT
-				s.sale_id,
-				pl.plot_number,
-				c.customer_name AS customer_name,
-				(s.total_price - COALESCE(p.total_received, 0)) AS outstanding
+			SELECT s.sale_id, pl.plot_number, c.customer_name AS customer_name, (s.total_price - COALESCE(p.total_received, 0)) AS outstanding
 			FROM sales s
 			JOIN plot_units pl ON pl.plot_id = s.plot_id
 			JOIN customers c ON c.customer_id = s.customer_id
 			LEFT JOIN (
 				SELECT sale_id, SUM(amount) total_received
 				FROM payments
-				WHERE payment_type = 'RECEIVED'
-				  AND is_verified = true
-				GROUP BY sale_id
+				WHERE payment_type = 'RECEIVED' AND is_verified = true GROUP BY sale_id
 			) p ON p.sale_id = s.sale_id
 			WHERE (s.total_price - COALESCE(p.total_received, 0)) > 0
 		""";
