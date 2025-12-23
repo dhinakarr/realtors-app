@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.repository.PlotUnitRepository;
 import com.realtors.sales.dto.PlotStatus;
@@ -50,12 +51,12 @@ public class SaleLifecycleService {
 		
 		BigDecimal totalSales = saleRepo.getTotalAmount(saleId);
 	    BigDecimal received = paymentRepo.getTotalReceived(saleId);
-	     totalSales.subtract(received);
+	     totalSales.subtract(AppUtil.nz(received));
 
 		return SalePaymentSummaryDTO.builder().
 				totalSaleAmount(totalSales)
 				.totalReceived(received)
-				.outstandingAmount( totalSales.subtract(received))
+				.outstandingAmount( totalSales.subtract(AppUtil.nz(received)))
 				.commissionPaid(paymentRepo.getTotalPaid(saleId)).build();
 	}
 

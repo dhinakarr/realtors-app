@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
+import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.repository.PlotUnitRepository;
@@ -77,9 +78,9 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	    sqftRate = projectDto.getPricePerSqft();
     	}
         BigDecimal basePrice = pricingService.calculateBasePrice(area, sqftRate);
-        BigDecimal totalPrice = basePrice.add(projectDto.getRegCharges())
-        											.add(projectDto.getDocCharges())
-        											.add(projectDto.getOtherCharges());
+        BigDecimal totalPrice = basePrice.add(AppUtil.nz(projectDto.getRegCharges()))
+        											.add(AppUtil.nz(projectDto.getDocCharges()))
+        											.add(AppUtil.nz(projectDto.getOtherCharges()));
     	
     	partialData.put("area", area);
     	partialData.put("basePrice", basePrice);

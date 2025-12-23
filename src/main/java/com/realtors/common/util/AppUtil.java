@@ -1,5 +1,6 @@
 package com.realtors.common.util;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,4 +24,8 @@ public class AppUtil {
             return null;
         }
     }
+	
+	public static BigDecimal nz(BigDecimal value) {
+		return value == null ? BigDecimal.ZERO : value;
+	}
 }

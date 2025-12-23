@@ -39,7 +39,7 @@ public class PaymentService {
 	public BigDecimal getTotalOutstanding() {
 	    BigDecimal totalSales = salestRepo.getTotalSalesAmount();
 	    BigDecimal received = paymentRepo.getTotalReceivedAll();
-	    return totalSales.subtract(received);
+	    return totalSales.subtract(AppUtil.nz(received));
 	}
 	
 	public BigDecimal getTotalReceivable() {
@@ -104,7 +104,7 @@ public class PaymentService {
 	public BigDecimal getOutstanding(UUID saleId) {
 		BigDecimal totalSale = getTotalSaleAmount(saleId);
 		BigDecimal totalReceived = getTotalReceived(saleId);
-		return totalSale.subtract(totalReceived);
+		return totalSale.subtract(AppUtil.nz(totalReceived));
 	}
 
 	public BigDecimal getCommissionPaid(UUID saleId) {
@@ -182,7 +182,7 @@ public class PaymentService {
 	public BigDecimal getOutstandingAmount(UUID saleId) {
 	    BigDecimal totalSale = salestRepo.getTotalAmount(saleId);
 	    BigDecimal received  = paymentRepo.getTotalReceived(saleId);
-	    return totalSale.subtract(received);
+	    return totalSale.subtract(AppUtil.nz(received));
 	}
 
 }

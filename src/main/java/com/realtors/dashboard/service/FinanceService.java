@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class FinanceDashboardService {
+public class FinanceService {
 
 	private final PaymentService paymentService;
 	private final CommissionService commissionService;

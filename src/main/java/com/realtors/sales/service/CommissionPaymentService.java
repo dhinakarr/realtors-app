@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.realtors.common.util.AppUtil;
 import com.realtors.sales.dto.CommissionRule;
 import com.realtors.sales.dto.SaleContext;
 import com.realtors.sales.dto.UserNode;
@@ -134,7 +135,7 @@ public class CommissionPaymentService {
 	            BigDecimal percentage = e.getValue();
 	            ps.setObject(1, sale.saleId());
 	            ps.setObject(2, userId);
-	            BigDecimal commission = basePrice.multiply(percentage);
+	            BigDecimal commission = basePrice.multiply(AppUtil.nz(percentage));
 	            // Seller earns under seller role, others under their own role
 	            UUID roleId = userId.equals(sale.sellerUserId())
 	                    ? sale.sellerRoleId()

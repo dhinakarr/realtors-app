@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.realtors.common.ApiResponse;
-import com.realtors.dashboard.service.FinanceDashboardService;
+import com.realtors.dashboard.service.FinanceService;
 import com.realtors.sales.finance.dto.CashFlowItemDTO;
 import com.realtors.sales.finance.dto.CashFlowStatus;
 import com.realtors.sales.finance.dto.CashFlowType;
@@ -24,9 +24,9 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/finance")
 @RequiredArgsConstructor
-public class FinanceDashboardController {
+public class FinanceController {
 
-	private final FinanceDashboardService service;
+	private final FinanceService service;
 
 	@GetMapping("/summary")
 	public ResponseEntity<ApiResponse<FinanceSummaryDTO>> getSummary() {

@@ -174,6 +174,28 @@ CREATE TABLE projects (
     updated_by UUID
 );
 
+CREATE TABLE plot_units (
+    plot_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE,
+    plot_number VARCHAR(10),
+    area DECIMAL(10, 2),
+    base_price DECIMAL(10,2),
+	road_width VARCHAR(20),
+	survey_num VARCHAR(30),
+	facing VARCHAR(10),
+	width DECIMAL(10, 2),
+	breath DECIMAL(10,2),
+	total_price DECIMAL(10,2),
+	is_prime BOOLEAN DEFAULT FALSE,
+    status TEXT DEFAULT 'AVAILABLE',
+    customer_id UUID ,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	updated_by UUID,
+	remarks TEXT,
+    sold_at TIMESTAMP
+);
+
 CREATE INDEX idx_projects_status ON projects(status);
 CREATE INDEX idx_projects_created_at ON projects(created_at);
 
@@ -199,27 +221,7 @@ CREATE TABLE project_ownership (
 	PRIMARY KEY(project_id, user_id, role_id)
 );
 
-CREATE TABLE plot_units (
-    plot_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    project_id UUID REFERENCES projects(project_id) ON DELETE CASCADE,
-    plot_number VARCHAR(10),
-    area DECIMAL(10, 2),
-    base_price DECIMAL(10,2),
-	road_width VARCHAR(20),
-	survey_num VARCHAR(30),
-	facing VARCHAR(10),
-	width DECIMAL(10, 2),
-	breath DECIMAL(10,2),
-	total_price DECIMAL(10,2),
-	is_prime BOOLEAN DEFAULT FALSE,
-    status TEXT DEFAULT 'AVAILABLE',
-    customer_id UUID ,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-	updated_by UUID,
-	remarks TEXT,
-    sold_at TIMESTAMP
-);
+
 CREATE INDEX idx_plot_units_project_id ON plot_units(project_id);
 CREATE INDEX idx_plot_units_status ON plot_units(status);
 CREATE INDEX idx_plot_units_customer_id ON plot_units(customer_id);
@@ -346,7 +348,7 @@ SELECT
     pl.plot_id,
     pl.plot_number,
     s.total_price         AS sale_amount,
-	COALESCE(cr.total_received) AS customer_paid,
+	COALESCE(cr.total_received, 0) AS customer_paid,
     sc.commission_amount  AS total_commission,
     
     COALESCE(cp.total_paid)    AS commission_paid,
@@ -408,6 +410,67 @@ WHERE
     AND sc.commission_amount > 0;
 
 
+CREATE OR REPLACE VIEW v_inventory_status AS
+SELECT
+	p.project_id,
+    pr.project_name,
+    p.plot_id,
+    p.plot_number,
+
+    COALESCE(
+        s.sale_status,
+        'AVAILABLE'
+    ) AS inventory_status
+
+FROM plot_units p
+JOIN projects pr ON pr.project_id = p.project_id
+
+LEFT JOIN LATERAL (
+    SELECT
+        s1.sale_status
+    FROM sales s1
+    WHERE s1.plot_id = p.plot_id
+    ORDER BY s1.confirmed_at DESC
+    LIMIT 1
+) s ON true;
+
+
+
+CREATE OR REPLACE VIEW v_receivable_trend AS
+SELECT
+    DATE_TRUNC('month', confirmed_at) AS month,
+    SUM(outstanding_amount) AS total_outstanding
+FROM v_receivable_details
+GROUP BY DATE_TRUNC('month', confirmed_at);
+
+
+CREATE OR REPLACE VIEW v_commission_trend AS
+SELECT
+    DATE_TRUNC('month', confirmed_at) AS month,
+    SUM(commission_payable) AS total_payable
+FROM v_commission_payable_details
+GROUP BY DATE_TRUNC('month', confirmed_at);
+
+
+CREATE OR REPLACE VIEW v_recent_bookings AS
+SELECT
+    s.sale_id,
+    pr.project_name,
+    pl.plot_number,
+    c.customer_name,
+    u.full_name AS agent_name,
+    s.sale_status,
+    s.confirmed_at
+FROM sales s
+JOIN plot_units pl ON pl.plot_id = s.plot_id
+JOIN projects pr ON pr.project_id = pl.project_id
+JOIN customers c ON c.customer_id = s.customer_id
+JOIN app_users u ON u.user_id = s.sold_by
+ORDER BY s.confirmed_at DESC;
+
+
+
+
 
 CREATE INDEX idx_sales_booked ON sales(sale_status);
 CREATE INDEX idx_sales_project ON sales(project_id);
@@ -415,6 +478,10 @@ CREATE INDEX idx_sales_customer ON sales(customer_id);
 CREATE INDEX idx_payments_received ON payments(sale_id, payment_type);
 CREATE INDEX idx_payments_sale_id ON payments(sale_id);
 CREATE INDEX idx_payments_type ON payments(payment_type);
+
+CREATE INDEX idx_payments_paid_to ON payments(sale_id, paid_to, payment_type);
+
+
 
 -- sales
 CREATE INDEX idx_sales_project_id ON sales(project_id);
@@ -459,9 +526,124 @@ SELECT
 FROM v_sale_payments_summary;
 
 
+DASHBOARD VIEWS
+====================================
+
+CREATE OR REPLACE VIEW v_receivable_snapshot AS
+SELECT
+    project_id,
+    COUNT(DISTINCT sale_id)             AS total_sales,
+    SUM(sale_amount)                    AS total_sale_amount,
+    SUM(total_received)                 AS total_received,
+    SUM(outstanding_amount)             AS total_outstanding
+FROM v_receivable_details
+GROUP BY project_id;
+
+CREATE OR REPLACE VIEW v_commission_snapshot AS
+SELECT
+    project_id,
+    COUNT(DISTINCT sale_id)                 AS total_sales,
+    SUM(total_commission)                   AS total_commission,
+    SUM(commission_paid)                    AS total_commission_paid,
+    SUM(commission_payable)                 AS total_commission_payable
+FROM v_commission_payable_details
+GROUP BY project_id;
+
+CREATE OR REPLACE VIEW v_receivable_monthly_trend AS
+SELECT
+    DATE_TRUNC('month', confirmed_at)   AS month,
+    SUM(sale_amount)                    AS total_sales,
+    SUM(total_received)                 AS total_received,
+    SUM(outstanding_amount)             AS outstanding
+FROM v_receivable_details
+GROUP BY DATE_TRUNC('month', confirmed_at)
+ORDER BY month;
+
+CREATE OR REPLACE VIEW v_commission_monthly_trend AS
+SELECT
+    DATE_TRUNC('month', confirmed_at)   AS month,
+    SUM(total_commission)               AS total_commission,
+    SUM(commission_paid)                AS paid,
+    SUM(commission_payable)             AS payable
+FROM v_commission_payable_details
+GROUP BY DATE_TRUNC('month', confirmed_at)
+ORDER BY month;
 
 
 
+CREATE OR REPLACE VIEW v_sales_fact AS
+SELECT
+    sale_id,
+    project_id,
+    plot_id,
+    sold_by               AS sold_by_user_id,
+    DATE(confirmed_at)    AS sale_date,
+    total_price           AS sale_amount
+FROM sales 
+WHERE sale_status in ('CONFIRMED', 'BOOKED', 'IN_PROGRESS')
+GROUP BY
+	sale_id,
+    sold_by,
+    project_id,
+    DATE(confirmed_at);
+
+CREATE OR REPLACE VIEW v_sales_summary AS
+SELECT
+    sold_by_user_id         AS user_id,
+    project_id,
+    sale_date,
+    COUNT(sale_id)          AS total_sales,
+    SUM(sale_amount)        AS total_sales_amount
+FROM v_sales_fact
+GROUP BY
+    sold_by_user_id,
+    project_id,
+    sale_date;
+
+CREATE OR REPLACE VIEW v_commission_fact AS
+SELECT
+    sc.commission_id,
+    sc.sale_id,
+    s.project_id,
+    sc.user_id              AS commission_user_id,
+    sc.role_id,
+    DATE(s.confirmed_at)    AS sale_date,
+    sc.commission_amount,
+    sc.is_released,
+    sc.released_at
+FROM sale_commissions sc
+JOIN sales s ON s.sale_id = sc.sale_id
+WHERE s.sale_status in ('CONFIRMED', 'BOOKED', 'SOLD', 'IN_PROGRESS');
+
+
+CREATE OR REPLACE VIEW v_payment_fact AS
+SELECT
+    p.payment_id,
+    p.sale_id,
+    s.project_id,
+    DATE(p.payment_date)    AS payment_date,
+    p.amount,
+    p.payment_type,
+    p.collected_by          AS collected_by_user_id,
+    p.paid_to               AS paid_to_user_id
+FROM payments p
+JOIN sales s ON s.sale_id = p.sale_id;
+
+
+
+
+CREATE OR REPLACE VIEW v_plot_inventory AS
+SELECT
+    project_id,
+    status,
+    COUNT(*) AS total_plots
+FROM plot_units
+GROUP BY
+    project_id,
+    status;
+
+
+=============================================
 
 
 CREATE TABLE customers (
@@ -496,20 +678,6 @@ CREATE TABLE customer_documents (
 	file_name VARCHAR(300),
 	uploaded_by UUID,
     uploaded_at TIMESTAMP DEFAULT NOW()
-);
-
-
-CREATE TABLE order_items (
-	id BIGSERIAL PRIMARY KEY,
-	order_id BIGINT REFERENCES orders(id) ON DELETE CASCADE,
-	customer_id BIGINT REFERENCES app_users(user_id) NOT NULL,
-	plot_unit_id BIGINT REFERENCES plot_units(id) ON DELETE RESTRICT,
-	unit_price NUMERIC(18,2) NOT NULL,
-	discount NUMERIC(10,2) DEFAULT 0,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-	meta JSONB,-- can hold the financial transaction data as it can happen multiple times
-	net_amount NUMERIC(18,2) NOT NULL -- (unit_price * qty - discount)
 );
 
 CREATE OR REPLACE FUNCTION set_role_level()
@@ -760,10 +928,13 @@ WHERE table_name = 'customers'
   
 UPDATE form_metadata
 SET field_type = 'select', display_label='Role Type',
-    lookup_key = '["INTERNAL","CUSTOMER","FINANCE", "HR"]'::jsonb,
-    lookup_label = '["INTERNAL","CUSTOMER","FINANCE", "HR"]'::jsonb
+    lookup_key = '["INTERNAL","CUSTOMER","FINANCE", "HR", "PH", "PA", "PM", "MD"]'::jsonb,
+    lookup_label = '["INTERNAL","CUSTOMER","FINANCE", "HR", "PH", "PA", "PM", "MD"]'::jsonb
 WHERE table_name = 'roles'
   AND column_name = 'finance_role';  
+  
+alter table form_metadata ALTER COLUMN lookup_key TYPE VARCHAR(255);
+alter table form_metadata ALTER COLUMN lookup_label TYPE VARCHAR(255);
 
 
 delete from form_metadata where sort_order=12 AND table_name='projects'
@@ -802,3 +973,40 @@ VALUES
  ('plot_units', 'is_prime', 'Prime Plot?', 'checkbox', FALSE, FALSE, NULL, NULL, NULL,
  '{"placeholder": "Prime Plot"}'::jsonb,
  6)
+ 
+ 
+ INSERT INTO form_metadata
+(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
+VALUES  
+('projects', 'guidance_value', 'Guideline Value', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Guideline Value"}'::jsonb,
+ 12),
+ ('projects', 'image', 'Image Upload', 'file', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Upload image files"}'::jsonb,
+ 13),
+ 
+ INSERT INTO form_metadata
+(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, 
+lookup_label, extra_settings, sort_order)
+VALUES  
+ ('site_visits', 'visit_date', 'Date of Visit', 'date', FALSE, TRUE, NULL, NULL, NULL,
+ '{"placeholder": "Date of Visit"}'::jsonb,
+ 1),
+ ('site_visits', 'user_id', 'Select PA/PM', 'select', FALSE, TRUE, 'app_users', 'user_id', 'full_name',
+ '{"placeholder": "User"}'::jsonb,
+ 2),
+ ('site_visits', 'project_id', 'Select Project', 'select', FALSE, TRUE, 'projects', 'project_id', 'project_name',
+ '{"placeholder": "Select Project"}'::jsonb,
+ 3),
+ ('site_visits', 'customer_id', 'Select Customer', 'select', FALSE, TRUE, 'customers', 'customer_id', 'customer_name',
+ '{"placeholder": "Select Customer", "multiple":true}'::jsonb,
+ 4),
+ ('site_visits', 'vehicle_type', 'Vehicle Type', 'select', FALSE, FALSE, NULL, '["Customer", "Own", "Company"]', '["Customer", "Own", "Company"]',
+ '{"placeholder": "Vehicle Type"}'::jsonb,
+ 5),
+ ('site_visits', 'expense_amount', 'Expense Amount', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Expense Amount", "maxLength":"8"}'::jsonb,
+ 6),
+ ('site_visits', 'remarks', 'Remarks', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Remarks"}'::jsonb,
+ 7)

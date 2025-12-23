@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.RoleDto;
 import com.realtors.admin.dto.RoleType;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
@@ -107,6 +108,11 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 
 	public List<CustomerDto> search(String searchText) {
 		return super.search(searchText, List.of("customer_name", "email", "address", "mobile"), null);
+	}
+	
+	public PagedResult<CustomerDto> getPaginatedUsers(int page, int size) {
+		PagedResult<CustomerDto> data = super.findAllPaginated(page, size, null);
+		return data;
 	}
 
 	@Transactional(value = "txManager")

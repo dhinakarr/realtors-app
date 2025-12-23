@@ -217,8 +217,15 @@ public class PaymentRepositoryImpl {
 	}
 	
 	public List<ReceivableDetailsDTO> findPendingPaged(int limit, int offset) {
-		String sql = "SELECT *  FROM v_receivable_details WHERE outstanding_amount > 0 AND agent_id = ?  LIMIT ? OFFSET ?";
-	    return jdbc.query( sql, new ReceivableDetailsRowMapper(), limit, offset);
+	    String sql = """
+	        SELECT *
+	        FROM v_receivable_details
+	        WHERE outstanding_amount > 0
+	        ORDER BY confirmed_at DESC NULLS LAST
+	        LIMIT ? OFFSET ?	
+	    """;
+
+	    return jdbc.query(sql, new ReceivableDetailsRowMapper(), limit, offset);
 	}
 	
 	public BigDecimal getOutstandingDueToday() {

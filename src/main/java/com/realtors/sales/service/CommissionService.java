@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.service.UserHierarchyService;
+import com.realtors.common.util.AppUtil;
 import com.realtors.sales.dto.CommissionRuleDTO;
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleDTO;
@@ -44,7 +45,7 @@ public class CommissionService {
 				continue;
 
 			BigDecimal pct = rule.getPercentage();
-			BigDecimal amt = sale.getArea().multiply(pct);
+			BigDecimal amt = sale.getArea().multiply(AppUtil.nz(pct));
 
 			saleCommissionRepository.insertCommission(
 					new SaleCommissionDTO(sale.getSaleId(), user.getUserId(), user.getRoleId(), pct, amt));

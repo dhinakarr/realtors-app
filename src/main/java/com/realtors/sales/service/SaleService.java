@@ -53,13 +53,13 @@ public class SaleService {
 		ProjectDto project = projectService.findById(plot.getProjectId()).orElse(null);
 		BigDecimal area = plot.getArea();
 		// 3. Calculate base price
-		BigDecimal basePrice = area.multiply(project.getPricePerSqft());
+		BigDecimal basePrice = area.multiply(AppUtil.nz(project.getPricePerSqft()));
 		// 4. Determine extra charges
 		BigDecimal extraCharges = request.getExtraCharges();
 		if (extraCharges == null)
 			extraCharges = calculateExtraCharges(project);
 
-		BigDecimal totalPrice = basePrice.add(extraCharges);
+		BigDecimal totalPrice = basePrice.add(AppUtil.nz(extraCharges));
 		UUID userId = request.getSoldBy() == null ? AppUtil.getCurrentUserId() : request.getSoldBy();
 
 		// 5. Create Sale in DB
@@ -106,7 +106,7 @@ public class SaleService {
 		BigDecimal result = BigDecimal.ZERO;
 		for (BigDecimal v : values) {
 			if (v != null)
-				result = result.add(v);
+				result = result.add(AppUtil.nz(v));
 		}
 		return result;
 	}

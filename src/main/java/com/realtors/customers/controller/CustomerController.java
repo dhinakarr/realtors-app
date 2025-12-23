@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
@@ -42,8 +43,8 @@ import com.realtors.customers.service.CustomerService;
 import io.jsonwebtoken.Claims;
 
 @RestController
-@RequestMapping("/api/customers")
-public class CustomerController {
+	@RequestMapping("/api/customers")
+	public class CustomerController {
 
 	private CustomerService service;
 	private final JwtUtil jwtUtil;
@@ -191,6 +192,14 @@ public class CustomerController {
 		public ResponseEntity<ApiResponse<List<CustomerDto>>> searchCustomer(@RequestParam String searchText) {
 			List<CustomerDto> list = service.search(searchText);
 			return ResponseEntity.ok(ApiResponse.success("Search Data Fetched", list, HttpStatus.OK));
+		}
+		
+		@GetMapping("/pages")
+		public ResponseEntity<ApiResponse<List<CustomerDto>>> getPagedData(@RequestParam int page,
+				@RequestParam int size) {
+			List<CustomerDto> customers = service.getAllCustomers();
+			logger.info("@CustomerConroller.getPagedData customers: "+customers.toString());
+			return ResponseEntity.ok(ApiResponse.success("Active Customers fetched", customers));
 		}
 		
 		@GetMapping("/{customerId}/documents")

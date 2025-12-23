@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
-import com.realtors.admin.dto.UserBasicDto;
 import com.realtors.admin.dto.UserTreeDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;

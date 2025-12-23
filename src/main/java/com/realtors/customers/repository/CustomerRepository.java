@@ -50,6 +50,7 @@ public class CustomerRepository {
 	}
 
 	public UUID save(CustomerDto dto) {
+		String status = "ACTIVE";
 		String sql = """
 				    INSERT INTO customers
 				    (customer_name, email, mobile, date_of_birth, gender,
@@ -60,7 +61,7 @@ public class CustomerRepository {
 		UUID customerId = jdbc.queryForObject(sql, UUID.class, dto.getCustomerName(), dto.getEmail(), dto.getMobile(),
 				dto.getDateOfBirth(), dto.getGender(), dto.getAddress(), dto.getCity(), dto.getState(),
 				dto.getPincode(), dto.getAltMobile(), dto.getOccupation(), dto.getProfileImagePath(), dto.getNotes(),
-				dto.getStatus(), AppUtil.getCurrentUserId(), dto.getRoleId() // created_by (placeholder)
+				status, AppUtil.getCurrentUserId(), dto.getRoleId() // created_by (placeholder)
 		);
 		return customerId;
 	}
