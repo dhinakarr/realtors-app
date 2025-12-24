@@ -20,8 +20,8 @@ public class DashboardResponse {
     private List<InventoryStatsDTO> inventoryStats;
 
     // Tables
-    private List<ReceivableDTO> receivables;
-    private List<CommissionRowDTO> commissionPayables;
+    private List<ReceivableDetailDTO> receivables;
+    private List<CommissionDetailsDTO> commissionPayables;
 
     // Optional flags
     private boolean inventoryVisible;

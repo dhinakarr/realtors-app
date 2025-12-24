@@ -310,18 +310,10 @@ WHERE sold_by IN (SELECT user_id FROM manager_tree);
 
 CREATE VIEW v_receivable_details AS
 SELECT
-    s.sale_id,
-    s.project_id,
-    pr.project_name,
-	pl.plot_id,
-    pl.plot_number,
-    s.customer_id,
-    c.customer_name,
-    s.sold_by AS agent_id,
-    u.full_name AS agent_name,
-    s.total_price AS sale_amount,
+    s.sale_id, s.project_id, pr.project_name, pl.plot_id, pl.plot_number, s.customer_id,
+    c.customer_name, s.sold_by AS agent_id, u.full_name AS agent_name, s.total_price AS sale_amount,
     COALESCE(p.total_received, 0) AS total_received,
-    (s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
+	(s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
     s.confirmed_at
 FROM sales s
 JOIN projects pr ON pr.project_id = s.project_id
@@ -334,24 +326,14 @@ LEFT JOIN (
     WHERE payment_type = 'RECEIVED'
     GROUP BY sale_id
 ) p ON p.sale_id = s.sale_id
-WHERE s.sale_status in('BOOKED', 'IN_PROGRESS');
+
 
 
 CREATE OR REPLACE VIEW v_commission_payable_details AS
 SELECT
-    sc.commission_id,
-    sc.sale_id,
-    sc.user_id AS agent_id,
-    u.full_name           AS agent_name,
-    pr.project_id,
-    pr.project_name,
-    pl.plot_id,
-    pl.plot_number,
-    s.total_price         AS sale_amount,
-	COALESCE(cr.total_received, 0) AS customer_paid,
-    sc.commission_amount  AS total_commission,
-    
-    COALESCE(cp.total_paid)    AS commission_paid,
+    sc.commission_id, sc.sale_id, sc.user_id AS agent_id, u.full_name AS agent_name, pr.project_id, pr.project_name,
+    pl.plot_id, pl.plot_number, s.total_price AS sale_amount, COALESCE(cr.total_received, 0) AS customer_paid,
+    sc.commission_amount  AS total_commission, COALESCE(cp.total_paid) AS commission_paid,
 	ROUND(
     LEAST(
         sc.commission_amount,
@@ -378,27 +360,20 @@ SELECT
         0
 		),
 		0
-    ) AS commission_payable,
-    s.sale_status,
-    s.confirmed_at
+    ) AS commission_payable, s.sale_status, s.confirmed_at
 FROM sale_commissions sc
 JOIN sales s           ON s.sale_id = sc.sale_id
 JOIN app_users u       ON u.user_id = sc.user_id
 JOIN plot_units pl     ON pl.plot_id = s.plot_id
 JOIN projects pr       ON pr.project_id = pl.project_id
 LEFT JOIN (
-    SELECT
-        sale_id,
-        SUM(amount) AS total_received
+    SELECT sale_id, SUM(amount) AS total_received
     FROM payments
     WHERE payment_type = 'RECEIVED'
     GROUP BY sale_id
 ) cr ON cr.sale_id = s.sale_id
 LEFT JOIN (
-    SELECT
-        sale_id,
-        paid_to AS agent_id,
-        SUM(amount) AS total_paid
+    SELECT sale_id, paid_to AS agent_id, SUM(amount) AS total_paid
     FROM payments
     WHERE payment_type = 'PAID'
     GROUP BY sale_id, paid_to
@@ -411,28 +386,112 @@ WHERE
 
 
 CREATE OR REPLACE VIEW v_inventory_status AS
-SELECT
-	p.project_id,
-    pr.project_name,
-    p.plot_id,
-    p.plot_number,
-
-    COALESCE(
-        s.sale_status,
-        'AVAILABLE'
-    ) AS inventory_status
-
+SELECT p.project_id, pr.project_name, p.plot_id, p.plot_number, COALESCE(s.sale_status, 'AVAILABLE') AS inventory_status
 FROM plot_units p
 JOIN projects pr ON pr.project_id = p.project_id
-
 LEFT JOIN LATERAL (
-    SELECT
-        s1.sale_status
+    SELECT s1.sale_status
     FROM sales s1
     WHERE s1.plot_id = p.plot_id
     ORDER BY s1.confirmed_at DESC
     LIMIT 1
 ) s ON true;
+
+CREATE OR REPLACE VIEW v_dashboard_inventory_summary AS
+SELECT
+    project_id,
+    project_name,
+    COUNT(*) FILTER (WHERE inventory_status = 'AVAILABLE') AS available,
+    COUNT(*) FILTER (WHERE inventory_status in ( 'BOOKED', 'IN_PROGRESS')) AS booked,
+    COUNT(*) FILTER (WHERE inventory_status in ('SOLD', 'COMPLETED')) AS sold,
+    COUNT(*) AS total_plots
+FROM v_inventory_status
+GROUP BY project_id, project_name;
+
+
+CREATE OR REPLACE VIEW v_dashboard_financial_summary AS
+SELECT
+    project_id,
+    project_name,
+    SUM(sale_amount)          AS total_sales,
+    SUM(total_received)       AS total_received,
+    SUM(outstanding_amount)   AS total_outstanding
+FROM v_receivable_details
+GROUP BY project_id, project_name;
+
+CREATE OR REPLACE VIEW v_dashboard_agent_performance AS
+SELECT
+    agent_id,
+    agent_name,
+    COUNT(sale_id)            AS total_sales,
+    SUM(sale_amount)          AS sales_value
+FROM v_receivable_details
+GROUP BY agent_id, agent_name;
+
+CREATE OR REPLACE VIEW v_dashboard_commission_summary AS
+SELECT
+    agent_id,
+    agent_name,
+    SUM(total_commission)     AS total_commission,
+    SUM(commission_paid)      AS commission_paid,
+    SUM(commission_payable)   AS commission_payable
+FROM v_commission_payable_details
+GROUP BY agent_id, agent_name;
+
+
+CREATE OR REPLACE VIEW v_site_visit_summary AS
+SELECT
+    sv.project_id,
+    sv.user_id AS agent_id,
+    COUNT(DISTINCT sv.site_visit_id) AS total_visits,
+    COUNT(DISTINCT svc.customer_id)  AS total_customers
+FROM site_visits sv
+LEFT JOIN site_visit_customers svc ON svc.site_visit_id = sv.site_visit_id
+GROUP BY sv.project_id, sv.user_id;
+
+
+CREATE OR REPLACE VIEW v_site_visit_conversion AS
+SELECT
+    sv.user_id AS agent_id,
+    COUNT(DISTINCT sv.site_visit_id) AS visits,
+    COUNT(DISTINCT s.sale_id)        AS conversions,
+    ROUND(
+        COUNT(DISTINCT s.sale_id)::numeric
+        / NULLIF(COUNT(DISTINCT sv.site_visit_id), 0) * 100,
+        2
+    ) AS conversion_ratio
+FROM site_visits sv
+LEFT JOIN sales s
+       ON s.sold_by = sv.user_id
+      AND s.project_id = sv.project_id
+GROUP BY sv.user_id;
+
+CREATE OR REPLACE VIEW v_user_project_scope AS
+SELECT DISTINCT
+    s.sold_by    AS user_id,
+    s.project_id,
+    'SALES'      AS source
+FROM sales s
+
+UNION
+
+SELECT DISTINCT
+    sc.user_id,
+    s.project_id,
+    'COMMISSION'
+FROM sale_commissions sc
+JOIN sales s ON s.sale_id = sc.sale_id
+
+UNION
+
+SELECT DISTINCT
+    sv.user_id,
+    sv.project_id,
+    'SITE_VISIT'
+FROM site_visits sv;
+
+
+
 
 
 

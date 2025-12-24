@@ -11,5 +11,5 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CommissionDashboardDTO {
     private CommissionSummaryDTO summary;
-    private List<CommissionRowDTO> commissions;
+    private List<CommissionDetailsDTO> commissions;
 }

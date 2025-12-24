@@ -17,16 +17,20 @@ import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
+import com.realtors.admin.dto.RoleDto;
+import com.realtors.admin.service.RoleService;
 import com.realtors.common.config.JwtProperties;
 
 @Component
 public class JwtUtil {
 	
 	private final JwtProperties jwtProperties;
+	private RoleService roleService;
     private SecretKey key;
 
-    public JwtUtil(JwtProperties jwtProperties) {
+    public JwtUtil(JwtProperties jwtProperties, RoleService roleService) {
         this.jwtProperties = jwtProperties;
+        this.roleService = roleService;
     }
     
     @PostConstruct
@@ -43,7 +47,18 @@ public class JwtUtil {
     	Map<String, Object> claims = new HashMap<>();
         claims.put("email", email);
         claims.put("userId", userId);
-        if (roleId != null) claims.put("roleId", roleId);
+        
+        if (roleId != null) {
+            RoleDto role = roleService.findById(roleId)
+                    .orElseThrow(() -> new IllegalStateException("Invalid roleId"));
+
+            // 🔥 BUSINESS ROLE (for runtime auth)
+            claims.put("roleCode", role.getFinanceRole()); // PM / PH / MD / FINANCE
+
+            // Optional (audit / debugging)
+            claims.put("roleId", roleId.toString());
+        }
+        
         claims.put("jti", UUID.randomUUID().toString());
     	
         long now = System.currentTimeMillis();

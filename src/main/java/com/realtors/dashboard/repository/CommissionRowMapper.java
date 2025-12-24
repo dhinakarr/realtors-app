@@ -2,17 +2,17 @@ package com.realtors.dashboard.repository;
 
 import org.springframework.jdbc.core.RowMapper;
 
-import com.realtors.dashboard.dto.CommissionRowDTO;
+import com.realtors.dashboard.dto.CommissionDetailsDTO;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class CommissionRowMapper implements RowMapper<CommissionRowDTO> {
+public class CommissionRowMapper implements RowMapper<CommissionDetailsDTO> {
 
     @Override
-    public CommissionRowDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public CommissionDetailsDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
 
-        CommissionRowDTO dto = new CommissionRowDTO();
+        CommissionDetailsDTO dto = new CommissionDetailsDTO();
 
         dto.setCommissionId(rs.getObject("commission_id", java.util.UUID.class));
         dto.setSaleId(rs.getObject("sale_id", java.util.UUID.class));

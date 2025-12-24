@@ -9,9 +9,11 @@ import lombok.RequiredArgsConstructor;
 @Data
 @AllArgsConstructor
 @RequiredArgsConstructor
-public class DashboardContext {
-    private UUID userId;
-    private UserRole role;   // ADMIN, AGENT, FINANCE, MANAGER
+public class InventorySummaryDTO {
     private UUID projectId;
+    private String projectName;
+    private int totalPlots;
+    private int available;
+    private int booked;
+    private int sold;
 }
-

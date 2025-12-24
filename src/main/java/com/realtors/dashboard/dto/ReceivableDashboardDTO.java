@@ -11,5 +11,5 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReceivableDashboardDTO {
     private ReceivableSummaryDTO summary;
-    private List<ReceivableDTO> receivables;
+    private List<ReceivableDetailDTO> receivables;
 }

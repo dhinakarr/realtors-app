@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.realtors.dashboard.dto.CommissionRowDTO;
+import com.realtors.dashboard.dto.CommissionDetailsDTO;
 import com.realtors.dashboard.dto.CommissionSummaryDTO;
 
 @Repository
@@ -45,7 +45,7 @@ public class CommissionRepository {
     }
 
     /** Table */
-    public List<CommissionRowDTO> getCommissions(UUID agentId) {
+    public List<CommissionDetailsDTO> getCommissions(UUID agentId) {
 
         String sql = """
             SELECT *

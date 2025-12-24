@@ -8,12 +8,13 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
 @Data
-@AllArgsConstructor
 @RequiredArgsConstructor
-public class CommissionSummaryDTO {
-	private UUID agentId;
+@AllArgsConstructor
+public class SiteVisitSummaryDTO {
+    private UUID agentId;
     private String agentName;
-    private BigDecimal totalCommission;
-    private BigDecimal totalPaid;
-    private BigDecimal totalPayable;
+    private long totalVisits;
+    private long totalCustomers;
+    private long conversions;
+    private BigDecimal conversionRatio;
 }

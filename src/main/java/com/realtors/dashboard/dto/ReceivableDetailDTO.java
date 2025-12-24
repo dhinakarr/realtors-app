@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @Data
 @AllArgsConstructor
 @RequiredArgsConstructor
-public class ReceivableDTO {
+public class ReceivableDetailDTO {
 
     private UUID saleId;
     private UUID projectId;

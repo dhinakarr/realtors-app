@@ -19,7 +19,7 @@ public class DashboardFacade {
     }
 
     public DashboardResponse getDashboard(UUID userId, UserRole role) {
-        DashboardContext context = new DashboardContext(userId, role);
+        DashboardContext context = new DashboardContext(userId, role, null);
         return resolver
             .resolve(role.name())
             .buildDashboard(context);

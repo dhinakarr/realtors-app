@@ -32,8 +32,9 @@ public class VisibilityService {
                 INNER JOIN manager_tree mt ON au.manager_id = mt.user_id
             )
             SELECT s.sale_id, s.plot_id, s.project_id, s.customer_id, s.sold_by,
-                   s.base_price, s.extra_charges, s.total_price, s.sale_status, s.confirmed_at
+                   s.base_price, s.extra_charges, s.total_price, s.sale_status, s.confirmed_at, p.area
             FROM sales s
+            JOIN plot_units p ON p.plot_id = s.plot_id
             WHERE s.sold_by IN (SELECT user_id FROM manager_tree)
             ORDER BY s.confirmed_at DESC
         """;

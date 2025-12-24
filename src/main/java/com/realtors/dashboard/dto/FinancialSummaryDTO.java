@@ -10,10 +10,10 @@ import lombok.RequiredArgsConstructor;
 @Data
 @AllArgsConstructor
 @RequiredArgsConstructor
-public class CommissionSummaryDTO {
-	private UUID agentId;
-    private String agentName;
-    private BigDecimal totalCommission;
-    private BigDecimal totalPaid;
-    private BigDecimal totalPayable;
+public class FinancialSummaryDTO {
+    private UUID projectId;
+    private String projectName;
+    private BigDecimal totalSales;
+    private BigDecimal totalReceived;
+    private BigDecimal totalOutstanding;
 }

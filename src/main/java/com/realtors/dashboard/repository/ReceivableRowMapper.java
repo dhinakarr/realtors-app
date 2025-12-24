@@ -2,17 +2,17 @@ package com.realtors.dashboard.repository;
 
 import org.springframework.jdbc.core.RowMapper;
 
-import com.realtors.dashboard.dto.ReceivableDTO;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class ReceivableRowMapper implements RowMapper<ReceivableDTO> {
+public class ReceivableRowMapper implements RowMapper<ReceivableDetailDTO> {
 
     @Override
-    public ReceivableDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
+    public ReceivableDetailDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
 
-    	ReceivableDTO dto = new ReceivableDTO();
+    	ReceivableDetailDTO dto = new ReceivableDetailDTO();
 
         dto.setSaleId(rs.getObject("sale_id", java.util.UUID.class));
         dto.setProjectId(rs.getObject("project_id", java.util.UUID.class));

@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.realtors.dashboard.dto.ReceivableDTO;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 import com.realtors.dashboard.dto.ReceivableSummaryDTO;
 
 @Repository
@@ -39,7 +39,7 @@ public class ReceivableRepository {
     }
 
     /** Table */
-    public List<ReceivableDTO> getReceivables(UUID agentId) {
+    public List<ReceivableDetailDTO> getReceivables(UUID agentId) {
 
         String sql = """
             SELECT *

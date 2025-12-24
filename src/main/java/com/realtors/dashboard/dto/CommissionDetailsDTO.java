@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 @Data
 @AllArgsConstructor
 @RequiredArgsConstructor
-public class CommissionRowDTO {
+public class CommissionDetailsDTO {
 
     private UUID commissionId;
     private UUID saleId;

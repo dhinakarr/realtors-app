@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.realtors.common.ApiResponse;
+import com.realtors.common.util.AppUtil;
 import com.realtors.sales.dto.PaymentDTO;
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleCreateRequest;
@@ -51,8 +52,9 @@ public class SaleController {
 	}
 
 	@GetMapping
-	public ResponseEntity<List<SaleDTO>> listSales(@RequestParam UUID currentUserId) {
-		List<SaleDTO> list = visibilityService.getVisibleSales(currentUserId);
+	public ResponseEntity<List<SaleDTO>> listSales(@RequestParam(required = false) UUID userId) {
+		userId = (userId==null) ? AppUtil.getCurrentUserId() : userId;
+ 		List<SaleDTO> list = visibilityService.getVisibleSales(userId);
 		return ResponseEntity.ok(list);
 	}
 
