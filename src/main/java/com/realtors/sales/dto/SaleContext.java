@@ -9,6 +9,7 @@ public record SaleContext(
         UUID projectId,
         UUID sellerUserId,
         UUID sellerRoleId,
+        String sellerRoleCode,
         int sellerRoleLevel,
         BigDecimal saleAmount
 ) {}

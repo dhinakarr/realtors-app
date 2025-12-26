@@ -65,6 +65,14 @@ public class CustomerRepository {
 		);
 		return customerId;
 	}
+	
+	public boolean findByEmail(String email) {
+		String sql = "select email from customers where email=?";
+		List<Map<String, Object>> list = jdbc.queryForList(sql, email);
+		if(!list.isEmpty())
+			return true;
+		return false;
+	}
 
 	public CustomerDto findById(UUID id) {
 		String sql = "SELECT * FROM customers WHERE customer_id = ?";
@@ -86,7 +94,6 @@ public class CustomerRepository {
 			dto.setProfileImagePath(rs.getString("profile_image_path"));
 			dto.setNotes(rs.getString("notes"));
 			dto.setStatus(rs.getString("status"));
-			logger.info("@CustomerRepository.findById publicURL: " + dto.getProfileImagePath());
 			return dto;
 		});
 	}
@@ -341,20 +348,20 @@ public class CustomerRepository {
 		}
 		String inClause = String.join(",", Collections.nCopies(userIds.size(), "?"));
 		String sql = """
-				SELECT customer_id, customer_name, mobile, created_by
+				SELECT customer_id, customer_name, mobile, email, created_by
 				FROM customers
 				WHERE created_by IN (""" + inClause + ")";
 
 		return jdbc.query(sql, userIds.toArray(),
 				(rs, rowNum) -> new CustomerMiniDto(rs.getObject("customer_id", java.util.UUID.class),
-						rs.getString("customer_name"), rs.getLong("mobile"),
+						rs.getString("customer_name"), rs.getLong("mobile"), rs.getString("email"),
 						rs.getObject("created_by", java.util.UUID.class)));
 	}
 
 	public List<CustomerMiniDto> getAllCustomers() {
-		String sql = "SELECT customer_id, customer_name, mobile, created_by FROM customers";
+		String sql = "SELECT customer_id, customer_name, mobile, email, created_by FROM customers";
 		return jdbc.query(sql, (rs, rowNum) -> new CustomerMiniDto(rs.getObject("customer_id", java.util.UUID.class),
-						rs.getString("customer_name"), rs.getLong("mobile"),
+						rs.getString("customer_name"), rs.getLong("mobile"), rs.getString("email"),
 						rs.getObject("created_by", java.util.UUID.class)));
 		
 	}

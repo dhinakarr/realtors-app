@@ -13,5 +13,6 @@ public class CustomerMiniDto {
     private UUID customerId;
     private String customerName;
     private Long mobile;
+    String email;
     private UUID soldBy;
 }

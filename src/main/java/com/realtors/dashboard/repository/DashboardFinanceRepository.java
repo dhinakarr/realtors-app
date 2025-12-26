@@ -37,17 +37,27 @@ public class DashboardFinanceRepository {
 
 		MapSqlParameterSource params = new MapSqlParameterSource();
 		List<String> conditions = new ArrayList<>();
+		
+		if (scope.isCustomer()) {
+		    conditions.add("customer_id = :customerId");
+		    params.addValue("customerId", scope.getCustomerId());
+		}
 
 		// Only add conditions if not 'all'
-		if (!scope.isAll()) {
-			if (scope.getUserId() != null) {
-				conditions.add("agent_id = :userId");
-				params.addValue("userId", scope.getUserId());
-			}
+		else if (!scope.isAll()) {
+			if (scope.getUserIds() != null && !scope.getUserIds().isEmpty()) {
+		        conditions.add("agent_id IN (:userIds)");
+		        params.addValue("userIds", scope.getUserIds());
+		    }
 			if (scope.hasProjectScope() && scope.getProjectIds() != null && !scope.getProjectIds().isEmpty()) {
 				conditions.add("project_id IN (:projectIds)");
 				params.addValue("projectIds", scope.getProjectIds());
 			}
+		}
+		if (scope.hasDateRange()) {
+		    conditions.add("confirmed_at BETWEEN :fromDate AND :toDate");
+		    params.addValue("fromDate", scope.getFromDate());
+		    params.addValue("toDate", scope.getToDate());
 		}
 
 		if (!conditions.isEmpty()) {

@@ -14,5 +14,6 @@ public class DashboardResponseDTO {
     private List<AgentPerformanceDTO> agents;
     private List<CommissionSummaryDTO> commissions;
     private List<SiteVisitSummaryDTO> siteVisits;
-
+    private DashboardKpiWrapperDTO actionKpis;
+    private DashboardKpiDTO summaryKpis;
 }

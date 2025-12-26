@@ -55,6 +55,7 @@ public class SiteVisitService extends AbstractBaseService<SiteVisitResponseDTO, 
 	                        c.getCustomerId(),
 	                        c.getCustomerName(),
 	                        c.getMobile(),
+	                        c.getEmail(),
 	                        c.getSoldBy()
 	                ))
 	                .collect(Collectors.toList());

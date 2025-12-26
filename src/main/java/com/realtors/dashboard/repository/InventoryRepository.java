@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.realtors.dashboard.dto.InventoryStatsDTO;
+import com.realtors.dashboard.dto.InventoryDetailDTO;
 import com.realtors.dashboard.dto.ProjectInventoryStatsDTO;
 import com.realtors.dashboard.dto.ProjectInventoryStatsRowMapper;
 
@@ -21,7 +21,7 @@ public class InventoryRepository {
     /**
      * Overall inventory (Donut chart)
      */
-    public List<InventoryStatsDTO> getOverallInventory() {
+    public List<InventoryDetailDTO> getOverallInventory() {
 
         String sql = """
             SELECT

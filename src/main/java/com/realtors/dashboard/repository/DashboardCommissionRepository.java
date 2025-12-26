@@ -37,14 +37,17 @@ public class DashboardCommissionRepository {
 		List<String> conditions = new ArrayList<>();
 
 		if (!scope.isAll()) {
-			if (scope.getUserId() != null) {
-				conditions.add("agent_id = :userId");
-				params.addValue("userId", scope.getUserId());
+			if (scope.getUserIds() != null && !scope.getUserIds().isEmpty()) {
+			    conditions.add("agent_id IN (:userIds)");
+			    params.addValue("userIds", scope.getUserIds());
 			}
 			if (scope.hasProjectScope() && scope.getProjectIds() != null && !scope.getProjectIds().isEmpty()) {
 				conditions.add("project_id IN (:projectIds)");
 				params.addValue("projectIds", scope.getProjectIds());
 			}
+		}
+		if (scope.hasDateRange()) {
+		    conditions.add("confirmed_at BETWEEN :fromDate AND :toDate");
 		}
 
 		if (!conditions.isEmpty()) {

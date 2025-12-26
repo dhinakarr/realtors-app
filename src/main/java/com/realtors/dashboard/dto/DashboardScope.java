@@ -1,6 +1,7 @@
 package com.realtors.dashboard.dto;
 
 import java.util.UUID;
+import java.time.LocalDate;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Data;
@@ -15,9 +16,21 @@ public class DashboardScope {
     private Set<UUID> projectIds;     // PM / PH
     private boolean financeOnly;       // FINANCE
     private boolean hrOnly;            // HR
+    private Set<UUID> userIds;
+    private UUID customerId;
+    private LocalDate fromDate;
+    private LocalDate toDate;
 
     public static DashboardScope all() {
         return DashboardScope.builder().all(true).build();
+    }
+    
+    public boolean isCustomer() {
+        return customerId != null;
+    }
+    
+    public boolean hasDateRange() {
+        return fromDate != null && toDate != null;
     }
 
     public static DashboardScope user(UUID userId) {

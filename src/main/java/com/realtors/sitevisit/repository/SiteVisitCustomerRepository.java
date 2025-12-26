@@ -42,7 +42,8 @@ public class SiteVisitCustomerRepository {
             SELECT
                 c.customer_id,
                 c.customer_name,
-                c.mobile
+                c.mobile,
+                c.email
             FROM site_visit_customers svc
             JOIN customers c
               ON c.customer_id = svc.customer_id
@@ -52,7 +53,8 @@ public class SiteVisitCustomerRepository {
         (rs, rowNum) -> new CustomerMiniDto(
             rs.getObject("customer_id", UUID.class),
             rs.getString("customer_name"),
-            rs.getLong("mobile"), null
+            rs.getLong("mobile"), 
+            rs.getString("email"),null
         ),
         siteVisitId
         );
@@ -74,7 +76,8 @@ public class SiteVisitCustomerRepository {
                 svc.site_visit_id,
                 c.customer_id,
                 c.customer_name,
-                c.mobile
+                c.mobile,
+                c.email
             FROM site_visit_customers svc
             JOIN customers c
               ON c.customer_id = svc.customer_id
@@ -94,7 +97,9 @@ public class SiteVisitCustomerRepository {
                        .add(new CustomerMiniDto(
                            rs.getObject("customer_id", UUID.class),
                            rs.getString("customer_name"),
-                           rs.getLong("mobile"), null
+                           rs.getLong("mobile"), 
+                           rs.getString("email"),
+                           null
                        ));
                 }
                 return map;

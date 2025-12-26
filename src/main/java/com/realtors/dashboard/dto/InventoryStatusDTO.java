@@ -1,5 +1,6 @@
 package com.realtors.dashboard.dto;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -16,6 +17,8 @@ public class InventoryStatusDTO {
     private String projectName;
     private String plotNumber;
     private String inventoryStatus;
-
+    private BigDecimal area;
+    private BigDecimal basePrice;
+    private BigDecimal totalPrice;
     // getters & setters
 }

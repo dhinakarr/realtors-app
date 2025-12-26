@@ -17,7 +17,7 @@ public class DashboardResponse {
     private BigDecimal totalCommissionPayable;
 
     // Inventory
-    private List<InventoryStatsDTO> inventoryStats;
+    private List<InventoryDetailDTO> inventoryStats;
 
     // Tables
     private List<ReceivableDetailDTO> receivables;

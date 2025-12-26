@@ -1,77 +1,48 @@
 CREATE TABLE site_visits (
     site_visit_id     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     visit_date        DATE NOT NULL,
-
     user_id           UUID NOT NULL,   -- agent who did the visit
     project_id        UUID NOT NULL,
-
     vehicle_type      VARCHAR(50),
     expense_amount    NUMERIC(12,2) NOT NULL DEFAULT 0,
-
     remarks           TEXT,
     status            VARCHAR(20) NOT NULL DEFAULT 'OPEN',
-
     created_at        TIMESTAMP NOT NULL DEFAULT now(),
     updated_at        TIMESTAMP NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_sv_user
-        FOREIGN KEY (user_id) REFERENCES app_users(user_id),
-
-    CONSTRAINT fk_sv_project
-        FOREIGN KEY (project_id) REFERENCES projects(project_id)
-
+    CONSTRAINT fk_sv_user FOREIGN KEY (user_id) REFERENCES app_users(user_id),
+    CONSTRAINT fk_sv_project FOREIGN KEY (project_id) REFERENCES projects(project_id)
 );
 
 
 CREATE TABLE site_visit_customers (
     site_visit_id UUID NOT NULL,
     customer_id   UUID NOT NULL,
-
     PRIMARY KEY (site_visit_id, customer_id),
-
-    CONSTRAINT fk_svc_site_visit
-        FOREIGN KEY (site_visit_id) REFERENCES site_visits(site_visit_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_svc_customer
-        FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    CONSTRAINT fk_svc_site_visit FOREIGN KEY (site_visit_id) REFERENCES site_visits(site_visit_id) ON DELETE CASCADE,
+    CONSTRAINT fk_svc_customer FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
 
 
 CREATE TABLE site_visit_payments (
     payment_id     UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     site_visit_id  UUID NOT NULL,
-
     user_id        UUID NOT NULL,   -- payee (agent / stakeholder)
     amount         NUMERIC(12,2) NOT NULL,
-
     payment_mode   VARCHAR(20) NOT NULL,   -- CASH / UPI / BANK
     payment_date   DATE NOT NULL DEFAULT CURRENT_DATE,
-
     remarks        TEXT,
-
     created_at     TIMESTAMP NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_svp_site_visit
-        FOREIGN KEY (site_visit_id) REFERENCES site_visits(site_visit_id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_svp_user
-        FOREIGN KEY (user_id) REFERENCES app_users(user_id)
+    CONSTRAINT fk_svp_site_visit FOREIGN KEY (site_visit_id) REFERENCES site_visits(site_visit_id) ON DELETE CASCADE,
+    CONSTRAINT fk_svp_user FOREIGN KEY (user_id) REFERENCES app_users(user_id)
 );
 
 
 CREATE TABLE site_visit_accounts (
     site_visit_id UUID PRIMARY KEY,
-
     total_paid    NUMERIC(12,2) NOT NULL DEFAULT 0,
     balance       NUMERIC(12,2) NOT NULL DEFAULT 0,
-
     status        VARCHAR(20) NOT NULL DEFAULT 'OPEN',
-
-    CONSTRAINT fk_sva_site_visit
-        FOREIGN KEY (site_visit_id) REFERENCES site_visits(site_visit_id)
-        ON DELETE CASCADE
+    CONSTRAINT fk_sva_site_visit FOREIGN KEY (site_visit_id) REFERENCES site_visits(site_visit_id) ON DELETE CASCADE
 );
 
 

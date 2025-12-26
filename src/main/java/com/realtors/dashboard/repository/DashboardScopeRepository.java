@@ -19,12 +19,12 @@ public class DashboardScopeRepository {
 		this.jdbc = jdbc;
 	}
 
-	public Set<UUID> findProjectsForUser(UUID userId) {
+	public Set<UUID> findProjectsForUser(Set<UUID> userIds) {
 		String sql = """
 				    SELECT DISTINCT project_id
 				    FROM v_user_project_scope
-				    WHERE user_id = :userId
+				    WHERE user_id IN (:userIds)
 				""";
-		return new HashSet<>(jdbc.queryForList(sql, Map.of("userId", userId), UUID.class));
+		return new HashSet<>(jdbc.queryForList(sql, Map.of("userIds", userIds), UUID.class));
 	}
 }

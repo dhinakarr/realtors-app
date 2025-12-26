@@ -11,6 +11,8 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.realtors.dashboard.dto.DashboardScope;
+import com.realtors.dashboard.dto.InventoryDetailDTO;
+import com.realtors.dashboard.dto.InventoryStatusDTO;
 import com.realtors.dashboard.dto.InventorySummaryDTO;
 
 @Repository
@@ -36,25 +38,41 @@ public class DashboardInventoryRepository {
 				""");
 
 		MapSqlParameterSource params = new MapSqlParameterSource();
-		List<String> conditions = new ArrayList<>();
-
-		// 🔐 Apply filters only when NOT all
-		if (!scope.isAll()) {
-			if (scope.hasProjectScope() && scope.getProjectIds() != null && !scope.getProjectIds().isEmpty()) {
-
-				conditions.add("project_id IN (:projectIds)");
-				params.addValue("projectIds", scope.getProjectIds());
-			}
-		}
-
-		if (!conditions.isEmpty()) {
-			sql.append(" WHERE ").append(String.join(" OR ", conditions));
-		}
+		applyProjectScope(scope, sql, params, false);
 
 		sql.append(" GROUP BY project_id, project_name");
 		sql.append(" ORDER BY project_name");
 
 		return jdbcTemplate.query(sql.toString(), params, new BeanPropertyRowMapper<>(InventorySummaryDTO.class));
+	}
+
+	public List<InventoryStatusDTO> fetchInventoryDetails(DashboardScope scope) {
+
+		StringBuilder sql = new StringBuilder("""
+				    SELECT project_id, project_name,  plot_id, plot_number,
+				        inventory_status,  area,  base_price, total_price
+				    FROM v_inventory_status
+				    WHERE 1=1
+				""");
+
+		MapSqlParameterSource params = new MapSqlParameterSource();
+		applyProjectScope(scope, sql, params, false);
+		sql.append(" ORDER BY project_name, plot_number");
+
+		return jdbcTemplate.query(sql.toString(), params, new BeanPropertyRowMapper<>(InventoryStatusDTO.class));
+	}
+
+	private void applyProjectScope(DashboardScope scope, StringBuilder sql, MapSqlParameterSource params,
+			boolean hasWhereClause) {
+		if (scope.isAll()) {
+			return;
+		}
+
+		if (scope.hasProjectScope() && scope.getProjectIds() != null && !scope.getProjectIds().isEmpty()) {
+			sql.append(hasWhereClause ? " AND " : " WHERE ");
+			sql.append("project_id IN (:projectIds)");
+			params.addValue("projectIds", scope.getProjectIds());
+		}
 	}
 
 }

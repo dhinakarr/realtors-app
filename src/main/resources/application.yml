@@ -41,6 +41,7 @@ logging:
   level:
     root: INFO
     com.realitor.common.util.JsonAwareRowMapper: INFO
+    org.springframework.web.servlet.resource.ResourceHttpRequestHandler: OFF
     org.springframework.jdbc.core.BeanPropertyRowMapper: WARN
 
 jwt:

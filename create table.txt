@@ -314,7 +314,7 @@ SELECT
     c.customer_name, s.sold_by AS agent_id, u.full_name AS agent_name, s.total_price AS sale_amount,
     COALESCE(p.total_received, 0) AS total_received,
 	(s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
-    s.confirmed_at
+    s.confirmed_at, s.sale_status
 FROM sales s
 JOIN projects pr ON pr.project_id = s.project_id
 JOIN plot_units pl ON pl.plot_id = s.plot_id
@@ -386,7 +386,7 @@ WHERE
 
 
 CREATE OR REPLACE VIEW v_inventory_status AS
-SELECT p.project_id, pr.project_name, p.plot_id, p.plot_number, COALESCE(s.sale_status, 'AVAILABLE') AS inventory_status
+SELECT p.project_id, pr.project_name, p.plot_id, p.plot_number, p.area, p.base_price, p.total_price, COALESCE(s.sale_status, 'AVAILABLE') AS inventory_status
 FROM plot_units p
 JOIN projects pr ON pr.project_id = p.project_id
 LEFT JOIN LATERAL (
@@ -395,7 +395,7 @@ LEFT JOIN LATERAL (
     WHERE s1.plot_id = p.plot_id
     ORDER BY s1.confirmed_at DESC
     LIMIT 1
-) s ON true;
+) s ON true
 
 CREATE OR REPLACE VIEW v_dashboard_inventory_summary AS
 SELECT
@@ -708,7 +708,7 @@ GROUP BY
 CREATE TABLE customers (
     customer_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	customer_name VARCHAR(80),
-	email VARCHAR(80),
+	email VARCHAR UNIQUE NOT NULL(80),
 	mobile BIGINT, 
     date_of_birth DATE,
     gender VARCHAR(10),

@@ -36,9 +36,9 @@ public class DashboardAgentRepository {
 		List<String> conditions = new ArrayList<>();
 
 		if (!scope.isAll()) {
-			if (scope.getUserId() != null) {
-				conditions.add("agent_id = :userId");
-				params.addValue("userId", scope.getUserId());
+			if (scope.getUserIds() != null && !scope.getUserIds().isEmpty()) {
+			    conditions.add("agent_id IN (:userIds)");
+			    params.addValue("userIds", scope.getUserIds());
 			}
 			if (scope.hasProjectScope() && scope.getProjectIds() != null && !scope.getProjectIds().isEmpty()) {
 				conditions.add("project_id IN (:projectIds)");

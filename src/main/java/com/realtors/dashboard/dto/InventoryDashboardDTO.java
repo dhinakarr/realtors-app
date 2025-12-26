@@ -10,7 +10,7 @@ import java.util.List;
 @AllArgsConstructor
 @RequiredArgsConstructor
 public class InventoryDashboardDTO {
-    private List<InventoryStatsDTO> overallStats;
+    private List<InventoryDetailDTO> overallStats;
     private List<ProjectInventoryStatsDTO> projectStats;
 }
 

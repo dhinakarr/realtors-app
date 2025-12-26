@@ -74,6 +74,10 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		DynamicFormResponseDto form = super.buildDynamicFormResponse();
 		return new EditResponseDto<>(dto, form);
 	}
+	
+	public boolean isCustomerExists(String email) {
+		return customerRepo.findByEmail(email);
+	}
 
 	public List<CustomerDto> getAllCustomers() {
 		return customerRepo.findAllWithDocuments();
@@ -90,20 +94,37 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	}
 
 	private String saveFile(MultipartFile profileImage, UUID customerId, String lastFolder) {
+		
+		if (profileImage == null || profileImage.isEmpty()) {
+	        return null;
+	    }
+		
 		String publicUrl = getPublicPath(customerId, lastFolder);
-		if (profileImage != null && !profileImage.isEmpty()) {
-			String folder = getFolderPath(customerId, lastFolder); // uploadDir + "/customers/" + id + "/profile/";
-			new File(folder).mkdirs();
-
-			String filePath = folder + profileImage.getOriginalFilename();
-			try {
-				profileImage.transferTo(new File(filePath));
-			} catch (IOException ioe) {
-				logger.severe("CustomerService.saveFile error in saving file: " + ioe);
-			}
-			return (new StringBuilder().append(publicUrl).append(profileImage.getOriginalFilename()).toString());
+		String folder = getFolderPath(customerId, lastFolder); // uploadDir + "/customers/" + id + "/profile/";
+		
+		File dir = new File(folder);
+	    if (!dir.exists()) {
+	        dir.mkdirs();
+	    }
+	    
+	 // 🔥 DELETE existing files in the folder
+	    File[] existingFiles = dir.listFiles();
+	    if (existingFiles != null) {
+	        for (File file : existingFiles) {
+	            if (file.isFile()) {
+	                file.delete(); // or log failure
+	            }
+	        }
+	    }
+		
+		String filePath = folder + profileImage.getOriginalFilename();
+		try {
+			profileImage.transferTo(new File(filePath));
+		} catch (IOException ioe) {
+			logger.severe("CustomerService.saveFile error in saving file: " + ioe);
+			throw new RuntimeException("Failed to save profile image");
 		}
-		return null;
+		return (new StringBuilder().append(publicUrl).append(profileImage.getOriginalFilename()).toString());
 	}
 
 	public List<CustomerDto> search(String searchText) {
@@ -229,7 +250,6 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 			String publicUrl = saveFile(profileImage, customerId, "/profile/");
 			updates.put("profile_image_path", publicUrl);
 		}
-		
 		return customerRepo.updatePartial(customerId, updates);
 	}
 

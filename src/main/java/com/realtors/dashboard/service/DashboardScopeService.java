@@ -1,6 +1,7 @@
 package com.realtors.dashboard.service;
 
 import java.util.UUID;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.realtors.dashboard.dto.UserRole;
 import com.realtors.dashboard.repository.DashboardScopeRepository;
-
+import com.realtors.admin.service.UserHierarchyService;
 import com.realtors.dashboard.dto.DashboardScope;
 import com.realtors.dashboard.dto.UserPrincipalDto;
 
@@ -17,35 +18,63 @@ import com.realtors.dashboard.dto.UserPrincipalDto;
 public class DashboardScopeService {
 
 	private final DashboardScopeRepository scopeRepo;
+	private UserHierarchyService hierarchyService;
 	private static final Logger logger = LoggerFactory.getLogger(DashboardScopeService.class);
 	
-	public DashboardScopeService(DashboardScopeRepository scopeRepo) {
+	public DashboardScopeService(DashboardScopeRepository scopeRepo, UserHierarchyService hierarchyService) {
 		this.scopeRepo  = scopeRepo;
+		this.hierarchyService = hierarchyService;
 	}
 
 	public DashboardScope resolve(UserPrincipalDto user) {
 		Set<UserRole> roles = user.getRoles();
-		logger.info("@DashboardScopeService.resolve roles: "+roles.toString());
+		UUID userId = user.getUserId();
 		// MD → everything
 		if (roles.contains(UserRole.MD)) {
-			return DashboardScope.builder().all(true).userId(user.getUserId()).build();
+			return DashboardScope.builder()
+					.all(true)
+					.userId(userId)
+					.build();
 		}
 
 		// FINANCE / HR → all projects, but limited usage
 		if (roles.contains(UserRole.FINANCE) || roles.contains(UserRole.HR)) {
-			return DashboardScope.builder().all(true).userId(user.getUserId()).financeOnly(roles.contains(UserRole.FINANCE))
-					.hrOnly(roles.contains(UserRole.HR)).build();
+			return DashboardScope.builder()
+					.all(true)
+					.userId(userId)
+					.financeOnly(roles.contains(UserRole.FINANCE))
+					.hrOnly(roles.contains(UserRole.HR))
+					.build();
 		}
 
 		// PA → user-level scope
 		if (roles.contains(UserRole.PA)) {
-			return DashboardScope.builder().userId(user.getUserId()).build();
+			return DashboardScope.builder()
+					.userId(userId)
+					.userIds(Set.of(userId))
+					.build();
 		}
-
+		
+		// CUSTOMER → self only (IMPORTANT)
+	    if (roles.contains(UserRole.CUSTOMER)) {
+	        return DashboardScope.builder()
+	                .userId(userId)
+	                .userIds(Set.of(userId))
+	                .build();
+	    }
+		
 		// PM / PH → project-level scope
 		if (roles.contains(UserRole.PM) || roles.contains(UserRole.PH)) {
-			Set<UUID> projects = scopeRepo.findProjectsForUser(user.getUserId());
-			return DashboardScope.builder().userId(user.getUserId()).projectIds(projects).build();
+			Set<UUID> subordinates = new HashSet<>(hierarchyService.getAllSubordinates(userId));
+
+	        // include self
+	        subordinates.add(userId);
+			Set<UUID> projects = scopeRepo.findProjectsForUser(subordinates);
+			return DashboardScope.builder()
+					.userId(userId)
+					.userIds(subordinates)
+					.projectIds(projects)
+					.build();
 		}
 		throw new IllegalStateException("Unsupported role: " + roles);
 	}

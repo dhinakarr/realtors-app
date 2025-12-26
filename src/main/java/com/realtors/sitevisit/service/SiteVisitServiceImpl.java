@@ -430,7 +430,7 @@ public class SiteVisitServiceImpl {
 
 		String placeholders = siteVisitIds.stream().map(id -> "?").collect(Collectors.joining(","));
 		String sql = """
-				SELECT  svc.site_visit_id,  c.customer_id, c.customer_name, c.mobile
+				SELECT  svc.site_visit_id,  c.customer_id, c.customer_name, c.mobile, c.email
 				FROM site_visit_customers svc
 				JOIN customers c
 				  ON c.customer_id = svc.customer_id
@@ -442,7 +442,7 @@ public class SiteVisitServiceImpl {
 				UUID siteVisitId = rs.getObject("site_visit_id", UUID.class);
 				map.computeIfAbsent(siteVisitId, k -> new ArrayList<>())
 						.add(new CustomerMiniDto(rs.getObject("customer_id", UUID.class), rs.getString("customer_name"),
-								rs.getObject("mobile", Long.class), null// ✅ safe
+								rs.getObject("mobile", Long.class), rs.getString("email"), null// ✅ safe
 				));
 			}
 			return map;

@@ -90,7 +90,8 @@ import io.jsonwebtoken.Claims;
 	@PostMapping(consumes = { "multipart/form-data" })	
 	public ResponseEntity<ApiResponse<CustomerDto>> createCustomer(@RequestPart("customer") CustomerDto dto,
 			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) throws Exception {
-		
+		if(service.isCustomerExists(dto.getEmail()))
+			return ResponseEntity.badRequest().body(ApiResponse.failure(dto.getEmail() +" is already registered with us, please provide alternate email"));
 		CustomerDto created = service.createCustomer(dto, profileImage);
 		return ResponseEntity.ok(ApiResponse.success("Customer Created", created, HttpStatus.CREATED));
 	}
@@ -125,7 +126,6 @@ import io.jsonwebtoken.Claims;
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage ) {
 		
 		Map<String, Object> updates = new HashMap<String, Object>();
-		
 		if (profileImage != null) {
 //			logger.info("@CustomerController.patchCustomer image section profileImage: "+profileImage);
 			updates.put("profileImage", profileImage);
