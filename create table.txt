@@ -334,8 +334,7 @@ SELECT
     sc.commission_id, sc.sale_id, sc.user_id AS agent_id, u.full_name AS agent_name, pr.project_id, pr.project_name,
     pl.plot_id, pl.plot_number, s.total_price AS sale_amount, COALESCE(cr.total_received, 0) AS customer_paid,
     sc.commission_amount  AS total_commission, COALESCE(cp.total_paid) AS commission_paid,
-	ROUND(
-    LEAST(
+	LEAST(
         sc.commission_amount,
         CASE
             WHEN s.total_price > 0 THEN
@@ -343,11 +342,8 @@ SELECT
                 * sc.commission_amount
             ELSE 0
         END
-		),
-		0
     ) AS commission_eligible,
-	ROUND(
-    GREATEST(
+	GREATEST(
         LEAST(
             sc.commission_amount,
             CASE
@@ -358,9 +354,8 @@ SELECT
             END
         ) - COALESCE(cp.total_paid, 0),
         0
-		),
-		0
-    ) AS commission_payable, s.sale_status, s.confirmed_at
+    ) AS commission_payable, 
+	s.sale_status, s.confirmed_at
 FROM sale_commissions sc
 JOIN sales s           ON s.sale_id = sc.sale_id
 JOIN app_users u       ON u.user_id = sc.user_id
@@ -461,34 +456,13 @@ SELECT
         2
     ) AS conversion_ratio
 FROM site_visits sv
+JOIN site_visit_customers svc
+     ON svc.site_visit_id = sv.site_visit_id
 LEFT JOIN sales s
-       ON s.sold_by = sv.user_id
-      AND s.project_id = sv.project_id
+     ON s.customer_id = svc.customer_id
+    AND s.project_id = sv.project_id
+    AND s.confirmed_at >= sv.visit_date
 GROUP BY sv.user_id;
-
-CREATE OR REPLACE VIEW v_user_project_scope AS
-SELECT DISTINCT
-    s.sold_by    AS user_id,
-    s.project_id,
-    'SALES'      AS source
-FROM sales s
-
-UNION
-
-SELECT DISTINCT
-    sc.user_id,
-    s.project_id,
-    'COMMISSION'
-FROM sale_commissions sc
-JOIN sales s ON s.sale_id = sc.sale_id
-
-UNION
-
-SELECT DISTINCT
-    sv.user_id,
-    sv.project_id,
-    'SITE_VISIT'
-FROM site_visits sv;
 
 
 
@@ -809,7 +783,7 @@ SET extra_settings = jsonb_set(
 WHERE id = 58;
 
 ALTER TABLE plot_units ADD updated_by UUID;
-ALTER TABLE plot_units ADD updated_at UUID;
+ALTER TABLE plot_units ADD updated_at TIMESTAMP DEFAULT NOW();
 
 INSERT INTO form_metadata
 (table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
@@ -825,9 +799,6 @@ VALUES
  ('app_users', 'full_name', 'User Name', 'text', TRUE, FALSE, NULL, NULL, NULL,
  '{"message": "Your name is required", "required": true, "maxLength": 55, "minLength": 5, "placeholder": "Your Name"}'::jsonb,
  3),
-('app_users', 'password_hash', 'Password', 'password', TRUE, FALSE, NULL, NULL, NULL,
- '{"minLength":8,"componentHint":"password-strength","placeholder":"Choose a strong password"}'::jsonb,
- 4),
 ('app_users', 'role_id', 'Role', 'select', TRUE, FALSE, 'roles', 'role_id', 'role_name',
  '{"hint":"Assign role to user"}'::jsonb,
  5),
@@ -898,8 +869,8 @@ VALUES
  ('projects', 'price_per_sqft', 'Price/Square Feet', 'number', FALSE, TRUE, NULL, NULL, NULL,
  '{"message": "Please enter per sqft price", "placeholder": "Price"}'::jsonb,
  8),
- ('projects', 'reg_charges', 'Registration Charge', 'number', FALSE, TRUE, NULL, NULL, NULL,
- '{"message": "Please enter Registration Charge","placeholder": "Registration Charge"}'::jsonb,
+ ('projects', 'reg_charges', 'Stamp Duty %', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Please enter Registration Charge","placeholder": "Registration Charge", "maxLength":4}'::jsonb,
  9),
  ('projects', 'doc_charges', 'Documentation Charge', 'number', FALSE, TRUE, NULL, NULL, NULL,
  '{"message": "Please enter Documentation Charge", "placeholder": "Documentation Charge"}'::jsonb,
@@ -907,7 +878,7 @@ VALUES
  ('projects', 'other_charges', 'Other Charge', 'number', FALSE, FALSE, NULL, NULL, NULL,
  '{"placeholder": "Documentation Charge"}'::jsonb,
  11),
- ('projects', 'guidance_value', 'Guideline Value', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ ('projects', 'guidance_value', 'Guideline Value', 'number', FALSE, TRUE, NULL, NULL, NULL,
  '{"placeholder": "Guideline Value"}'::jsonb,
  12),
  ('projects', 'image', 'Image Upload', 'file', FALSE, FALSE, NULL, NULL, NULL,
@@ -973,7 +944,27 @@ VALUES
  13),
  ('customers', 'profile_image_path', 'Profile Image', 'file', FALSE, FALSE, NULL, NULL, NULL,
  '{"placeholder": ""}'::jsonb,
- 14);
+ 14) ('site_visits', 'visit_date', 'Date of Visit', 'date', FALSE, TRUE, NULL, NULL, NULL,
+ '{"placeholder": "Date of Visit"}'::jsonb,
+ 1),
+ ('site_visits', 'user_id', 'Select PA/PM', 'select', FALSE, TRUE, 'app_users', 'user_id', 'full_name',
+ '{"placeholder": "User"}'::jsonb,
+ 2),
+ ('site_visits', 'project_id', 'Select Project', 'select', FALSE, TRUE, 'projects', 'project_id', 'project_name',
+ '{"placeholder": "Select Project"}'::jsonb,
+ 3),
+ ('site_visits', 'customer_id', 'Select Customer', 'select', FALSE, TRUE, 'customers', 'customer_id', 'customer_name',
+ '{"placeholder": "Select Customer", "multiple":true}'::jsonb,
+ 4),
+ ('site_visits', 'vehicle_type', 'Vehicle Type', 'select', FALSE, FALSE, NULL, '["Customer", "Own", "Company"]', '["Customer", "Own", "Company"]',
+ '{"placeholder": "Vehicle Type"}'::jsonb,
+ 5),
+ ('site_visits', 'expense_amount', 'Expense Amount', 'number', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Expense Amount", "maxLength":"8"}'::jsonb,
+ 6),
+ ('site_visits', 'remarks', 'Remarks', 'text', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder": "Remarks"}'::jsonb,
+ 7)
 
 
 
@@ -1034,38 +1025,203 @@ VALUES
  6)
  
  
- INSERT INTO form_metadata
-(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
-VALUES  
-('projects', 'guidance_value', 'Guideline Value', 'number', FALSE, FALSE, NULL, NULL, NULL,
- '{"placeholder": "Guideline Value"}'::jsonb,
- 12),
- ('projects', 'image', 'Image Upload', 'file', FALSE, FALSE, NULL, NULL, NULL,
- '{"placeholder": "Upload image files"}'::jsonb,
- 13),
- 
+========================================================================================= 
  INSERT INTO form_metadata
 (table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, 
 lookup_label, extra_settings, sort_order)
 VALUES  
- ('site_visits', 'visit_date', 'Date of Visit', 'date', FALSE, TRUE, NULL, NULL, NULL,
- '{"placeholder": "Date of Visit"}'::jsonb,
- 1),
- ('site_visits', 'user_id', 'Select PA/PM', 'select', FALSE, TRUE, 'app_users', 'user_id', 'full_name',
- '{"placeholder": "User"}'::jsonb,
- 2),
- ('site_visits', 'project_id', 'Select Project', 'select', FALSE, TRUE, 'projects', 'project_id', 'project_name',
- '{"placeholder": "Select Project"}'::jsonb,
- 3),
- ('site_visits', 'customer_id', 'Select Customer', 'select', FALSE, TRUE, 'customers', 'customer_id', 'customer_name',
- '{"placeholder": "Select Customer", "multiple":true}'::jsonb,
- 4),
- ('site_visits', 'vehicle_type', 'Vehicle Type', 'select', FALSE, FALSE, NULL, '["Customer", "Own", "Company"]', '["Customer", "Own", "Company"]',
- '{"placeholder": "Vehicle Type"}'::jsonb,
- 5),
- ('site_visits', 'expense_amount', 'Expense Amount', 'number', FALSE, FALSE, NULL, NULL, NULL,
- '{"placeholder": "Expense Amount", "maxLength":"8"}'::jsonb,
- 6),
- ('site_visits', 'remarks', 'Remarks', 'text', FALSE, FALSE, NULL, NULL, NULL,
- '{"placeholder": "Remarks"}'::jsonb,
- 7)
+('projects', 'reg_charges', 'Stamp Duty %', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"message": "Please enter Stamp Duty%","placeholder": "Stamp Duty %", "maxLength":4}'::jsonb,
+ 9),
+ ('projects', 'guidance_value', 'Guideline Value', 'number', FALSE, TRUE, NULL, NULL, NULL,
+ '{"placeholder": "Guideline Value"}'::jsonb,
+ 12)
+
+
+
+alter table plot_units add column registration_charges DECIMAL(10, 2) 
+
+CREATE OR REPLACE FUNCTION fn_user_performance(
+    p_user_id UUID,
+    p_from_date DATE,
+    p_to_date DATE
+)
+RETURNS TABLE (
+    total_visits INT,
+    total_sales INT,
+    sales_value NUMERIC,
+    amount_received NUMERIC,
+    amount_receivable NUMERIC,
+    commission_payable NUMERIC
+)
+LANGUAGE sql
+AS $$
+    SELECT
+        COUNT(DISTINCT sv.site_visit_id),
+        COUNT(DISTINCT s.sale_id),
+        SUM(s.total_price),
+        SUM(p.amount) FILTER (WHERE p.payment_type = 'RECEIVED'),
+        SUM(s.total_price) - SUM(p.amount) FILTER (WHERE p.payment_type = 'RECEIVED'),
+        SUM(cp.commission_payable)
+    FROM app_users u
+    LEFT JOIN site_visits sv
+           ON sv.user_id = u.user_id
+          AND sv.visit_date BETWEEN p_from_date AND p_to_date
+    LEFT JOIN sales s
+           ON s.sold_by = u.user_id
+          AND s.confirmed_at BETWEEN p_from_date AND p_to_date
+    LEFT JOIN payments p
+           ON p.sale_id = s.sale_id
+          AND p.payment_date BETWEEN p_from_date AND p_to_date
+    LEFT JOIN v_commission_payable_details cp
+           ON cp.agent_id = u.user_id
+    WHERE u.user_id = p_user_id;
+$$;
+
+
+CREATE OR REPLACE VIEW v_site_visit_conversion AS
+SELECT
+    sv.user_id AS agent_id,
+    COUNT(DISTINCT sv.site_visit_id) AS visits,
+    COUNT(DISTINCT s.sale_id)        AS conversions,
+    ROUND(
+        COUNT(DISTINCT s.sale_id)::numeric
+        / NULLIF(COUNT(DISTINCT sv.site_visit_id), 0) * 100,
+        2
+    ) AS conversion_ratio
+FROM site_visits sv
+JOIN site_visit_customers svc
+     ON svc.site_visit_id = sv.site_visit_id
+LEFT JOIN sales s
+     ON s.customer_id = svc.customer_id
+    AND s.project_id = sv.project_id
+    AND s.confirmed_at >= sv.visit_date
+GROUP BY sv.user_id;
+
+CREATE INDEX idx_sales_sold_by_date ON sales(sold_by, confirmed_at);
+CREATE INDEX idx_payments_sale_date ON payments(sale_id, payment_date);
+CREATE INDEX idx_site_visits_user_date ON site_visits(user_id, visit_date);
+CREATE INDEX idx_sale_commissions_user ON sale_commissions(user_id);
+
+ALTER TABLE sales DROP CONSTRAINT sales_plot_id_fkey;
+
+ALTER TABLE sales
+ADD CONSTRAINT sales_plot_id_fkey
+FOREIGN KEY (plot_id)
+REFERENCES plot_units(plot_id);
+
+
+CREATE OR REPLACE VIEW v_site_visit_summary AS
+SELECT
+    sv.project_id,
+    sv.user_id AS agent_id,
+    COUNT(DISTINCT sv.site_visit_id) AS total_visits,
+    COUNT(DISTINCT svc.customer_id)  AS total_customers
+FROM site_visits sv
+LEFT JOIN site_visit_customers svc ON svc.site_visit_id = sv.site_visit_id
+GROUP BY sv.project_id, sv.user_id;
+
+
+CREATE OR REPLACE VIEW v_user_performance_core AS
+SELECT
+    s.sold_by                 AS user_id,
+    s.project_id,
+    s.sale_id,
+    s.confirmed_at::date      AS activity_date,
+
+    s.total_price             AS sales_value,
+    rd.total_received,
+    rd.outstanding_amount,
+
+    sc.total_commission       AS commission_earned,
+    sv.total_visits           AS site_visits
+
+FROM sales s
+
+-- Receivables (1 row per sale)
+LEFT JOIN v_receivable_details rd
+       ON rd.sale_id = s.sale_id
+
+-- Commission aggregated per sale per user
+LEFT JOIN (
+    SELECT
+        sale_id,
+        user_id,
+        SUM(commission_amount) AS total_commission
+    FROM sale_commissions
+    GROUP BY sale_id, user_id
+) sc
+  ON sc.sale_id = s.sale_id
+ AND sc.user_id = s.sold_by
+
+-- Site visits aggregated per user per project
+LEFT JOIN (
+    SELECT
+        user_id,
+        project_id,
+        COUNT(*) AS total_visits
+    FROM site_visits
+    GROUP BY user_id, project_id
+) sv
+  ON sv.user_id = s.sold_by
+ AND sv.project_id = s.project_id;
+
+CREATE OR REPLACE VIEW v_user_performance_summary AS
+SELECT
+    user_id, 
+    COUNT(DISTINCT sale_id)          AS total_sales,
+    SUM(sales_value)                 AS sales_value,
+    SUM(total_received)              AS total_received,
+    SUM(outstanding_amount)          AS total_outstanding,
+    SUM(commission_earned)           AS commission_earned,
+    SUM(site_visits)                 AS total_site_visits
+FROM v_user_performance_core
+GROUP BY user_id;
+
+CREATE OR REPLACE VIEW v_user_performance_summary AS
+SELECT
+    u.user_id,
+    u.full_name,
+
+    u.manager_id,
+    m.full_name AS manager_name,
+
+    c.site_visits,
+    c.total_customers,
+    c.total_sales,
+    c.sales_value,
+    c.total_received,
+    c.total_outstanding,
+    c.commission_earned,
+    c.commission_paid,
+    c.commission_payable
+
+FROM v_user_performance_core c
+JOIN app_users u ON u.user_id = c.user_id
+LEFT JOIN app_users m ON m.user_id = u.manager_id;
+
+
+
+CREATE OR REPLACE VIEW v_inventory_status AS
+SELECT p.project_id, pr.project_name, p.plot_id, p.plot_number, p.area, p.base_price, p.total_price, COALESCE(s.sale_status, 'AVAILABLE') AS inventory_status
+FROM plot_units p
+JOIN projects pr ON pr.project_id = p.project_id
+LEFT JOIN LATERAL (
+    SELECT s1.sale_status
+    FROM sales s1
+    WHERE s1.plot_id = p.plot_id
+    ORDER BY s1.confirmed_at DESC
+    LIMIT 1
+) s ON true
+
+
+CREATE INDEX idx_sales_sold_by_confirmed ON sales (sold_by, confirmed_at);
+CREATE INDEX idx_payments_sale_type ON payments (sale_id, payment_type);
+CREATE INDEX idx_sale_commissions_user ON sale_commissions (user_id);
+CREATE INDEX idx_sale_commissions_sale ON sale_commissions (sale_id);
+CREATE INDEX idx_site_visits_user_date ON site_visits (user_id, visit_date);
+CREATE INDEX idx_site_visit_customers_visit ON site_visit_customers (site_visit_id);
+CREATE INDEX idx_v_receivable_sale ON sales (sale_id);
+CREATE INDEX idx_v_commission_agent ON sale_commissions (user_id);
+
+

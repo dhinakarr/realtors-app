@@ -13,6 +13,7 @@ import com.realtors.projects.repository.PlotUnitRepository;
 import com.realtors.projects.repository.ProjectRepository;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 @Service
@@ -64,9 +65,10 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	PlotUnitDto plotDto = getByPlotId(plotId);
     	ProjectDto projectDto = projectRepository.findById(plotDto.getProjectId());
     	
+    	
     	Object areaObj = partialData.get("area");
     	BigDecimal area = areaObj != null ? new BigDecimal(areaObj.toString()) : null;
-
+    	
     	Object basePriceObj = partialData.get("basePrice");
     	BigDecimal sqftRate = BigDecimal.ZERO;
 
@@ -78,12 +80,15 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	    sqftRate = projectDto.getPricePerSqft();
     	}
         BigDecimal basePrice = pricingService.calculateBasePrice(area, sqftRate);
-        BigDecimal totalPrice = basePrice.add(AppUtil.nz(projectDto.getRegCharges()))
+        BigDecimal stampDuty = AppUtil.percent(projectDto.getRegCharges());
+    	BigDecimal registrationCharges = basePrice.multiply(stampDuty).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalPrice = basePrice.add(registrationCharges)
         											.add(AppUtil.nz(projectDto.getDocCharges()))
         											.add(AppUtil.nz(projectDto.getOtherCharges()));
     	
     	partialData.put("area", area);
     	partialData.put("basePrice", basePrice);
+    	partialData.put("registrationCharges", registrationCharges);
     	partialData.put("totalPrice", totalPrice);
     	partialData.put("isPrime", isPrime);
     	return super.patch(plotId, partialData);

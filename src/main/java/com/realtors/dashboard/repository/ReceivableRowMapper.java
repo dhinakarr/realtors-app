@@ -6,6 +6,7 @@ import com.realtors.dashboard.dto.ReceivableDetailDTO;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 public class ReceivableRowMapper implements RowMapper<ReceivableDetailDTO> {
 
@@ -31,7 +32,7 @@ public class ReceivableRowMapper implements RowMapper<ReceivableDetailDTO> {
         dto.setTotalReceived(rs.getBigDecimal("total_received"));
         dto.setOutstandingAmount(rs.getBigDecimal("outstanding_amount"));
 
-        dto.setConfirmedAt(rs.getTimestamp("confirmed_at").toLocalDateTime());
+        dto.setConfirmedAt(rs.getDate("confirmed_at").toLocalDate());
 
         return dto;
     }

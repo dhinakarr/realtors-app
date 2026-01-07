@@ -94,6 +94,7 @@ public class UserController {
 	/** ✅ Get user by ID */
 	@GetMapping("/{id}")
 	public ResponseEntity<ApiResponse<AppUserDto>> getUserById(@PathVariable UUID id) {
+		
 		Optional<AppUserDto> user = appUserService.getUserById(id);
 		return user.map(u -> ResponseEntity.ok(ApiResponse.success("User found", u, HttpStatus.OK))).orElseGet(
 				() -> ResponseEntity.badRequest().body(ApiResponse.failure("User not found", HttpStatus.NOT_FOUND)));

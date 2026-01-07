@@ -1,6 +1,7 @@
 package com.realtors.dashboard.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -34,7 +35,7 @@ public class CommissionDetailsDTO {
     private BigDecimal commissionPayable;
 
     private String saleStatus;
-    private LocalDateTime confirmedAt;
+    private LocalDate confirmedAt;
 
     // getters & setters
 }

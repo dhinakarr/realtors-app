@@ -13,4 +13,6 @@ public class UserFlatDto {
 	UUID userId;
 	String fullName;
 	UUID managerId;
+	String email;
+	String mobile;
 }

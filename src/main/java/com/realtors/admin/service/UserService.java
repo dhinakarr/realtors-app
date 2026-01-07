@@ -305,13 +305,14 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	public List<UserTreeDto> findUserTree() {
 		UUID rootUserId = AppUtil.getCurrentUserId();
 		String sql = """
-				    SELECT user_id, full_name, manager_id
+				    SELECT user_id, full_name, manager_id, email, mobile
 				    FROM app_users
 				    WHERE status = 'ACTIVE'
 				""";
 		List<UserFlatDto> flatList = namedJdbcTemplate.query(sql,
 				(rs, rowNum) -> new UserFlatDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
-						rs.getObject("manager_id", UUID.class)));
+						rs.getObject("manager_id", UUID.class), rs.getString("email"), rs.getString("mobile"))
+				);
 		
 		UserTreeDto root = buildTree(flatList, rootUserId);
 		return root == null ? List.of() : List.of(root);

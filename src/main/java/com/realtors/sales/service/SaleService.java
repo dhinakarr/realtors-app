@@ -1,6 +1,7 @@
 package com.realtors.sales.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 
 //import org.slf4j.Logger;
@@ -55,10 +56,11 @@ public class SaleService {
 		// 3. Calculate base price
 		BigDecimal basePrice = area.multiply(AppUtil.nz(project.getPricePerSqft()));
 		// 4. Determine extra charges
-		BigDecimal extraCharges = request.getExtraCharges();
-		if (extraCharges == null)
-			extraCharges = calculateExtraCharges(project);
-
+		BigDecimal registrationCharge = basePrice
+	            .multiply(project.getRegCharges())
+	            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+		project.setRegCharges(registrationCharge);
+		BigDecimal extraCharges = calculateExtraCharges(project);
 		BigDecimal totalPrice = basePrice.add(AppUtil.nz(extraCharges));
 		UUID userId = request.getSoldBy() == null ? AppUtil.getCurrentUserId() : request.getSoldBy();
 

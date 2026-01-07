@@ -55,44 +55,31 @@ public class DashboardService {
 
 	public DashboardResponseDTO getDashboard(DashboardScope scope) {
 		UUID userId = scope.getUserId();
-	    // Fetch summaries
-	    List<InventorySummaryDTO> inventory = (scope.isHrOnly() || scope.isFinanceOnly() || scope.isCustomer())
-	            ? List.of()
-	            : inventoryRepo.fetchInventorySummary(scope);
+		// Fetch summaries
+		List<InventorySummaryDTO> inventory = (scope.isHrOnly() || scope.isFinanceOnly() || scope.isCustomer())
+				? List.of()
+				: inventoryRepo.fetchInventorySummary(scope);
 
-	    List<FinancialSummaryDTO> finance = scope.isHrOnly()
-	            ? List.of()
-	            : financeRepo.fetchFinancialSummary(scope);
+		List<FinancialSummaryDTO> finance = scope.isHrOnly() ? List.of() : financeRepo.fetchFinancialSummary(scope);
 
-	    List<AgentPerformanceDTO> agents = scope.isCustomer()
-	            ? List.of()
-	            : agentRepo.fetchAgentPerformance(scope);
+		List<AgentPerformanceDTO> agents = scope.isCustomer() ? List.of() : agentRepo.fetchAgentPerformance(scope);
 
-	    List<CommissionSummaryDTO> commissions = (scope.isHrOnly() || scope.isCustomer())
-	            ? List.of()
-	            : commissionRepo.fetchCommissionSummary(scope);
+		List<CommissionSummaryDTO> commissions = (scope.isHrOnly() || scope.isCustomer()) ? List.of()
+				: commissionRepo.fetchCommissionSummary(scope);
 
-	    List<SiteVisitSummaryDTO> siteVisits = siteVisitRepo.fetchSiteVisitSummary(scope);
+		List<SiteVisitSummaryDTO> siteVisits = siteVisitRepo.fetchSiteVisitSummary(scope);
 
-	    // =================== Reuse buildKpis ===================
-	    DashboardKpiDTO summaryKpis = buildKpis(inventory, finance, commissions, siteVisits);
-	    DashboardKPI allTimeKpi = getKpis(userId);
-	    
-	    DashboardKpiWrapperDTO actionKpis = DashboardKpiWrapperDTO.builder()
-                .today(allTimeKpi)
-                .month(allTimeKpi)
-                .total(allTimeKpi)
-                .build();
-	     // =================== Build response ===================
-	    return DashboardResponseDTO.builder()
-	            .inventory(inventory)
-	            .finance(finance)
-	            .agents(agents)
-	            .commissions(commissions)
-	            .siteVisits(siteVisits)
-	            .summaryKpis(summaryKpis)   // existing KPI summary
-	            .actionKpis(actionKpis)     // new Today/Month/Total KPIs
-	            .build();
+		// =================== Reuse buildKpis ===================
+		DashboardKpiDTO summaryKpis = buildKpis(inventory, finance, commissions, siteVisits);
+		DashboardKPI allTimeKpi = getKpis(userId);
+
+		DashboardKpiWrapperDTO actionKpis = DashboardKpiWrapperDTO.builder().today(allTimeKpi).month(allTimeKpi)
+				.total(allTimeKpi).build();
+		// =================== Build response ===================
+		return DashboardResponseDTO.builder().inventory(inventory).finance(finance).agents(agents)
+				.commissions(commissions).siteVisits(siteVisits).summaryKpis(summaryKpis) // existing KPI summary
+				.actionKpis(actionKpis) // new Today/Month/Total KPIs
+				.build();
 	}
 
 	public DashboardResponseDTO getDashboardOld(DashboardScope scope) {
@@ -121,58 +108,36 @@ public class DashboardService {
 		return kpi;
 	}
 
-	private DashboardKpiDTO buildKpis(
-	        List<InventorySummaryDTO> inventory,
-	        List<FinancialSummaryDTO> finance,
-	        List<CommissionSummaryDTO> commissions,
-	        List<SiteVisitSummaryDTO> visits) {
+	private DashboardKpiDTO buildKpis(List<InventorySummaryDTO> inventory, List<FinancialSummaryDTO> finance,
+			List<CommissionSummaryDTO> commissions, List<SiteVisitSummaryDTO> visits) {
 
-	    return DashboardKpiDTO.builder()
-	        .totalPlots(inventory.stream()
-	            .mapToInt(InventorySummaryDTO::getTotalPlots).sum())
+		return DashboardKpiDTO.builder()
+				.totalPlots(inventory.stream().mapToInt(InventorySummaryDTO::getTotalPlots).sum())
 
-	        .availablePlots(inventory.stream()
-	            .mapToInt(InventorySummaryDTO::getAvailable).sum())
+				.availablePlots(inventory.stream().mapToInt(InventorySummaryDTO::getAvailable).sum())
 
-	        .bookedPlots(inventory.stream()
-	            .mapToInt(InventorySummaryDTO::getBooked).sum())
+				.bookedPlots(inventory.stream().mapToInt(InventorySummaryDTO::getBooked).sum())
 
-	        .totalSales(finance.stream()
-	            .map(FinancialSummaryDTO::getTotalSales)
-	            .filter(Objects::nonNull)
-	            .reduce(BigDecimal.ZERO, BigDecimal::add))
+				.totalSales(finance.stream().map(FinancialSummaryDTO::getTotalSales).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add))
 
-	        .totalReceived(finance.stream()
-	            .map(FinancialSummaryDTO::getTotalReceived)
-	            .filter(Objects::nonNull)
-	            .reduce(BigDecimal.ZERO, BigDecimal::add))
+				.totalReceived(finance.stream().map(FinancialSummaryDTO::getTotalReceived).filter(Objects::nonNull)
+						.reduce(BigDecimal.ZERO, BigDecimal::add))
 
-	        .totalOutstanding(finance.stream()
-	            .map(FinancialSummaryDTO::getTotalOutstanding)
-	            .filter(Objects::nonNull)
-	            .reduce(BigDecimal.ZERO, BigDecimal::add))
+				.totalOutstanding(finance.stream().map(FinancialSummaryDTO::getTotalOutstanding)
+						.filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add))
 
-	        .totalCommissionPayable(commissions.stream()
-	            .map(CommissionSummaryDTO::getTotalPayable)
-	            .filter(Objects::nonNull)
-	            .reduce(BigDecimal.ZERO, BigDecimal::add))
+				.totalCommissionPayable(commissions.stream().map(CommissionSummaryDTO::getTotalPayable)
+						.filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add))
 
-	        .totalSiteVisits(visits.stream()
-	            .mapToLong(SiteVisitSummaryDTO::getTotalVisits).sum())
+				.totalSiteVisits(visits.stream().mapToLong(SiteVisitSummaryDTO::getTotalVisits).sum())
 
-	        .avgConversionRatio(visits.isEmpty()
-	            ? BigDecimal.ZERO
-	            : visits.stream()
-	                .map(SiteVisitSummaryDTO::getConversionRatio)
-	                .filter(Objects::nonNull)
-	                .reduce(BigDecimal.ZERO, BigDecimal::add)
-	                .divide(
-	                    BigDecimal.valueOf(visits.size()),
-	                    2,
-	                    RoundingMode.HALF_UP))
+				.avgConversionRatio(visits.isEmpty() ? BigDecimal.ZERO
+						: visits.stream().map(SiteVisitSummaryDTO::getConversionRatio).filter(Objects::nonNull)
+								.reduce(BigDecimal.ZERO, BigDecimal::add)
+								.divide(BigDecimal.valueOf(visits.size()), 2, RoundingMode.HALF_UP))
 
-	        .build();
+				.build();
 	}
-
 
 }

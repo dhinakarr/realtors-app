@@ -23,6 +23,7 @@ public class PlotUnitDto {
 	private BigDecimal width;
 	private BigDecimal breath;
 	private BigDecimal totalPrice;
+	private BigDecimal registrationCharges;
 	private Boolean isPrime;
 	private String status;
 	private UUID customerId;

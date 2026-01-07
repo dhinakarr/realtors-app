@@ -101,8 +101,7 @@
 	        <groupId>org.postgresql</groupId>
 	        <artifactId>postgresql</artifactId>
 	    </dependency>
-	
-	    <!-- JDBC support (includes HikariCP by default) -->
+	    
 	    <dependency>
 	        <groupId>org.springframework.boot</groupId>
 	        <artifactId>spring-boot-starter-jdbc</artifactId>

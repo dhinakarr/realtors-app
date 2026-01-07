@@ -1,6 +1,7 @@
 package com.realtors.common.util;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,4 +41,10 @@ public class AppUtil {
 	public static BigDecimal nz(BigDecimal value) {
 		return value == null ? BigDecimal.ZERO : value;
 	}
+	
+	public static BigDecimal percent(BigDecimal value) {
+	    return nz(value)
+	        .divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
+	}
+
 }

@@ -208,4 +208,16 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 		String sql = "SELECT * FROM v_commission_payable_details WHERE commission_payable > 0";
 		return jdbc.query(sql, new PayableDetailsRowMapper());
 	}
+
+	@Override
+	public void updateStatus(UUID commissionId) {
+		String sql = """
+			    UPDATE sale_commissions
+			    SET is_released = ?, released_at = now()
+			    WHERE commission_id = ?
+			""";
+
+	jdbc.update(sql, true, commissionId);
+		
+	}
 }

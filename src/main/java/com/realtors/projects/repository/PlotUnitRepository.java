@@ -60,7 +60,7 @@ public class PlotUnitRepository {
 
         String sql = """
             INSERT INTO plot_units 
-            (plot_id, project_id, plot_number, base_price, status, is_prime,)
+            (plot_id, project_id, plot_number, base_price, status, is_prime)
             VALUES (?, ?, ?, ?, ?, ?)
         """;
 
