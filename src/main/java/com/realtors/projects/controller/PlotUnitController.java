@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.common.Utils;
+import com.realtors.projects.dto.PlotDetailsDto;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.services.PlotUnitService;
 
@@ -30,8 +31,8 @@ public class PlotUnitController {
 	}
 
 	@GetMapping("/{plotId}")
-	public ResponseEntity<ApiResponse<PlotUnitDto>> getByPlot(@PathVariable UUID plotId) {
-		PlotUnitDto dto = service.getByPlotId(plotId);
+	public ResponseEntity<ApiResponse<PlotDetailsDto>> getByPlot(@PathVariable UUID plotId) {
+		PlotDetailsDto dto = service.getDetailsPlotId(plotId);
 		return ResponseEntity.ok(ApiResponse.success("Plot Units are fetched", dto));
 	}
 	

@@ -5,15 +5,14 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.RowMapper;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 
-import com.realtors.sales.finance.dto.ReceivableDetailsDTO;
-
-public class ReceivableDetailsRowMapper implements RowMapper<ReceivableDetailsDTO> {
+public class ReceivableDetailsRowMapper implements RowMapper<ReceivableDetailDTO> {
 
 	@Override
-	public ReceivableDetailsDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
+	public ReceivableDetailDTO mapRow(ResultSet rs, int rowNum) throws SQLException {
 
-		ReceivableDetailsDTO dto = new ReceivableDetailsDTO();
+		ReceivableDetailDTO dto = new ReceivableDetailDTO();
 
 		dto.setSaleId(rs.getObject("sale_id", UUID.class));
 

@@ -7,6 +7,9 @@ import com.realtors.common.service.AuditContext;
 import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.AppUtil;
 import com.realtors.common.util.JwtUtil;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
@@ -28,6 +31,7 @@ public class UserAuthService {
 	private TokenCacheService tokenServce;
 	private AclPermissionService permissionService;
 	private final AuditTrailService audit;
+	private static final Logger logger = LoggerFactory.getLogger(UserAuthService.class);
 
 	public UserAuthService(JdbcTemplate jdbcTemplate, JwtUtil jwtUtil, 
 			TokenCacheService tokenServce, AclPermissionService permissionService, AuditTrailService audit) {

@@ -112,7 +112,7 @@ public class PlotUnitRepository {
 
         String sql = """
             UPDATE plot_units SET 
-              plot_number = ?, area = ?, base_price = ?, road_width = ?, survey_num = ?,
+              plot_number = ?, area = ?, rate_per_sqft=?, base_price = ?, road_width = ?, survey_num = ?,
               facing = ?, width = ?, breath = ?, total_price = ?, is_prime = ?, 
               status = ?, customer_id = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
             WHERE plot_id = ?
@@ -121,6 +121,7 @@ public class PlotUnitRepository {
         return jdbc.update(sql,
                 dto.getPlotNumber(),
                 dto.getArea(),
+                dto.getRatePerSqft(),
                 dto.getBasePrice(),
                 dto.getRoadWidth(),
                 dto.getSurveyNum(),
@@ -140,7 +141,7 @@ public class PlotUnitRepository {
     	String sql = "UPDATE plot_units set status=?, updated_at=CURRENT_TIMESTAMP, updated_by=? where plot_id=?";
     	jdbc.update(sql, status, AppUtil.getCurrentUserId(), plotId);
     }
-
+    
     // --------------------------
     // DELETE
     // --------------------------

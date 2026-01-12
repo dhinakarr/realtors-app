@@ -13,12 +13,15 @@ import com.realtors.sales.finance.dto.PayableDetailsDTO;
 public interface SaleCommissionRepository {
 	SaleCommissionDTO insertCommission(SaleCommissionDTO dto);
     void updateCommission(UUID commissionId, BigDecimal percentage, BigDecimal amount);
-    void updateStatus(UUID commissionId);
+    void updateStatus(UUID saleId, UUID userId, String status, boolean released);
     List<SaleCommissionDTO> findBySaleId(UUID saleId);
     public List<SaleCommissionDTO> findBySale(UUID saleId, UUID userId);
     public BigDecimal getTotalPayable();
     public BigDecimal getPaidBetween(LocalDateTime from, LocalDateTime to);
     public List<CashFlowItemDTO> getPayables(LocalDate from, LocalDate to);
     public BigDecimal getPaidThisMonth();
+    public BigDecimal getTotalCommission(UUID saleId, UUID userId);
     public List<PayableDetailsDTO> getPayableDetails();
+    public void handleCommissionReversal(UUID saleId);
+    public void deleteCommissionData(UUID saleId, UUID userId);
 }

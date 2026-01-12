@@ -19,6 +19,7 @@ public class PlotUnitRowMapper implements RowMapper<PlotUnitDto> {
         dto.setProjectId((UUID) rs.getObject("project_id"));
         dto.setPlotNumber(rs.getString("plot_number"));
         dto.setArea(rs.getBigDecimal("area"));
+        dto.setRatePerSqft(rs.getBigDecimal("rate_per_sqft"));
         dto.setBasePrice(rs.getBigDecimal("base_price"));
         dto.setRoadWidth(rs.getString("road_width"));
         dto.setSurveyNum(rs.getString("survey_num"));

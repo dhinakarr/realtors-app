@@ -210,14 +210,39 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 	}
 
 	@Override
-	public void updateStatus(UUID commissionId) {
+	public void updateStatus(UUID saleId, UUID userId, String status, boolean released) {
 		String sql = """
 			    UPDATE sale_commissions
-			    SET is_released = ?, released_at = now()
-			    WHERE commission_id = ?
+			    SET status=?, is_released = ?, released_at = now()
+			    WHERE sale_id = ?
 			""";
 
-	jdbc.update(sql, true, commissionId);
+		jdbc.update(sql, status, released, saleId);
 		
 	}
+
+	@Override
+	public void handleCommissionReversal(UUID saleId) {
+	}
+
+	@Override
+	public BigDecimal getTotalCommission(UUID saleId, UUID userId) {
+		String sql = """
+				SELECT commission_amount
+				FROM sale_commissions
+				WHERE  sale_id=? AND user_id=?
+			""";
+	return jdbc.queryForObject(sql, BigDecimal.class, saleId, userId);
+	}
+
+	@Override
+	public void deleteCommissionData(UUID saleId, UUID userId) {
+		String sql = """
+				DELETE FROM sale_commissions
+				WHERE  sale_id=? AND user_id=?
+			""";
+		jdbc.update(sql, saleId, userId);
+	}
+
+
 }

@@ -3,7 +3,6 @@ package com.realtors.dashboard.controller;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.realtors.admin.service.UserHierarchyService;
 import com.realtors.dashboard.dto.PerformanceResponse;
 import com.realtors.dashboard.dto.UserPerformanceDTO;
 import com.realtors.dashboard.dto.UserPerformanceResponse;
@@ -27,11 +25,9 @@ import com.realtors.dashboard.service.UserPerformanceService;
 public class UserPerformanceController {
 
 	private UserPerformanceService performanceService;
-	private UserHierarchyService hierarchyService;
 
-	public UserPerformanceController(UserPerformanceService performanceService, UserHierarchyService hierarchyService) {
+	public UserPerformanceController(UserPerformanceService performanceService) {
 		this.performanceService = performanceService;
-		this.hierarchyService = hierarchyService;
 	}
 
 	@GetMapping("/users")

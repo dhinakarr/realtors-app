@@ -46,10 +46,10 @@ public class ProjectRepository {
 		String sql = """
 	            INSERT INTO projects
 	            (project_name, location_details, survey_number,
-	             start_date, end_date, no_of_plots, price_per_sqft, reg_charges,
+	             start_date, end_date, plot_numbers, no_of_plots, price_per_sqft, reg_charges,
 	             doc_charges, other_charges, guidance_value, status, 
 	             created_by, updated_by, created_at, updated_at)
-	            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+	            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
 	            """;
 	        UUID userId = AppUtil.getCurrentUserId();
 	        // 3. Prepare the value array, ensuring all fields are included in order
@@ -59,6 +59,7 @@ public class ProjectRepository {
 	            dto.getSurveyNumber(),
 	            dto.getStartDate(),
 	            dto.getEndDate(),
+	            dto.getPlotNumbers(),
 	            dto.getNoOfPlots(),
 	            dto.getPricePerSqft(),
 	            dto.getRegCharges(),
@@ -77,14 +78,14 @@ public class ProjectRepository {
 		String sql = """
 				    UPDATE projects SET
 				      project_name=?, location_details=?, survey_number=?, start_date=?,
-				      end_date=?, no_of_plots=?, price_per_sqft=?, reg_charges=?,
+				      end_date=?, plot_numbers=?, no_of_plots=?, price_per_sqft=?, reg_charges=?,
 				      doc_charges=?, other_charges=?, guidance_value=?, images_location=?,
 				      meta=?, updated_at=NOW()
 				    WHERE project_id=?;
 				""";
 
 		return jdbc.update(sql, dto.getProjectName(), dto.getLocationDetails(), dto.getSurveyNumber(),
-				dto.getStartDate(), dto.getEndDate(), dto.getNoOfPlots(), dto.getPricePerSqft(), dto.getRegCharges(),
+				dto.getStartDate(), dto.getEndDate(), dto.getPlotNumbers(),dto.getNoOfPlots(), dto.getPricePerSqft(), dto.getRegCharges(),
 				dto.getDocCharges(), dto.getOtherCharges(), dto.getGuidanceValue());
 	}
 
@@ -100,7 +101,7 @@ public class ProjectRepository {
         if (filter == null) {
             sql = """
                 SELECT 
-                    p.project_id, p.project_name, p.location_details, p.survey_number, p.start_date, p.end_date, 
+                    p.project_id, p.project_name, p.location_details, p.survey_number, p.start_date, p.end_date, p.plot_numbers,
                     p.no_of_plots, p.plot_start_number, p.price_per_sqft, p.reg_charges, p.doc_charges, 
                     p.other_charges, p.guidance_value, p.created_at AS p_created_at, p.updated_at AS p_updated_at, 
                     p.status, p.created_by, p.updated_by,
@@ -120,7 +121,7 @@ public class ProjectRepository {
             // With filter: primary + all secondary
             sql = """
                 SELECT 
-                    p.project_id, p.project_name, p.location_details, p.survey_number, p.start_date, p.end_date, 
+                    p.project_id, p.project_name, p.location_details, p.survey_number, p.start_date, p.end_date, p.plot_numbers,
                     p.no_of_plots, p.plot_start_number, p.price_per_sqft, p.reg_charges, p.doc_charges, 
                     p.other_charges, p.guidance_value, p.created_at AS p_created_at, p.updated_at AS p_updated_at, 
                     p.status, p.created_by, p.updated_by,
@@ -153,6 +154,7 @@ public class ProjectRepository {
                     project.setSurveyNumber(rs.getString("survey_number"));
                     project.setStartDate(rs.getDate("start_date"));
                     project.setEndDate(rs.getDate("end_date"));
+                    project.setPlotNumbers(rs.getString("plot_numbers"));
                     project.setNoOfPlots(rs.getInt("no_of_plots"));
                     project.setPlotStartNumber(rs.getInt("plot_start_number"));
                     project.setPricePerSqft(rs.getBigDecimal("price_per_sqft"));

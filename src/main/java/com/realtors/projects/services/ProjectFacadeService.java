@@ -1,5 +1,6 @@
 package com.realtors.projects.services;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,7 +44,16 @@ public class ProjectFacadeService {
 			// 3) insert file records (pointing to tempPath) INSIDE transaction
 			fileService.insertFileRecordsAsTemp(temps);
 			// 4) generate plots (inside same transaction)
-			plotService.generatePlots(project_id, created.getNoOfPlots(), created.getPlotStartNumber());
+			Object value = created.getPlotNumbers();
+			List<String> plotNumbers = null;
+			if (value != null && value instanceof String str) {
+				// Case: JSON string -> split by comma
+				plotNumbers = Arrays.stream(str.split(",")).map(String::trim) // remove extra spaces
+						.filter(s -> !s.isEmpty()) // remove empty strings
+						.toList();
+			}
+			
+			plotService.generatePlots(project_id, plotNumbers);
 			// 5) register afterCommit hook to move files to final folder and update DB
 			fileService.registerAfterCommitMoveAndUpdate(temps);
 			// 6) prepare response data (files read will currently show temp paths until

@@ -21,6 +21,7 @@ public class ProjectSummaryDto {
 	    String surveyNumber;
 	    Date startDate;
 	    Date endDate;
+	    String plotNumbers;
 	    Integer noOfPlots;
 	    Integer plotStartNumber;
 	    BigDecimal pricePerSqft;

@@ -16,6 +16,7 @@ public class PlotUnitDto {
 	private UUID projectId;
 	private String plotNumber;
 	private BigDecimal area;
+	private BigDecimal ratePerSqft;
 	private BigDecimal basePrice;
 	private String roadWidth;
 	private String surveyNum;

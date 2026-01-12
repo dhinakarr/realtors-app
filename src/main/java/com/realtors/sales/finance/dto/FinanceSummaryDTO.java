@@ -8,6 +8,7 @@ import lombok.Data;
 @Data
 @Builder
 public class FinanceSummaryDTO {
+	private BigDecimal totalSaleAmount;
 	private BigDecimal totalReceivable;
 	private BigDecimal receivedThisMonth;
 	private BigDecimal expectedToday;

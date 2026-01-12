@@ -61,7 +61,7 @@ public class DashboardFinanceRepository {
 		}
 
 		if (!conditions.isEmpty()) {
-			sql.append(" WHERE ").append(String.join(" OR ", conditions));
+			sql.append(" WHERE ").append(String.join(" AND ", conditions));
 		}
 
 		sql.append(" GROUP BY project_id, project_name");

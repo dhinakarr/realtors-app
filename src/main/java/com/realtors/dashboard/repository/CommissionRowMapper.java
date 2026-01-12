@@ -33,7 +33,7 @@ public class CommissionRowMapper implements RowMapper<CommissionDetailsDTO> {
         dto.setCommissionPaid(rs.getBigDecimal("commission_paid"));
         dto.setCommissionEligible(rs.getBigDecimal("commission_eligible"));
         dto.setCommissionPayable(rs.getBigDecimal("commission_payable"));
-
+        
         dto.setSaleStatus(rs.getString("sale_status"));
         dto.setConfirmedAt(rs.getDate("confirmed_at").toLocalDate());
 

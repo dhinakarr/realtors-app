@@ -11,13 +11,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.realtors.common.ApiResponse;
+import com.realtors.dashboard.dto.CommissionDetailsDTO;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 import com.realtors.dashboard.service.FinanceService;
 import com.realtors.sales.finance.dto.CashFlowItemDTO;
 import com.realtors.sales.finance.dto.CashFlowStatus;
 import com.realtors.sales.finance.dto.CashFlowType;
 import com.realtors.sales.finance.dto.FinanceSummaryDTO;
 import com.realtors.sales.finance.dto.PayableDetailsDTO;
-import com.realtors.sales.finance.dto.ReceivableDetailsDTO;
 
 import lombok.RequiredArgsConstructor;
 
@@ -42,14 +43,32 @@ public class FinanceController {
 	}
 	
 	@GetMapping("/receivable/details")
-	public ResponseEntity<ApiResponse<List<ReceivableDetailsDTO>>> getDetail() {
-		List<ReceivableDetailsDTO> retValue = service.getReceivableDetails();
-		return ResponseEntity.ok(ApiResponse.success("Cash flow", retValue, HttpStatus.OK));
+	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getDetail() {
+		List<ReceivableDetailDTO> retValue = service.getReceivableDetails();
+		return ResponseEntity.ok(ApiResponse.success("Receivable Details", retValue, HttpStatus.OK));
 	}
 	
 	@GetMapping("/payable/details")
 	public ResponseEntity<ApiResponse<List<PayableDetailsDTO>>> getPayableDetail() {
 		List<PayableDetailsDTO> retValue = service.getPayableDetails();
-		return ResponseEntity.ok(ApiResponse.success("Cash flow", retValue, HttpStatus.OK));
+		return ResponseEntity.ok(ApiResponse.success("Payable Details", retValue, HttpStatus.OK));
+	}
+	
+	@GetMapping("/sale/details")
+	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getSaleDetail() {
+		List<ReceivableDetailDTO> retValue = service.findSalesByStatus();
+		return ResponseEntity.ok(ApiResponse.success("Sale Details", retValue, HttpStatus.OK));
+	}
+	
+	@GetMapping("/received/details")
+	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getReceivedDetail() {
+		List<ReceivableDetailDTO> retValue = service.getReceivedByThisMonth();
+		return ResponseEntity.ok(ApiResponse.success("Received Details", retValue, HttpStatus.OK));
+	}
+	
+	@GetMapping("/paid/details")
+	public ResponseEntity<ApiResponse<List<CommissionDetailsDTO>>> getCommissionPaidDetail() {
+		List<CommissionDetailsDTO> retValue = service.getCommissionsPaidThisMonth();
+		return ResponseEntity.ok(ApiResponse.success("Received Details", retValue, HttpStatus.OK));
 	}
 }

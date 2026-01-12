@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.service.UserHierarchyService;
 import com.realtors.common.util.AppUtil;
+import com.realtors.dashboard.dto.CommissionDetailsDTO;
+import com.realtors.dashboard.repository.CommissionRepository;
 import com.realtors.sales.dto.CommissionRuleDTO;
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleDTO;
@@ -30,6 +32,7 @@ public class CommissionService {
 	private final UserHierarchyService hierarchyService;
 	private final CommissionRuleRepository commissionRuleRepository;
 	private final SaleCommissionRepository saleCommissionRepository;
+	private final CommissionRepository commissionRepository;
 
 	public void distributeCommission(SaleDTO sale) {
 		// 1. Fetch salesperson
@@ -51,9 +54,6 @@ public class CommissionService {
 					new SaleCommissionDTO(sale.getSaleId(), user.getUserId(), user.getRoleId(), pct, amt));
 		}
 	}
-	
-	
-
 
 	public SaleCommissionDTO insertCommission(SaleCommissionDTO dto) {
 		return saleCommissionRepository.insertCommission(dto);
@@ -71,32 +71,37 @@ public class CommissionService {
 	public List<SaleCommissionDTO> getCommissions(UUID saleId, UUID userId) {
 		return saleCommissionRepository.findBySale(saleId, userId);
 	}
-	
+
 	public BigDecimal getTotalPayable() {
 		return saleCommissionRepository.getTotalPayable();
 	}
 
 	public BigDecimal getPaidThisMonth() {
 		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-		LocalDateTime to   = LocalDateTime.now();
+		LocalDateTime to = LocalDateTime.now();
 		return saleCommissionRepository.getPaidBetween(from, to);
 	}
 
-	public List<CashFlowItemDTO> getPayables(
-			LocalDate from,
-			LocalDate to,
-			CashFlowStatus status
-	) {
+	public List<CashFlowItemDTO> getPayables(LocalDate from, LocalDate to, CashFlowStatus status) {
 		List<CashFlowItemDTO> list = saleCommissionRepository.getPayables(from, to);
 
-		if (status == null) return list;
+		if (status == null)
+			return list;
 
-		return list.stream()
-				.filter(i -> i.getStatus() == status)
-				.toList();
+		return list.stream().filter(i -> i.getStatus() == status).toList();
 	}
-	
+
 	public List<PayableDetailsDTO> getPayableDetails() {
 		return saleCommissionRepository.getPayableDetails();
+	}
+	
+	public List<CommissionDetailsDTO> getCommissionsPaid() {
+		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+		LocalDateTime to   = LocalDateTime.now();
+		return commissionRepository.getCommissionsPaid(from, to);
+	}
+	
+	public void reversePayment(UUID saleId, UUID userId, String status) {
+		saleCommissionRepository.updateStatus(saleId, userId, status, false);
 	}
 }

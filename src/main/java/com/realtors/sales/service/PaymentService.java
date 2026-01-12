@@ -6,16 +6,18 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.realtors.common.util.AppUtil;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 import com.realtors.sales.dto.PaymentDTO;
 import com.realtors.sales.dto.SaleDTO;
 import com.realtors.sales.finance.dto.CashFlowItemDTO;
 import com.realtors.sales.finance.dto.CashFlowStatus;
-import com.realtors.sales.finance.dto.ReceivableDetailsDTO;
 import com.realtors.sales.repository.PaymentRepositoryImpl;
 import com.realtors.sales.repository.SaleRepository;
 
@@ -28,11 +30,11 @@ public class PaymentService {
 	private final PaymentRepositoryImpl paymentRepo;
 	private final SaleRepository salestRepo;
 	private final SaleLifecycleService saleLifecycleService;
-//	private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+	private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
 	public PaymentDTO addPayment(PaymentDTO dto) {
 	    PaymentDTO saved = paymentRepo.save(dto);
-	    saleLifecycleService.recalculate(saved.getSaleId());
+	    saleLifecycleService.recalculate(saved.getSaleId(), saved.getPaymentType());
 	    return saved;
 	}
 	
@@ -50,6 +52,11 @@ public class PaymentService {
 		return paymentRepo.findBySaleId(saleId);
 	}
 	
+	public List<PaymentDTO> getPaymentsByPlot(UUID plotId) {
+		SaleDTO sale = salestRepo.findSaleByPlotId(plotId);
+		return paymentRepo.findBySaleId(sale.getSaleId());
+	}
+	
 	public PaymentDTO getPaymentsById(UUID paymentId) {
 		return paymentRepo.getById(paymentId);
 	}
@@ -59,7 +66,7 @@ public class PaymentService {
 		SaleDTO sale = salestRepo.findSaleByPlotId(dto.getPlotId());
 		dto.setSaleId(sale.getSaleId());
 		if (dto.getPaymentDate() == null) {
-			dto.setPaymentDate(LocalDateTime.now());
+			dto.setPaymentDate(LocalDate.now());
 		}
 
 		// RECEIVED payment → collected_by is required
@@ -75,7 +82,7 @@ public class PaymentService {
 		}
 		validatePayment(dto, sale);
 		paymentRepo.save(dto);
-		saleLifecycleService.recalculate(sale.getSaleId());
+		saleLifecycleService.recalculate(sale.getSaleId(), dto.getPaymentType());
 		return dto;
 	}
 
@@ -130,10 +137,16 @@ public class PaymentService {
 		return salestRepo.getOutstandingDueToday();
 	}
 	
-	public List<ReceivableDetailsDTO> getReceivableDetails() {
+	public List<ReceivableDetailDTO> getReceivableDetails() {
 		return paymentRepo.getReceivableDetails();
 	}
-
+	
+	public List<ReceivableDetailDTO> getReceivedDetails() {
+		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+		LocalDateTime to   = LocalDateTime.now();
+		return paymentRepo.getReceivedDetails(from, to);
+	}
+	
 	public List<CashFlowItemDTO> getReceivables(
 			LocalDate from,
 			LocalDate to,
@@ -150,7 +163,7 @@ public class PaymentService {
 	
 	public void verifyPayment(UUID paymentId) {
 	    PaymentDTO payment = paymentRepo.verify(paymentId, AppUtil.getCurrentUserId());
-	    saleLifecycleService.recalculate(payment.getSaleId());
+	    saleLifecycleService.recalculate(payment.getSaleId(), payment.getPaymentType());
 	}
 	
 	public void deletePayment(UUID paymentId) {
@@ -159,7 +172,7 @@ public class PaymentService {
 			throw new IllegalStateException("Verified payments cannot be deleted");
 		}
 	    paymentRepo.softDelete(paymentId, AppUtil.getCurrentUserId());
-	    saleLifecycleService.recalculate(payment.getSaleId());
+	    saleLifecycleService.recalculate(payment.getSaleId(), payment.getPaymentType());
 	}
 	
 	private void validatePayment(PaymentDTO dto, SaleDTO sale) {

@@ -9,11 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.repository.PlotUnitRepository;
+import com.realtors.sales.dto.PaymentType;
 import com.realtors.sales.dto.PlotStatus;
 import com.realtors.sales.dto.SaleDTO;
 import com.realtors.sales.dto.SalePaymentSummaryDTO;
 import com.realtors.sales.dto.SalesStatus;
 import com.realtors.sales.repository.PaymentRepositoryImpl;
+import com.realtors.sales.repository.SaleCommissionRepository;
 import com.realtors.sales.repository.SaleRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class SaleLifecycleService {
 	private final SaleRepository saleRepo;
 	private final PlotUnitRepository plotRepo;
 	private final PaymentRepositoryImpl paymentRepo;
+	private final SaleCommissionRepository commissionRepo;
 
 	@Transactional("txManager")
 	public void evaluateSaleStatus(UUID saleId) {
@@ -61,19 +64,35 @@ public class SaleLifecycleService {
 	}
 
 	@Transactional("txManager")
-	public void recalculate(UUID saleId) {
+	public void recalculate(UUID saleId, String paymentType) {
 		SaleDTO sale = saleRepo.findById(saleId);
 
 		BigDecimal totalSaleAmount = saleRepo.getTotalAmount(saleId);
 		BigDecimal totalReceived = paymentRepo.getTotalReceived(saleId);
+		BigDecimal totalCommission = commissionRepo.getTotalCommission(saleId, sale.getSoldBy());
+		BigDecimal totalPaid = paymentRepo.getTotalPaid(saleId);
 
 		// No payments yet
 		if (totalReceived.compareTo(BigDecimal.ZERO) == 0) {
 			markInitiated(sale);
 			return;
 		}
-
-		// Fully paid
+		
+		if (paymentType.equalsIgnoreCase(PaymentType.PAID.name())) {
+			// Fully Paid
+			if (totalPaid.compareTo(totalCommission) == 0) {
+				commissionRepo.updateStatus(saleId, sale.getSoldBy(), PaymentType.FULLY_PAID.name(), true);
+				return;
+			} 
+			
+			// Partially Paid Commission
+			if (totalPaid.compareTo(totalCommission) <= 0) {
+				commissionRepo.updateStatus(saleId, sale.getSoldBy(), PaymentType.PARTIALLY_PAID.name(), false);
+				return;
+			}
+		}
+		
+		// Fully Received
 		if (totalReceived.compareTo(totalSaleAmount) >= 0) {
 			markCompleted(sale);
 			return;

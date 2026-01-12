@@ -7,10 +7,12 @@ import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.common.util.AppUtil;
+import com.realtors.projects.dto.PlotDetailsDto;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.repository.PlotUnitRepository;
 import com.realtors.projects.repository.ProjectRepository;
+import com.realtors.sales.dto.CancelRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,6 +47,8 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     		return new EditResponseDto<>(null, form);
     	}
         PlotUnitDto opt = super.findById(plotId).stream().findFirst().get();
+        logger.info("@PlotUnitService.editFormResponse opt.getRatePerSqft(): "+opt.getRatePerSqft());
+        
         EditResponseDto<PlotUnitDto> result = new EditResponseDto(opt, form);
         return  result;
     }
@@ -57,6 +61,19 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
         return repo.findByProjectId(projectId);
     }
     
+    public PlotDetailsDto getDetailsPlotId(UUID plotId) {
+    	PlotDetailsDto detailDto = new PlotDetailsDto();
+    	PlotUnitDto plotDto = super.findById(plotId).get();
+    	
+    	ProjectDto projectDto = projectRepository.findById(plotDto.getProjectId());
+    	detailDto.setDocumentationCharges(projectDto.getDocCharges());
+    	detailDto.setOtherCharges(projectDto.getOtherCharges());
+    	if (plotDto.getRatePerSqft() == null)
+    		detailDto.setRatePerSqft(projectDto.getPricePerSqft());
+    	detailDto.setPlotData(plotDto);
+    	return detailDto;
+    }
+    
     public PlotUnitDto getByPlotId(UUID plotId) {
     	return super.findById(plotId).get();
     }
@@ -65,32 +82,36 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	PlotUnitDto plotDto = getByPlotId(plotId);
     	ProjectDto projectDto = projectRepository.findById(plotDto.getProjectId());
     	
-    	
     	Object areaObj = partialData.get("area");
     	BigDecimal area = areaObj != null ? new BigDecimal(areaObj.toString()) : null;
     	
-    	Object basePriceObj = partialData.get("basePrice");
-    	BigDecimal sqftRate = BigDecimal.ZERO;
+    	Object basePriceObj = partialData.get("ratePerSqft");
+    	BigDecimal sqftRate = projectDto.getPricePerSqft();
 
-    	Boolean isPrime = Boolean.TRUE.equals(partialData.get("prime"));
-
+    	Boolean isPrime = Boolean.TRUE.equals(partialData.get("isPrime"));
     	if (isPrime && basePriceObj != null) {
     	    sqftRate = new BigDecimal(basePriceObj.toString());
-    	} else {
-    	    sqftRate = projectDto.getPricePerSqft();
-    	}
+    	} 
+    	
         BigDecimal basePrice = pricingService.calculateBasePrice(area, sqftRate);
-        BigDecimal stampDuty = AppUtil.percent(projectDto.getRegCharges());
-    	BigDecimal registrationCharges = basePrice.multiply(stampDuty).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal stampDuty = AppUtil.percent(AppUtil.nz(projectDto.getRegCharges()));
+        
+        BigDecimal guideline = area.multiply(AppUtil.nz(projectDto.getGuidanceValue()));
+    	BigDecimal registrationCharges = guideline.multiply(stampDuty).setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalPrice = basePrice.add(registrationCharges)
         											.add(AppUtil.nz(projectDto.getDocCharges()))
         											.add(AppUtil.nz(projectDto.getOtherCharges()));
     	
     	partialData.put("area", area);
+    	partialData.put("ratePerSqft", sqftRate);
     	partialData.put("basePrice", basePrice);
     	partialData.put("registrationCharges", registrationCharges);
     	partialData.put("totalPrice", totalPrice);
     	partialData.put("isPrime", isPrime);
+    	return super.patch(plotId, partialData);
+    }
+    
+    public PlotUnitDto updateCancel(UUID plotId, Map<String, Object> partialData) {
     	return super.patch(plotId, partialData);
     }
 
@@ -110,20 +131,20 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     // ---------------------------------------------------
     // AUTO-GENERATE PLOTS
     // ---------------------------------------------------
-    public void generatePlots(UUID projectId, int numberOfPlots, int startNumber) {
+    public void generatePlots(UUID projectId, List<String> plotNumbers) {
         List<PlotUnitDto> list = new ArrayList<>();
-
-        for (int i = 0; i < numberOfPlots; i++) {
-            PlotUnitDto dto = new PlotUnitDto();
-            dto.setPlotId(UUID.randomUUID());
-            dto.setProjectId(projectId);
-            dto.setPlotNumber(String.valueOf(startNumber + i));
-            dto.setStatus("AVAILABLE");
-            dto.setIsPrime(false);
-
-            list.add(dto);
+        if (plotNumbers != null && !plotNumbers.isEmpty()) {
+        	for(String plotNo: plotNumbers) {
+        		PlotUnitDto dto = new PlotUnitDto();
+                dto.setPlotId(UUID.randomUUID());
+                dto.setProjectId(projectId);
+                dto.setPlotNumber(plotNo);
+                dto.setStatus("AVAILABLE");
+                dto.setIsPrime(false);
+                list.add(dto);
+        	}
+        	repo.bulkInsert(list);
         }
-        repo.bulkInsert(list);
     }
 }
 

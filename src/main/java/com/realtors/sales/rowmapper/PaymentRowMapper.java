@@ -3,6 +3,7 @@ package com.realtors.sales.rowmapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -19,7 +20,7 @@ public class PaymentRowMapper implements RowMapper<PaymentDTO> {
         dto.setAmount(rs.getBigDecimal("amount"));
 
         Timestamp ts = rs.getTimestamp("payment_date");
-        dto.setPaymentDate(ts != null ? ts.toLocalDateTime() : null);
+        dto.setPaymentDate(rs.getObject("payment_date", LocalDate.class));
 
         dto.setPaymentMode(rs.getString("payment_mode"));
         dto.setTransactionRef(rs.getString("transaction_ref"));

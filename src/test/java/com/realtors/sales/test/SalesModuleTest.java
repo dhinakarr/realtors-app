@@ -13,6 +13,7 @@ import com.realtors.sales.service.PaymentService;
 import com.realtors.sales.service.SaleService;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -63,7 +64,7 @@ public class SalesModuleTest {
         payment1.setPaymentMode("ONLINE");
         payment1.setTransactionRef("TXN123456");
         payment1.setRemarks("Booking advance");
-        payment1.setPaymentDate(LocalDateTime.now());
+        payment1.setPaymentDate(LocalDate.now());
         paymentService.addPayment(payment1);
 
         // Payment 2: Stage 1
@@ -74,7 +75,7 @@ public class SalesModuleTest {
         payment2.setPaymentMode("CHEQUE");
         payment2.setTransactionRef("CHQ7890");
         payment2.setRemarks("Stage 1 payment");
-        payment2.setPaymentDate(LocalDateTime.now().plusDays(10));
+        payment2.setPaymentDate(LocalDate.now().plusDays(10));
         paymentService.addPayment(payment2);
 
         System.out.println("Payments Recorded");

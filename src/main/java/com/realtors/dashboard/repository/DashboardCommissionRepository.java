@@ -51,7 +51,7 @@ public class DashboardCommissionRepository {
 		}
 
 		if (!conditions.isEmpty()) {
-			sql.append(" WHERE ").append(String.join(" OR ", conditions));
+			sql.append(" WHERE ").append(String.join(" AND ", conditions));
 		}
 		sql.append(" GROUP BY agent_id, agent_name");
 		sql.append(" ORDER BY commission_payable DESC");

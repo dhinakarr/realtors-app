@@ -14,5 +14,6 @@ public interface CommissionRuleRepository {
     public void deleteRule(UUID ruleId);
     List<CommissionRuleDTO> findByProjectAndRole(UUID projectId, UUID roleId);
     List<CommissionRuleDTO> findByProject(UUID projectId);
+
 }
 

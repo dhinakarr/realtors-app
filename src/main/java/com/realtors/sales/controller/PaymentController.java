@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.coyote.BadRequestException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class PaymentController {
 
 	private final PaymentService service;
+	private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
 	@PostMapping
 	public ResponseEntity<ApiResponse<PaymentDTO>> createPayment(@RequestBody PaymentDTO dto) {
@@ -47,6 +51,15 @@ public class PaymentController {
 		return ResponseEntity.ok(
 			ApiResponse.success("Payments fetched", service.getPaymentsBySale(saleId), HttpStatus.OK)
 		);
+	}
+	
+	@GetMapping("/plot/{plotId}")
+	public ResponseEntity<ApiResponse<List<PaymentDTO>>> getPaymentsByPlot(@PathVariable UUID plotId) {
+		if (plotId == null) {
+		    return ResponseEntity.badRequest().body(ApiResponse.failure("Plot Id is mandatory", null));
+		}
+		List<PaymentDTO> data = service.getPaymentsByPlot(plotId);
+		return ResponseEntity.ok(ApiResponse.success("Payments fetched", data, HttpStatus.OK));
 	}
 
 	@GetMapping("/sale/{saleId}/summary")

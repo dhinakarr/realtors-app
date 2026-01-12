@@ -2,6 +2,7 @@ package com.realtors.projects.rowmapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -17,8 +18,8 @@ public class ProjectRowMapper implements RowMapper<ProjectDto> {
         dto.setProjectName(rs.getString("project_name"));
         dto.setLocationDetails(rs.getString("location_details"));
         dto.setSurveyNumber(rs.getString("survey_number"));
-        dto.setStartDate(rs.getDate("start_date"));
-        dto.setEndDate(rs.getDate("end_date"));
+        dto.setStartDate(rs.getObject("start_date", LocalDate.class));
+        dto.setEndDate(rs.getObject("end_date", LocalDate.class));
         dto.setNoOfPlots(rs.getInt("no_of_plots"));
         dto.setPricePerSqft(rs.getBigDecimal("price_per_sqft"));
         dto.setRegCharges(rs.getBigDecimal("reg_charges"));

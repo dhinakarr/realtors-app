@@ -326,7 +326,7 @@ LEFT JOIN (
     WHERE payment_type = 'RECEIVED'
     GROUP BY sale_id
 ) p ON p.sale_id = s.sale_id
-
+WHERE s.sale_status <> 'CANCELLED';
 
 
 CREATE OR REPLACE VIEW v_commission_payable_details AS
@@ -823,7 +823,7 @@ VALUES
  ('roles', 'parent_role_id', 'Superior Role', 'select', FALSE, TRUE, 'roles', 'role_id', 'role_name',
  '{"placeholder":"Superior Role"}'::jsonb,
  3),
- ('roles', 'is_finance_role', 'Is Finance Role?', 'checkbox', FALSE, FALSE, NULL, NULL, NULL,
+ ('roles', 'is_finance_role', 'Role Type', 'select', FALSE, TRUE, NULL, NULL, NULL,
  '{"placeholder":"Check if a finance role"}'::jsonb,
  4),
  ('modules', 'module_name', 'Module Name', 'text', FALSE, TRUE, NULL, NULL, NULL,
@@ -1024,8 +1024,7 @@ VALUES
  '{"placeholder": "Prime Plot"}'::jsonb,
  6)
  
- 
-========================================================================================= 
+
  INSERT INTO form_metadata
 (table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, 
 lookup_label, extra_settings, sort_order)
@@ -1223,5 +1222,103 @@ CREATE INDEX idx_site_visits_user_date ON site_visits (user_id, visit_date);
 CREATE INDEX idx_site_visit_customers_visit ON site_visit_customers (site_visit_id);
 CREATE INDEX idx_v_receivable_sale ON sales (sale_id);
 CREATE INDEX idx_v_commission_agent ON sale_commissions (user_id);
+===============================================================================
+9-Jan-2026:
+============
+alter table projects add column plot_numbers VARCHAR(1000);
+ALTER TABLE plot_units add column rate_per_sqft numeric(10,2);
+ALTER TABLE sale_commissions add column status VARCHAR(10);
 
+delete from form_metadata where table_name='projects' and column_name='no_of_plots';
+delete from form_metadata where table_name='projects' and column_name='plot_start_number';
+
+INSERT INTO form_metadata
+(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
+VALUES  
+('projects', 'plot_numbers', 'Plot Numbers', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"placeholder": "Plot numbers comma separated"}'::jsonb,
+ 6)
+
+CREATE OR REPLACE VIEW v_commission_payable_details_payments AS
+SELECT
+    sc.commission_id,
+    sc.sale_id,
+    sc.user_id AS agent_id,
+    u.full_name AS agent_name,
+
+    pr.project_id,
+    pr.project_name,
+    pl.plot_id,
+    pl.plot_number,
+
+    s.total_price AS sale_amount,
+
+    /* CUSTOMER PAID (TOTAL RECEIVED) */
+    COALESCE(cr.total_received, 0) AS customer_paid,
+
+    /* COMMISSION */
+    sc.commission_amount AS total_commission,
+    COALESCE(cp.total_paid, 0) AS commission_paid,
+
+    /* ELIGIBLE */
+    LEAST(
+        sc.commission_amount,
+        CASE
+            WHEN s.total_price > 0 THEN
+                (COALESCE(cr.total_received, 0) / s.total_price)
+                * sc.commission_amount
+            ELSE 0
+        END
+    ) AS commission_eligible,
+
+    /* PAYABLE */
+    GREATEST(
+        LEAST(
+            sc.commission_amount,
+            CASE
+                WHEN s.total_price > 0 THEN
+                    (COALESCE(cr.total_received, 0) / s.total_price)
+                    * sc.commission_amount
+                ELSE 0
+            END
+        ) - COALESCE(cp.total_paid, 0),
+        0
+    ) AS commission_payable,
+
+    /* PAYMENT LEVEL INFO */
+    p.amount       AS paid_amount,
+    p.payment_date,
+
+    s.sale_status,
+    s.confirmed_at
+
+FROM sale_commissions sc
+JOIN sales s        ON s.sale_id = sc.sale_id
+JOIN app_users u    ON u.user_id = sc.user_id
+JOIN plot_units pl  ON pl.plot_id = s.plot_id
+JOIN projects pr    ON pr.project_id = pl.project_id
+
+LEFT JOIN payments p
+       ON p.sale_id = sc.sale_id
+      AND p.paid_to = sc.user_id
+      AND p.payment_type = 'PAID'
+
+LEFT JOIN (
+    SELECT sale_id, SUM(amount) AS total_received
+    FROM payments
+    WHERE payment_type = 'RECEIVED'
+    GROUP BY sale_id
+) cr ON cr.sale_id = s.sale_id
+
+LEFT JOIN (
+    SELECT sale_id, paid_to AS agent_id, SUM(amount) AS total_paid
+    FROM payments
+    WHERE payment_type = 'PAID'
+    GROUP BY sale_id, paid_to
+) cp
+  ON cp.sale_id = sc.sale_id
+ AND cp.agent_id = sc.user_id
+
+WHERE s.sale_status IN ('BOOKED','SOLD','COMPLETED','IN_PROGRESS')
+  AND sc.commission_amount > 0;
 

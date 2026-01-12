@@ -35,7 +35,10 @@ public class DashboardAgentRepository {
 		MapSqlParameterSource params = new MapSqlParameterSource();
 		List<String> conditions = new ArrayList<>();
 
-		if (!scope.isAll()) {
+		if (scope.isCustomer()) {
+		    conditions.add("customer_id = :customerId");
+		    params.addValue("customerId", scope.getCustomerId());
+		} else if (!scope.isAll()) {
 			if (scope.getUserIds() != null && !scope.getUserIds().isEmpty()) {
 			    conditions.add("agent_id IN (:userIds)");
 			    params.addValue("userIds", scope.getUserIds());
@@ -47,7 +50,7 @@ public class DashboardAgentRepository {
 		}
 
 		if (!conditions.isEmpty()) {
-			sql.append(" WHERE ").append(String.join(" OR ", conditions));
+			sql.append(" WHERE ").append(String.join(" AND ", conditions));
 		}
 		sql.append(" GROUP BY agent_id, agent_name");
 		sql.append(" ORDER BY sales_value DESC");

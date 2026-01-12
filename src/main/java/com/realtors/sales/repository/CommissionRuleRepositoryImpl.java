@@ -95,6 +95,5 @@ public class CommissionRuleRepositoryImpl implements CommissionRuleRepository {
 
         return jdbc.query(sql, new CommissionRuleRowMapper(), projectId);
     }
-    
 }
 

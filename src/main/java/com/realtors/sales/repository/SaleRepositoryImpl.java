@@ -3,14 +3,22 @@ package com.realtors.sales.repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Repository;
 
+import com.realtors.dashboard.dto.DashboardScope;
+import com.realtors.dashboard.dto.FinancialSummaryDTO;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 import com.realtors.sales.dto.SaleDTO;
 import com.realtors.sales.dto.SalesStatus;
 import com.realtors.sales.finance.dto.CashFlowItemDTO;
@@ -26,6 +34,20 @@ public class SaleRepositoryImpl implements SaleRepository {
 
 	private final JdbcTemplate jdbc;
 //	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
+	private static final RowMapper<ReceivableDetailDTO> ROW_MAPPER =
+            new BeanPropertyRowMapper<>(ReceivableDetailDTO.class);
+	
+	@Override
+    public List<ReceivableDetailDTO> findSalesByStatus(List<String> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join( ",", Collections.nCopies(statuses.size(), "?"));
+        String sql = "SELECT * FROM v_receivable_details " +
+                     "WHERE sale_status IN (" + placeholders + ")";
+        return jdbc.query(sql, ROW_MAPPER, statuses.toArray());
+    }
 	
 	@Override
 	public SaleDTO createSale(UUID plotId, UUID projectId, UUID customerId, UUID soldBy, BigDecimal area,
@@ -65,17 +87,17 @@ public class SaleRepositoryImpl implements SaleRepository {
 	public void updateSaleStatus(UUID saleId, String status) {
 		String sql = """
 				    UPDATE sales
-				    SET sale_status = ?, confirmed_at = ?, updated_at = now()
+				    SET sale_status = ?, confirmed_at = now(), updated_at = now()
 				    WHERE sale_id = ?
 				""";
-		jdbc.update(sql, status, LocalDateTime.now(), saleId);
+		jdbc.update(sql, status,  saleId);
 	}
 
 	public BigDecimal getTotalAmount(UUID saleId) {
 		String sql = """
 				    SELECT  total_price
 				    FROM sales
-				    WHERE sale_id = ?
+				    WHERE sale_id = ? AND sale_status <> 'CANCELLED'
 				""";
 		return jdbc.queryForObject(sql, BigDecimal.class, saleId);
 	}
@@ -93,6 +115,7 @@ public class SaleRepositoryImpl implements SaleRepository {
 				WHERE payment_type = 'RECEIVED' AND is_verified = true GROUP BY sale_id
 			) p ON p.sale_id = s.sale_id
 			WHERE (s.total_price - COALESCE(p.total_received, 0)) > 0
+			AND s.sale_status <> 'CANCELLED'
 		""";
 
 		return jdbc.query(sql, (rs, rowNum) -> {
@@ -134,7 +157,7 @@ public class SaleRepositoryImpl implements SaleRepository {
 	    String sql = """
 	        SELECT COALESCE(SUM(total_price), 0)
 	        FROM sales
-	        WHERE sale_status IN ('CONFIRMED', 'COMPLETED')
+	        WHERE sale_status IN ('BOOKED', 'IN_PROGRESS')
 	    """;
 	    return jdbc.queryForObject(sql, BigDecimal.class);
 	}
@@ -191,6 +214,4 @@ public class SaleRepositoryImpl implements SaleRepository {
 	        .filter(i -> i.getStatus() == status)
 	        .toList();
 	}
-
-
 }

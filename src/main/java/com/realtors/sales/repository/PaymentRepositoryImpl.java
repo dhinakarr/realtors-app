@@ -7,17 +7,18 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 import com.realtors.sales.dto.PaymentDTO;
 import com.realtors.sales.dto.ProjectWiseTotalReceivable;
 import com.realtors.sales.dto.SaleWiseReceivable;
-import com.realtors.sales.finance.dto.ReceivableDetailsDTO;
 import com.realtors.sales.rowmapper.PaymentRowMapper;
 import com.realtors.sales.rowmapper.ReceivableDetailsRowMapper;
-
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 public class PaymentRepositoryImpl {
 
 	private final JdbcTemplate jdbc;
+	private static final Logger logger = LoggerFactory.getLogger(PaymentRepositoryImpl.class);
 
 	public PaymentDTO save(PaymentDTO dto) {
 		dto.setVerified(true);
@@ -43,7 +45,7 @@ public class PaymentRepositoryImpl {
 			p.setSaleId((UUID) rs.getObject("sale_id"));
 			p.setPaymentType(rs.getString("payment_type"));
 			p.setAmount(rs.getBigDecimal("amount"));
-			p.setPaymentDate(rs.getTimestamp("payment_date").toLocalDateTime());
+			p.setPaymentDate(rs.getDate("payment_date").toLocalDate());
 			p.setPaymentMode(rs.getString("payment_mode"));
 			p.setTransactionRef(rs.getString("transaction_ref"));
 			p.setRemarks(rs.getString("remarks"));
@@ -51,7 +53,7 @@ public class PaymentRepositoryImpl {
 			p.setPaidTo((UUID) rs.getObject("paid_to"));
 			p.setVerified(rs.getBoolean("is_verified"));
 			return p;
-		}, dto.getPaymentType(), dto.getSaleId(), dto.getAmount(), Timestamp.valueOf(dto.getPaymentDate()),
+		}, dto.getPaymentType(), dto.getSaleId(), dto.getAmount(), dto.getPaymentDate(),
 				dto.getPaymentMode(), dto.getTransactionRef(), dto.getRemarks(), dto.getCollectedBy(), dto.getPaidTo(),
 				dto.isVerified());
 	}
@@ -66,10 +68,10 @@ public class PaymentRepositoryImpl {
 	}
 
 	public List<PaymentDTO> findBySaleId(UUID saleId) {
-		String sql = "SELECT * FROM payments WHERE sale_id = ?";
+		String sql = "SELECT * FROM payments WHERE sale_id = ?  order by payment_date";
 		return jdbc.query(sql, new BeanPropertyRowMapper<>(PaymentDTO.class), saleId);
 	}
-
+	
 	public BigDecimal getTotalReceived(UUID saleId) {
 		String sql = "SELECT COALESCE(SUM(amount),0) FROM payments WHERE sale_id = ? AND payment_type = 'RECEIVED'";
 		return jdbc.queryForObject(sql, BigDecimal.class, saleId);
@@ -83,9 +85,14 @@ public class PaymentRepositoryImpl {
 	public BigDecimal getTotalPaidThisMonth() {
 		 LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
 		 LocalDateTime to = LocalDateTime.now();
-		String sql = "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_type = 'PAID' AND payment_date BETWEEN ? AND ?" ;
+		String sql = """
+				select SUM(commission_paid) from v_commission_payable_details_payments 
+				WHERE payment_date BETWEEN ? AND ?
+				""" ;
 		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
 	}
+	
+	
 	
 	public BigDecimal getTotalPaid() {
 		String sql = "SELECT COALESCE(SUM(amount),0) FROM payments WHERE payment_type = 'PAID'" ;
@@ -124,7 +131,7 @@ public class PaymentRepositoryImpl {
 
 	    return jdbc.queryForObject(sql, new PaymentRowMapper(),
 	        dto.getAmount(),
-	        Timestamp.valueOf(dto.getPaymentDate()),
+	        dto.getPaymentDate(),
 	        dto.getPaymentMode(),
 	        dto.getTransactionRef(),
 	        dto.getRemarks(),
@@ -142,6 +149,16 @@ public class PaymentRepositoryImpl {
 	    jdbc.update(sql, paymentId);
 	}
 
+	public void paymentReversed(UUID saleId, String paymentType) {
+	    String sql = """
+	        UPDATE payments
+	        SET payment_type = ?,
+	            payment_date = now()
+	        WHERE sale_id = ?
+	    """;
+	    jdbc.update(sql, paymentType, saleId);
+	}
+	
 	public PaymentDTO verify(UUID paymentId, UUID verifierId) {
 	    String sql = """
 	        UPDATE payments
@@ -157,11 +174,15 @@ public class PaymentRepositoryImpl {
 	
 	public BigDecimal getReceivedBetween(LocalDateTime from, LocalDateTime to) {
 		String sql = """
-			SELECT COALESCE(SUM(amount), 0)
-			FROM payments
+			SELECT SUM(total_received) FROM v_receivable_details
+			WHERE total_received > 0
+			AND sale_id IN (
+			SELECT sale_id FROM payments
 			WHERE payment_type = 'RECEIVED'
+			AND payment_date >= ?
+			AND payment_date < ?);
 		""";
-		return jdbc.queryForObject(sql, BigDecimal.class);
+		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
 	}
 	
 	public SaleWiseReceivable getSaleWiseReceivable() {
@@ -196,27 +217,40 @@ public class PaymentRepositoryImpl {
 		return jdbc.queryForObject(sql, ProjectWiseTotalReceivable.class);
 	}
 	
-	public List<ReceivableDetailsDTO> getReceivableDetails() {
+	public List<ReceivableDetailDTO> getReceivedDetails(LocalDateTime from, LocalDateTime to) {
+		String sql = """
+				SELECT * FROM v_receivable_details
+				WHERE total_received > 0
+				AND sale_id IN (
+				SELECT sale_id
+				FROM payments
+				WHERE payment_type = 'RECEIVED'
+				AND payment_date BETWEEN ? AND ?)	
+				""";
+		return jdbc.query(sql, new ReceivableDetailsRowMapper(), Timestamp.valueOf(from), Timestamp.valueOf(to));
+	}
+	
+	public List<ReceivableDetailDTO> getReceivableDetails() {
 		String sql = "SELECT * FROM v_receivable_details WHERE outstanding_amount > 0";
 		return jdbc.query(sql, new ReceivableDetailsRowMapper());
 	}
 	
-	public List<ReceivableDetailsDTO> findPendingByProject(UUID projectId) {
+	public List<ReceivableDetailDTO> findPendingByProject(UUID projectId) {
 	    String sql = "SELECT *  FROM v_receivable_details WHERE outstanding_amount > 0 AND project_id = ? ";
 	    return jdbc.query( sql, new ReceivableDetailsRowMapper(), projectId);
 	}
 	
-	public List<ReceivableDetailsDTO> findPendingByCustomer(UUID customerId) {
+	public List<ReceivableDetailDTO> findPendingByCustomer(UUID customerId) {
 	    String sql = "SELECT *  FROM v_receivable_details WHERE outstanding_amount > 0 AND customer_id = ? ";
 	    return jdbc.query( sql, new ReceivableDetailsRowMapper(), customerId);
 	}
 	
-	public List<ReceivableDetailsDTO> findPendingByAgent(UUID userId) {
+	public List<ReceivableDetailDTO> findPendingByAgent(UUID userId) {
 	    String sql = "SELECT *  FROM v_receivable_details WHERE outstanding_amount > 0 AND agent_id = ?";
 	    return jdbc.query( sql, new ReceivableDetailsRowMapper(), userId);
 	}
 	
-	public List<ReceivableDetailsDTO> findPendingPaged(int limit, int offset) {
+	public List<ReceivableDetailDTO> findPendingPaged(int limit, int offset) {
 	    String sql = """
 	        SELECT *
 	        FROM v_receivable_details

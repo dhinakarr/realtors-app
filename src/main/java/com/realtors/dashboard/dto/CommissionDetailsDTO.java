@@ -33,7 +33,7 @@ public class CommissionDetailsDTO {
     private BigDecimal commissionPaid;
     private BigDecimal commissionEligible;
     private BigDecimal commissionPayable;
-
+    private LocalDate paymentDate;
     private String saleStatus;
     private LocalDate confirmedAt;
 

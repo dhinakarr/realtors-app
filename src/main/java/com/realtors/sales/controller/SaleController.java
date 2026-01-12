@@ -7,6 +7,7 @@ import java.util.UUID;
 //import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.realtors.common.ApiResponse;
 import com.realtors.common.util.AppUtil;
+import com.realtors.dashboard.dto.UserPrincipalDto;
+import com.realtors.projects.dto.PlotUnitDto;
+import com.realtors.sales.dto.CancelRequest;
 import com.realtors.sales.dto.PaymentDTO;
 import com.realtors.sales.dto.SaleCommissionDTO;
 import com.realtors.sales.dto.SaleCreateRequest;
@@ -83,4 +87,9 @@ public class SaleController {
 		return ResponseEntity.ok("Sale confirmed successfully");
 	}
 
+	@PostMapping("/{plotId}/cancel")
+	public ResponseEntity<ApiResponse<PlotUnitDto>> cancelSale(@PathVariable UUID plotId, @RequestBody CancelRequest request) {
+	    PlotUnitDto dto = saleService.cancelBooking(plotId, request);
+	    return ResponseEntity.ok(ApiResponse.success("Booking cancelled successfully", dto));
+	}
 }

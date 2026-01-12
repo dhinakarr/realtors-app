@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.realtors.dashboard.dto.DashboardResponseDTO;
-import com.realtors.dashboard.dto.InventoryDetailDTO;
 import com.realtors.dashboard.dto.InventoryStatusDTO;
 import com.realtors.dashboard.dto.DashboardScope;
 import com.realtors.dashboard.dto.UserPrincipalDto;

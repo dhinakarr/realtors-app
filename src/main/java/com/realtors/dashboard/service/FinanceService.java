@@ -10,14 +10,16 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.realtors.dashboard.dto.CommissionDetailsDTO;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
 import com.realtors.sales.finance.dto.CashFlowItemDTO;
 import com.realtors.sales.finance.dto.CashFlowStatus;
 import com.realtors.sales.finance.dto.CashFlowType;
 import com.realtors.sales.finance.dto.FinanceSummaryDTO;
 import com.realtors.sales.finance.dto.PayableDetailsDTO;
-import com.realtors.sales.finance.dto.ReceivableDetailsDTO;
 import com.realtors.sales.service.CommissionService;
 import com.realtors.sales.service.PaymentService;
+import com.realtors.sales.service.SaleService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +30,7 @@ public class FinanceService {
 
 	private final PaymentService paymentService;
 	private final CommissionService commissionService;
+	private final SaleService saleService;
 
 	public FinanceSummaryDTO getSummary(UUID saleId) {
 
@@ -38,6 +41,7 @@ public class FinanceService {
 	}
 
 	public FinanceSummaryDTO getSummary() {
+		BigDecimal totalSalesAmount = nz(saleService.getTotalSaleAmount());
 		BigDecimal totalReceivable      = nz(paymentService.getTotalReceivable());
 	    BigDecimal receivedThisMonth    = nz(paymentService.getReceivedThisMonth());
 	    BigDecimal expectedToday        = nz(paymentService.getExpectedToday());
@@ -46,6 +50,7 @@ public class FinanceService {
 	    BigDecimal paidThisMonth        = nz(paymentService.getPaidThisMonth());
 
 	    return FinanceSummaryDTO.builder()
+	    	.totalSaleAmount(totalSalesAmount)
 	        .totalReceivable(totalReceivable)
 	        .receivedThisMonth(receivedThisMonth)
 	        .expectedToday(expectedToday)
@@ -58,12 +63,24 @@ public class FinanceService {
 		return value == null ? BigDecimal.ZERO : value;
 	}
 
-	public List<ReceivableDetailsDTO> getReceivableDetails() {
+	public List<ReceivableDetailDTO> getReceivableDetails() {
 		return paymentService.getReceivableDetails();
+	}
+	
+	public List<ReceivableDetailDTO> getReceivedByThisMonth() {
+		return paymentService.getReceivedDetails();
+	}
+	
+	public List<ReceivableDetailDTO> findSalesByStatus() {
+		return saleService.findSalesByStatus(List.of("BOOKED", "IN_PROGRESS"));
 	}
 
 	public List<PayableDetailsDTO> getPayableDetails() {
 		return commissionService.getPayableDetails();
+	}
+	
+	public List<CommissionDetailsDTO> getCommissionsPaidThisMonth() {
+		return commissionService.getCommissionsPaid();
 	}
 
 	public List<CashFlowItemDTO> getCashFlow(LocalDate from, LocalDate to, CashFlowType type, CashFlowStatus status) {
