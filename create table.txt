@@ -1227,7 +1227,7 @@ CREATE INDEX idx_v_commission_agent ON sale_commissions (user_id);
 ============
 alter table projects add column plot_numbers VARCHAR(1000);
 ALTER TABLE plot_units add column rate_per_sqft numeric(10,2);
-ALTER TABLE sale_commissions add column status VARCHAR(10);
+ALTER TABLE sale_commissions add column status VARCHAR(20);
 
 delete from form_metadata where table_name='projects' and column_name='no_of_plots';
 delete from form_metadata where table_name='projects' and column_name='plot_start_number';
@@ -1238,6 +1238,33 @@ VALUES
 ('projects', 'plot_numbers', 'Plot Numbers', 'text', FALSE, TRUE, NULL, NULL, NULL,
  '{"placeholder": "Plot numbers comma separated"}'::jsonb,
  6)
+
+UPDATE form_metadata
+SET field_type = 'select', display_label='Role Type',
+    lookup_key = '["INTERNAL","CUSTOMER","FINANCE", "HR", "PH", "PA", "PM", "MD", "OWNER"]'::jsonb,
+    lookup_label = '["INTERNAL","CUSTOMER","FINANCE", "HR", "PH", "PA", "PM", "MD", "OWNER"]'::jsonb
+WHERE table_name = 'roles'
+  AND column_name = 'finance_role';   
+
+ALTER TABLE sale_commissions
+ALTER COLUMN percentage TYPE NUMERIC(12,2);
+
+CREATE TABLE payment_commission_rules (
+    rule_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_id UUID NOT NULL REFERENCES projects(project_id),
+    role_id UUID NULL REFERENCES roles(role_id),
+    user_id UUID NULL REFERENCES app_users(user_id),
+    commission_type VARCHAR(20) NOT NULL,
+    commission_value NUMERIC(10,2) NOT NULL,
+    priority INTEGER,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    effective_from DATE,
+    effective_to DATE NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
 
 CREATE OR REPLACE VIEW v_commission_payable_details_payments AS
 SELECT

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.UserMiniDto;
 import com.realtors.admin.dto.UserTreeDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
@@ -40,18 +41,31 @@ public class UserController {
 	}
 
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public ResponseEntity<ApiResponse<AppUserDto>> createUser(@RequestPart("dto") AppUserDto dto,
-			@RequestPart(value = "profileImage", required = false) MultipartFile profileImage) {
-		if (dto.getEmail() == null || dto.getMobile() == null) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure("Email and Mobile are required", HttpStatus.BAD_REQUEST));
-        }
-		try {
-			AppUserDto created = appUserService.createWithFiles(dto, profileImage);
-			return ResponseEntity.ok(ApiResponse.success("Users Created successfully", created, HttpStatus.OK));
-		}  catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage(), HttpStatus.UNAUTHORIZED));
-        }
+	public ResponseEntity<ApiResponse<AppUserDto>> createUser(
+	        @RequestPart("dto") String dtoJson,
+	        @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
+	) {
+	    try {
+	        ObjectMapper mapper = new ObjectMapper();
+	        AppUserDto dto = mapper.readValue(dtoJson, AppUserDto.class);
+
+	        if (dto.getEmail() == null || dto.getMobile() == null) {
+	            return ResponseEntity.badRequest()
+	                    .body(ApiResponse.failure("Email and Mobile are required", HttpStatus.BAD_REQUEST));
+	        }
+
+	        AppUserDto created = appUserService.createWithFiles(dto, profileImage);
+	        return ResponseEntity.ok(
+	                ApiResponse.success("Users Created successfully", created, HttpStatus.OK)
+	        );
+
+	    } catch (Exception ex) {
+	        ex.printStackTrace();
+	        return ResponseEntity.badRequest()
+	                .body(ApiResponse.failure(ex.getMessage(), HttpStatus.BAD_REQUEST));
+	    }
 	}
+
 
 	@GetMapping("/form")
 	public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getUserForm() {
@@ -62,6 +76,12 @@ public class UserController {
 	@GetMapping("/editForm/{id}")
 	public ResponseEntity<ApiResponse<EditResponseDto<AppUserDto>>> getUserEditForm(@PathVariable UUID id) {
 		EditResponseDto<AppUserDto> users = appUserService.editUserResponse(id);
+		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
+	}
+	
+	@GetMapping("/role/{id}")
+	public ResponseEntity<ApiResponse<List<UserMiniDto>>> getUsersByRole(@PathVariable UUID id) {
+		List<UserMiniDto> users = appUserService.getUsersByRole(id);
 		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
 	}
 

@@ -47,7 +47,6 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     		return new EditResponseDto<>(null, form);
     	}
         PlotUnitDto opt = super.findById(plotId).stream().findFirst().get();
-        logger.info("@PlotUnitService.editFormResponse opt.getRatePerSqft(): "+opt.getRatePerSqft());
         
         EditResponseDto<PlotUnitDto> result = new EditResponseDto(opt, form);
         return  result;

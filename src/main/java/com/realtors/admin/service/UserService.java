@@ -6,6 +6,7 @@ import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.UserBasicDto;
 import com.realtors.admin.dto.UserFlatDto;
+import com.realtors.admin.dto.UserMiniDto;
 import com.realtors.admin.dto.UserTreeDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
@@ -138,6 +139,16 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				AuditContext.getIpAddress(), AuditContext.getUserAgent());
 
 		return data;
+	}
+	
+	public List<UserMiniDto> getUsersByRole(UUID roleId) {
+		String sql = "SELECT user_id, full_name from app_users where role_id=?";
+		return jdbcTemplate.query(sql, new Object[]{roleId}, (rs, rowNum) -> {
+	        UserMiniDto dto = new UserMiniDto();
+	        dto.setUserId(UUID.fromString(rs.getString("user_id")));
+	        dto.setFullName(rs.getString("full_name"));
+	        return dto;
+	    });
 	}
 
 	/** ✅ Update user */

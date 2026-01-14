@@ -47,6 +47,7 @@ public class SaleService {
 	private final UserAuthService authService;
 	private final CommissionPaymentService comPayService;
 	private final PaymentRepositoryImpl paymentRepo;
+	private final CommissionDistributionService commisionDistributionService;
 	
 	private static final Logger logger = LoggerFactory.getLogger(SaleService.class);
 
@@ -103,7 +104,8 @@ public class SaleService {
 					customerDto.getRoleId(), "CUSTOMER");
 		}
 		// 6. Distribute commission after sale creation
-		comPayService.distributeCommission(sale.getSaleId(), area);
+//		comPayService.distributeCommission(sale.getSaleId(), area);
+		commisionDistributionService.distributeCommission(project.getProjectId(), userId, basePrice, area, sale.getSaleId());
 		return sale;
 	}
 
