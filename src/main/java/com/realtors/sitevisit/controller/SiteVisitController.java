@@ -2,6 +2,7 @@ package com.realtors.sitevisit.controller;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -9,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -22,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
+import com.realtors.dashboard.dto.UserPrincipalDto;
+import com.realtors.dashboard.dto.UserRole;
 import com.realtors.sitevisit.dto.PaymentPatchDTO;
 import com.realtors.sitevisit.dto.SitePaymentDTO;
 import com.realtors.sitevisit.dto.SiteVisitPatchDTO;
@@ -39,12 +43,19 @@ public class SiteVisitController {
 
     private final SiteVisitServiceImpl siteVisitService;
     private final SiteVisitService visitService;
+    
 
     private final Logger logger = LoggerFactory.getLogger(SiteVisitController.class);
     
+    private boolean isCommonRole(UserPrincipalDto principal) {
+    	Set<UserRole> role = principal.getRoles();
+    	Set<UserRole> commonRole = Set.of(UserRole.FINANCE, UserRole.MD, UserRole.HR);
+    	return role.stream().anyMatch(commonRole::contains);
+    }
+    
     @GetMapping("/form")
-    public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getVistForm() {
-    	DynamicFormResponseDto form = visitService.getVisitFormData();
+    public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getVistForm(@AuthenticationPrincipal UserPrincipalDto principal) {
+    	DynamicFormResponseDto form = visitService.getVisitFormData(isCommonRole(principal));
     	return ResponseEntity.ok(ApiResponse.success("Form details fetched", form, HttpStatus.OK));
     }
     
@@ -76,13 +87,13 @@ public class SiteVisitController {
        LIST SITE VISITS
        ========================================================= */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SiteVisitResponseDTO>>> listSiteVisits(
+    public ResponseEntity<ApiResponse<List<SiteVisitResponseDTO>>> listSiteVisits(@AuthenticationPrincipal UserPrincipalDto principal,
             @RequestParam(required = false) UUID userId,
             @RequestParam(required = false) UUID projectId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
 
-        List<SiteVisitResponseDTO> visits = siteVisitService.listSiteVisits(userId, projectId, fromDate, toDate);
+        List<SiteVisitResponseDTO> visits = siteVisitService.listSiteVisits(userId, projectId, fromDate, toDate, isCommonRole(principal));
 
         return ResponseEntity.ok(ApiResponse.success("Site visits retrieved", visits));
     }
@@ -91,10 +102,10 @@ public class SiteVisitController {
        GET SITE VISIT BY ID
        ========================================================= */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<SiteVisitResponseDTO>> getSiteVisit(
+    public ResponseEntity<ApiResponse<SiteVisitResponseDTO>> getSiteVisit(@AuthenticationPrincipal UserPrincipalDto principal,
             @PathVariable UUID id) {
 
-        SiteVisitResponseDTO visit = siteVisitService.getSiteVisit(id);
+        SiteVisitResponseDTO visit = siteVisitService.getSiteVisit(id, isCommonRole(principal));
 
         return ResponseEntity.ok(ApiResponse.success("Site visit retrieved", visit));
     }
@@ -103,12 +114,12 @@ public class SiteVisitController {
        PATCH SITE VISIT
        ========================================================= */
     @PatchMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> patchSiteVisit(
+    public ResponseEntity<ApiResponse<Void>> patchSiteVisit(@AuthenticationPrincipal UserPrincipalDto principal,
             @PathVariable UUID id,
             @RequestBody SiteVisitPatchDTO dto) {
 
 //        logger.info("Patching site visit {} with {}", id, dto);
-        siteVisitService.patchSiteVisit(id, dto);
+        siteVisitService.patchSiteVisit(id, dto, isCommonRole(principal));
 
         return ResponseEntity.ok(ApiResponse.success("Site visit updated", null));
     }

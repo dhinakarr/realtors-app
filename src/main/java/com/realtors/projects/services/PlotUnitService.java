@@ -9,6 +9,7 @@ import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotDetailsDto;
 import com.realtors.projects.dto.PlotUnitDto;
+import com.realtors.projects.dto.PlotUnitStatus;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.repository.PlotUnitRepository;
 import com.realtors.projects.repository.ProjectRepository;
@@ -145,5 +146,9 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
         	repo.bulkInsert(list);
         }
     }
+    
+   public PlotUnitStatus getPlotStat(UUID projectId) {
+	   return repo.getPlotStats(projectId).getFirst();
+   }
 }
 

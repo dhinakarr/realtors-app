@@ -329,10 +329,11 @@ LEFT JOIN (
 WHERE s.sale_status <> 'CANCELLED';
 
 
+
 CREATE OR REPLACE VIEW v_commission_payable_details AS
 SELECT
     sc.commission_id, sc.sale_id, sc.user_id AS agent_id, u.full_name AS agent_name, pr.project_id, pr.project_name,
-    pl.plot_id, pl.plot_number, s.total_price AS sale_amount, COALESCE(cr.total_received, 0) AS customer_paid,
+    pl.plot_id, pl.plot_number, s.total_price AS sale_amount, s.base_price AS base_amount, COALESCE(cr.total_received, 0) AS customer_paid,
     sc.commission_amount  AS total_commission, COALESCE(cp.total_paid) AS commission_paid,
 	LEAST(
         sc.commission_amount,
@@ -1127,20 +1128,16 @@ SELECT
     s.project_id,
     s.sale_id,
     s.confirmed_at::date      AS activity_date,
-
     s.total_price             AS sales_value,
+	s.base_price             AS base_value,
     rd.total_received,
     rd.outstanding_amount,
-
     sc.total_commission       AS commission_earned,
     sv.total_visits           AS site_visits
-
 FROM sales s
-
 -- Receivables (1 row per sale)
 LEFT JOIN v_receivable_details rd
        ON rd.sale_id = s.sale_id
-
 -- Commission aggregated per sale per user
 LEFT JOIN (
     SELECT
@@ -1152,7 +1149,6 @@ LEFT JOIN (
 ) sc
   ON sc.sale_id = s.sale_id
  AND sc.user_id = s.sold_by
-
 -- Site visits aggregated per user per project
 LEFT JOIN (
     SELECT
@@ -1164,6 +1160,9 @@ LEFT JOIN (
 ) sv
   ON sv.user_id = s.sold_by
  AND sv.project_id = s.project_id;
+ 
+ 
+ 
 
 CREATE OR REPLACE VIEW v_user_performance_summary AS
 SELECT
@@ -1248,6 +1247,12 @@ WHERE table_name = 'roles'
 
 ALTER TABLE sale_commissions
 ALTER COLUMN percentage TYPE NUMERIC(12,2);
+CREATE INDEX idx_app_users_manager_id ON app_users(manager_id);
+CREATE INDEX idx_site_visits_user_id ON site_visits(user_id);
+CREATE INDEX idx_site_visit_customers_site_visit_id ON site_visit_customers(site_visit_id);
+CREATE INDEX idx_plot_project ON plot_units(project_id);
+CREATE INDEX idx_sales_plot ON sales(plot_id);
+CREATE INDEX idx_sales_confirmed ON sales(plot_id, confirmed_at);
 
 CREATE TABLE payment_commission_rules (
     rule_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -1279,6 +1284,7 @@ SELECT
     pl.plot_number,
 
     s.total_price AS sale_amount,
+	s.base_price AS base_amount,
 
     /* CUSTOMER PAID (TOTAL RECEIVED) */
     COALESCE(cr.total_received, 0) AS customer_paid,
@@ -1349,3 +1355,41 @@ LEFT JOIN (
 WHERE s.sale_status IN ('BOOKED','SOLD','COMPLETED','IN_PROGRESS')
   AND sc.commission_amount > 0;
 
+CREATE OR REPLACE VIEW v_user_performance_core AS
+SELECT
+    s.sold_by                 AS user_id,
+    s.project_id,
+    s.sale_id,
+    s.confirmed_at::date      AS activity_date,
+    s.total_price             AS sales_value,
+	s.base_price             AS base_value,
+    rd.total_received,
+    rd.outstanding_amount,
+    sc.total_commission       AS commission_earned,
+    sv.total_visits           AS site_visits
+FROM sales s
+-- Receivables (1 row per sale)
+LEFT JOIN v_receivable_details rd
+       ON rd.sale_id = s.sale_id
+-- Commission aggregated per sale per user
+LEFT JOIN (
+    SELECT
+        sale_id,
+        user_id,
+        SUM(commission_amount) AS total_commission
+    FROM sale_commissions
+    GROUP BY sale_id, user_id
+) sc
+  ON sc.sale_id = s.sale_id
+ AND sc.user_id = s.sold_by
+-- Site visits aggregated per user per project
+LEFT JOIN (
+    SELECT
+        user_id,
+        project_id,
+        COUNT(*) AS total_visits
+    FROM site_visits
+    GROUP BY user_id, project_id
+) sv
+  ON sv.user_id = s.sold_by
+ AND sv.project_id = s.project_id;

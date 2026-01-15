@@ -69,7 +69,7 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	// be served
 	public ProjectDetailDto getProjectDetails(UUID projectId) {
 		ProjectDetailDto dto = new ProjectDetailDto(this.repo.getProjects(projectId).getFirst(),
-				this.plotService.getByProject(projectId));
+				this.plotService.getByProject(projectId), this.plotService.getPlotStat(projectId));
 		audit.auditAsync("projects", projectId, EnumConstants.GET_ALL.toString(), AppUtil.getCurrentUserId(),
 				AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return dto;

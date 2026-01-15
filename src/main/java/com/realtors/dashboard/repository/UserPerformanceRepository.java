@@ -76,7 +76,7 @@ public class UserPerformanceRepository {
         String sql = """
             SELECT s.sale_id, p.project_name, pl.plot_number, c.customer_name,
                    u.full_name AS agent_name, m.full_name AS manager_name,
-                   s.total_price, s.confirmed_at
+                   s.total_price, s.base_price, s.confirmed_at
             FROM sales s
             JOIN plot_units pl ON pl.plot_id = s.plot_id
             JOIN projects p ON p.project_id = s.project_id
@@ -101,6 +101,7 @@ public class UserPerformanceRepository {
                         dto.setCustomerName(rs.getString("customer_name"));
                         dto.setAgentName(rs.getString("agent_name"));
                         dto.setSaleAmount(rs.getBigDecimal("total_price"));
+                        dto.setBaseAmount(rs.getBigDecimal("base_price"));
                         dto.setConfirmedAt(rs.getTimestamp("confirmed_at") != null
                                 ? rs.getTimestamp("confirmed_at").toLocalDateTime().toLocalDate() : null);
                         return dto;
@@ -110,7 +111,7 @@ public class UserPerformanceRepository {
 
     public List<ReceivableDetailDTO> fetchReceivable(UUID userId, LocalDate fromDate, LocalDate toDate) {
         String sql = """
-            SELECT p.payment_id, proj.project_name, pl.plot_number, c.customer_name, s.total_price,
+            SELECT p.payment_id, proj.project_name, pl.plot_number, c.customer_name, s.total_price, s.base_price,
                    p.amount, p.payment_date
             FROM payments p
             JOIN sales s ON s.sale_id = p.sale_id
@@ -132,6 +133,7 @@ public class UserPerformanceRepository {
                     dto.setPlotNumber(rs.getString("plot_number"));
                     dto.setCustomerName(rs.getString("customer_name"));
                     dto.setSaleAmount(rs.getBigDecimal("total_price"));
+                    dto.setBaseAmount(rs.getBigDecimal("base_price"));
                     dto.setTotalReceived(rs.getBigDecimal("amount"));
                     dto.setConfirmedAt(rs.getDate("payment_date").toLocalDate());
                     return dto;
@@ -140,7 +142,7 @@ public class UserPerformanceRepository {
 
     public List<CommissionDetailsDTO> fetchCommission(UUID userId, LocalDate fromDate, LocalDate toDate) {
         String sql = """
-            SELECT sc.commission_id, proj.project_name, u.full_name, sc.sale_amount, sc.commission_paid, 
+            SELECT sc.commission_id, proj.project_name, sc.agent_name, sc.sale_amount, sc.base_amount, sc.commission_paid, 
                    sc.total_commission,  sc.confirmed_at
             FROM v_commission_payable_details sc
             JOIN projects proj ON proj.project_id = sc.project_id
@@ -156,8 +158,10 @@ public class UserPerformanceRepository {
                 (rs, rowNum) -> {
                     CommissionDetailsDTO dto = new CommissionDetailsDTO();
                     dto.setCommissionId(UUID.fromString(rs.getString("commission_id")));
+                    dto.setAgentName(rs.getString("agent_name"));
                     dto.setProjectName(rs.getString("project_name"));
                     dto.setSaleAmount(rs.getBigDecimal("sale_amount"));
+                    dto.setBaseAmount(rs.getBigDecimal("base_amount"));
                     dto.setTotalCommission(rs.getBigDecimal("total_commission"));
                     dto.setCommissionPaid(rs.getBigDecimal("commission_paid"));
 //                    dto.setIsReleased(rs.getBoolean("is_released"));

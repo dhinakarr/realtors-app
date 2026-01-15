@@ -27,6 +27,7 @@ public class CommissionDetailsDTO {
     private String plotNumber;
 
     private BigDecimal saleAmount;
+    private BigDecimal baseAmount;
     private BigDecimal customerPaid;
 
     private BigDecimal totalCommission;

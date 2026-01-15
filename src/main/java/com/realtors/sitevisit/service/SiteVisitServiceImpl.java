@@ -94,8 +94,8 @@ public class SiteVisitServiceImpl {
 	}
 
     @Transactional(readOnly = true)
-    public SiteVisitResponseDTO getSiteVisit(UUID siteVisitId) {
-        SiteVisitResponseDTO visit = visitRepo.findById(siteVisitId);
+    public SiteVisitResponseDTO getSiteVisit(UUID siteVisitId, boolean isCommonRole) {
+        SiteVisitResponseDTO visit = visitRepo.findById(siteVisitId, isCommonRole);
         if(visit == null) {
               new IllegalArgumentException("Site visit not found");
               return null;
@@ -105,8 +105,8 @@ public class SiteVisitServiceImpl {
     }
     
     @Transactional(readOnly = true)
-    public List<SiteVisitResponseDTO> listSiteVisits(UUID userId, UUID projectId, LocalDate fromDate, LocalDate toDate) {
-        List<SiteVisitResponseDTO> visits = visitRepo.list(userId, projectId, fromDate, toDate);
+    public List<SiteVisitResponseDTO> listSiteVisits(UUID userId, UUID projectId, LocalDate fromDate, LocalDate toDate, boolean isCommonRole) {
+        List<SiteVisitResponseDTO> visits = visitRepo.list(userId, projectId, fromDate, toDate, isCommonRole);
         return visits;
     }
     
@@ -120,8 +120,8 @@ public class SiteVisitServiceImpl {
 	}
 
 	@Transactional
-	public void patchSiteVisit(UUID siteVisitId, SiteVisitPatchDTO dto) {
-		SiteVisitResponseDTO existing = visitRepo.findById(siteVisitId);
+	public void patchSiteVisit(UUID siteVisitId, SiteVisitPatchDTO dto, boolean isCommonRole) {
+		SiteVisitResponseDTO existing = visitRepo.findById(siteVisitId, isCommonRole);
 	    BigDecimal oldExpense = existing.getExpenseAmount();
 	    visitRepo.patch(siteVisitId, dto);
 

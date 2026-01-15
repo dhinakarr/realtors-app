@@ -29,6 +29,7 @@ public class ReceivableDetailDTO {
 
     private BigDecimal saleAmount;
     private BigDecimal totalReceived;
+    private BigDecimal baseAmount;
     private BigDecimal outstandingAmount;
 
     private LocalDate confirmedAt;

@@ -20,6 +20,7 @@ public class SaleDetailDTO {
     private String agentName;
     private String plotNumber;
     private BigDecimal saleAmount;
+    private BigDecimal baseAmount;
     private BigDecimal receivedAmount;
     private BigDecimal outstandingAmount;
     private String saleStatus;

@@ -379,21 +379,24 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 
 	public List<UserBasicDto> findSubordinates() {
 		UUID userId = AppUtil.getCurrentUserId();
-		AppUserDto user = getUserById(userId).orElse(null);
-		UUID managerId = user.getManagerId();
 		String sql = """
-				 		WITH RECURSIVE subordinates AS (
-				    SELECT user_id, full_name
-				    FROM app_users
-				    WHERE manager_id = :managerId
-				    UNION ALL
-				    SELECT u.user_id, u.full_name
-				    FROM app_users u
-				    JOIN subordinates s ON u.manager_id = s.user_id
-				)
-				SELECT * FROM subordinates;
+						 	WITH RECURSIVE subordinates AS (
+					            -- include self
+					            SELECT user_id, full_name
+					            FROM app_users
+					            WHERE user_id = :userId
+					
+					            UNION ALL
+					
+					            -- include subordinates recursively
+					            SELECT u.user_id, u.full_name
+					            FROM app_users u
+					            JOIN subordinates s ON u.manager_id = s.user_id
+					        )
+					        SELECT DISTINCT user_id, full_name
+					        FROM subordinates
 				 		""";
-		MapSqlParameterSource params = new MapSqlParameterSource("managerId", managerId);
+		MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
 		return namedJdbcTemplate.query(sql, params,
 				(rs, rowNum) -> new UserBasicDto(rs.getObject("user_id", UUID.class), rs.getString("full_name")));
 	}

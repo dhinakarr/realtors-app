@@ -1,11 +1,13 @@
 package com.realtors.projects.repository;
 
-
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotUnitDto;
+import com.realtors.projects.dto.PlotUnitStatus;
 import com.realtors.projects.rowmapper.PlotUnitRowMapper;
 
 import java.util.*;
@@ -13,147 +15,164 @@ import java.util.*;
 @Repository
 public class PlotUnitRepository {
 
-    private final JdbcTemplate jdbc;
-    
-    public PlotUnitRepository(JdbcTemplate jdbc) {
-    	this.jdbc = jdbc;
-    }
+	private final JdbcTemplate jdbc;
+	private static final RowMapper<PlotUnitStatus> ROW_MAPPER = new BeanPropertyRowMapper<>(PlotUnitStatus.class);
 
-    // --------------------------
-    // INSERT (Single)
-    // --------------------------
-    public UUID create(PlotUnitDto dto) {
+	public PlotUnitRepository(JdbcTemplate jdbc) {
+		this.jdbc = jdbc;
+	}
 
-        UUID id = UUID.randomUUID();
-        String sql = """
-            INSERT INTO plot_units 
-            (plot_id, project_id, plot_number, area, base_price, road_width, survey_num, 
-             facing, width, length, total_price, is_prime, status, customer_id, remarks, created_at= CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """;
+	// --------------------------
+	// INSERT (Single)
+	// --------------------------
+	public UUID create(PlotUnitDto dto) {
 
-        jdbc.update(sql,
-                id,
-                dto.getProjectId(),
-                dto.getPlotNumber(),
-                dto.getArea(),
-                dto.getBasePrice(),
-                dto.getRoadWidth(),
-                dto.getSurveyNum(),
-                dto.getFacing(),
-                dto.getWidth(),
-                dto.getBreath(),
-                dto.getTotalPrice(),
-                dto.getIsPrime(),
-                dto.getStatus(),
-                dto.getCustomerId(),
-                dto.getRemarks()
-        );
+		UUID id = UUID.randomUUID();
+		String sql = """
+				    INSERT INTO plot_units
+				    (plot_id, project_id, plot_number, area, base_price, road_width, survey_num,
+				     facing, width, length, total_price, is_prime, status, customer_id, remarks, created_at= CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP)
+				    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				""";
 
-        return id;
-    }
+		jdbc.update(sql, id, dto.getProjectId(), dto.getPlotNumber(), dto.getArea(), dto.getBasePrice(),
+				dto.getRoadWidth(), dto.getSurveyNum(), dto.getFacing(), dto.getWidth(), dto.getBreath(),
+				dto.getTotalPrice(), dto.getIsPrime(), dto.getStatus(), dto.getCustomerId(), dto.getRemarks());
 
-    // --------------------------
-    // BULK INSERT (auto-generate)
-    // --------------------------
-    public void bulkInsert(List<PlotUnitDto> list) {
+		return id;
+	}
 
-        String sql = """
-            INSERT INTO plot_units 
-            (plot_id, project_id, plot_number, base_price, status, is_prime)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """;
+	// --------------------------
+	// BULK INSERT (auto-generate)
+	// --------------------------
+	public void bulkInsert(List<PlotUnitDto> list) {
 
-        List<Object[]> batch = new ArrayList<>();
+		String sql = """
+				    INSERT INTO plot_units
+				    (plot_id, project_id, plot_number, base_price, status, is_prime)
+				    VALUES (?, ?, ?, ?, ?, ?)
+				""";
 
-        for (PlotUnitDto p : list) {
-            batch.add(new Object[]{
-                    p.getPlotId(),
-                    p.getProjectId(),
-                    p.getPlotNumber(),
-                    p.getBasePrice(),
-                    p.getStatus(),
-                    p.getIsPrime()
-            });
-        }
+		List<Object[]> batch = new ArrayList<>();
 
-        jdbc.batchUpdate(sql, batch);
-    }
+		for (PlotUnitDto p : list) {
+			batch.add(new Object[] { p.getPlotId(), p.getProjectId(), p.getPlotNumber(), p.getBasePrice(),
+					p.getStatus(), p.getIsPrime() });
+		}
 
-    // --------------------------
-    // GET BY PROJECT
-    // --------------------------
-    public List<PlotUnitDto> findByProjectId(UUID projectId) {
-        String sql = """
-        		SELECT * FROM plot_units WHERE project_id = ?  
-        		ORDER BY CAST(NULLIF(regexp_replace(plot_number, '[^0-9]', '', 'g'), '') AS INTEGER) NULLS LAST,
-        			regexp_replace(plot_number, '[0-9]', '', 'g');
-        		""";
+		jdbc.batchUpdate(sql, batch);
+	}
 
-        return jdbc.query(sql, new PlotUnitRowMapper(), projectId);
-    }
-    
-    // --------------------------
-    // GET BY PLOT
-    // --------------------------
-    public PlotUnitDto findByPlotId(UUID plotId) {
-        String sql = """
-        		SELECT * FROM plot_units WHERE plot_id = ?  
-        		ORDER BY  CAST(NULLIF(regexp_replace(plot_number, '[^0-9]', '', 'g'), '') AS INTEGER) NULLS LAST,
-        			regexp_replace(plot_number, '[0-9]', '', 'g');
-        		""";
-        return jdbc.query(sql, new PlotUnitRowMapper(), plotId).getFirst();
-    }
+	// --------------------------
+	// GET BY PROJECT
+	// --------------------------
+	public List<PlotUnitDto> findByProjectId(UUID projectId) {
+		String sql = """
+				SELECT * FROM plot_units WHERE project_id = ?
+				ORDER BY CAST(NULLIF(regexp_replace(plot_number, '[^0-9]', '', 'g'), '') AS INTEGER) NULLS LAST,
+					regexp_replace(plot_number, '[0-9]', '', 'g');
+				""";
 
-    // --------------------------
-    // UPDATE
-    // --------------------------
-    public int update(PlotUnitDto dto) {
+		return jdbc.query(sql, new PlotUnitRowMapper(), projectId);
+	}
 
-        String sql = """
-            UPDATE plot_units SET 
-              plot_number = ?, area = ?, rate_per_sqft=?, base_price = ?, road_width = ?, survey_num = ?,
-              facing = ?, width = ?, breath = ?, total_price = ?, is_prime = ?, 
-              status = ?, customer_id = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE plot_id = ?
-        """;
+	// --------------------------
+	// GET BY PLOT
+	// --------------------------
+	public PlotUnitDto findByPlotId(UUID plotId) {
+		String sql = """
+				SELECT * FROM plot_units WHERE plot_id = ?
+				ORDER BY  CAST(NULLIF(regexp_replace(plot_number, '[^0-9]', '', 'g'), '') AS INTEGER) NULLS LAST,
+					regexp_replace(plot_number, '[0-9]', '', 'g');
+				""";
+		return jdbc.query(sql, new PlotUnitRowMapper(), plotId).getFirst();
+	}
 
-        return jdbc.update(sql,
-                dto.getPlotNumber(),
-                dto.getArea(),
-                dto.getRatePerSqft(),
-                dto.getBasePrice(),
-                dto.getRoadWidth(),
-                dto.getSurveyNum(),
-                dto.getFacing(),
-                dto.getWidth(),
-                dto.getBreath(),
-                dto.getTotalPrice(),
-                dto.getIsPrime(),
-                dto.getStatus(),
-                dto.getCustomerId(),
-                dto.getRemarks(),
-                dto.getPlotId()
-        );
-    }
-    
-    public void updatePlotStatus(UUID plotId, String status) {
-    	String sql = "UPDATE plot_units set status=?, updated_at=CURRENT_TIMESTAMP, updated_by=? where plot_id=?";
-    	jdbc.update(sql, status, AppUtil.getCurrentUserId(), plotId);
-    }
-    
-    // --------------------------
-    // DELETE
-    // --------------------------
-    public int delete(UUID id) {
-        String updateSql = "UPDATE plot_units SET status='CANCELLED' WHERE plot_id = ?";
-        return jdbc.update(updateSql, id);
-    }
-    
-    public boolean deleteByProjectId(UUID projectId) {
-    	String updateSql = "DELETE FROM plot_units WHERE project_id = ?";
-    	int retValue = jdbc.update(updateSql, projectId);
-        return retValue >0;
-    }
+	// --------------------------
+	// UPDATE
+	// --------------------------
+	public int update(PlotUnitDto dto) {
+
+		String sql = """
+				    UPDATE plot_units SET
+				      plot_number = ?, area = ?, rate_per_sqft=?, base_price = ?, road_width = ?, survey_num = ?,
+				      facing = ?, width = ?, breath = ?, total_price = ?, is_prime = ?,
+				      status = ?, customer_id = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
+				    WHERE plot_id = ?
+				""";
+
+		return jdbc.update(sql, dto.getPlotNumber(), dto.getArea(), dto.getRatePerSqft(), dto.getBasePrice(),
+				dto.getRoadWidth(), dto.getSurveyNum(), dto.getFacing(), dto.getWidth(), dto.getBreath(),
+				dto.getTotalPrice(), dto.getIsPrime(), dto.getStatus(), dto.getCustomerId(), dto.getRemarks(),
+				dto.getPlotId());
+	}
+
+	public void updatePlotStatus(UUID plotId, String status) {
+		String sql = "UPDATE plot_units set status=?, updated_at=CURRENT_TIMESTAMP, updated_by=? where plot_id=?";
+		jdbc.update(sql, status, AppUtil.getCurrentUserId(), plotId);
+	}
+
+	// --------------------------
+	// DELETE
+	// --------------------------
+	public int delete(UUID id) {
+		String updateSql = "UPDATE plot_units SET status='CANCELLED' WHERE plot_id = ?";
+		return jdbc.update(updateSql, id);
+	}
+
+	public boolean deleteByProjectId(UUID projectId) {
+		String updateSql = "DELETE FROM plot_units WHERE project_id = ?";
+		int retValue = jdbc.update(updateSql, projectId);
+		return retValue > 0;
+	}
+
+	public List<PlotUnitStatus> getPlotStats(UUID projectId) {
+		String sql = """
+					SELECT p.project_id, COUNT(*) AS total,
+					    SUM(
+					        CASE
+					            WHEN NOT EXISTS (
+					                SELECT 1
+					                FROM sales s
+					                WHERE s.plot_id = p.plot_id
+					            ) THEN 1 ELSE 0
+					        END
+					    ) AS available,
+					    SUM(
+					        CASE
+					            WHEN EXISTS (
+					                SELECT 1
+					                FROM sales s
+					                WHERE s.plot_id = p.plot_id
+					                  AND s.confirmed_at IS NULL
+					            ) THEN 1 ELSE 0
+					        END
+					    ) AS booked,
+					    SUM(
+					        CASE
+					            WHEN EXISTS (
+					                SELECT 1
+					                FROM sales s
+					                WHERE s.plot_id = p.plot_id
+					                  AND s.confirmed_at IS NOT NULL
+					            ) THEN 1 ELSE 0
+					        END
+					    ) AS sold,
+					    SUM(
+					        CASE
+					            WHEN EXISTS (
+					                SELECT 1
+					                FROM sales s
+					                WHERE s.plot_id = p.plot_id
+					            ) THEN 1 ELSE 0
+					        END
+					    ) AS cancelled
+					
+					FROM plot_units p
+					WHERE p.project_id = ?
+					GROUP BY p.project_id
+
+							""";
+		return jdbc.query(sql, ROW_MAPPER, projectId);
+	}
 }
-
