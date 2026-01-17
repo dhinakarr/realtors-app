@@ -51,15 +51,17 @@ public class SiteVisitService extends AbstractBaseService<SiteVisitResponseDTO, 
 	public DynamicFormResponseDto getVisitFormData(boolean isCommonRole) {
 		DynamicFormResponseDto form = super.buildDynamicFormResponse();
 		if (!isCommonRole) {
-	        filterUserLookup(form); // self + subordinates only
+			getFilteredForm(form);
 	    }
 		return form;
 	}
 
-	public EditResponseDto<SiteVisitResponseDTO> editEditFormResponse(UUID visitId) {
-		Optional<SiteVisitResponseDTO> opt = super.findById(visitId);
+	public EditResponseDto<SiteVisitResponseDTO> editEditFormResponse(UUID visitId, boolean isCommonRole) {
+		Optional<SiteVisitResponseDTO> opt = super.findById(visitId); 
 		DynamicFormResponseDto form = super.buildDynamicFormResponse();
-		filterUserLookup(form);
+		if (!isCommonRole) {
+	        getFilteredForm(form);
+	    }
 		return opt.map(siteVisit -> {
 			// fetch customers for this visit
 			List<CustomerMiniDto> customers = repo
@@ -72,46 +74,11 @@ public class SiteVisitService extends AbstractBaseService<SiteVisitResponseDTO, 
 			return new EditResponseDto<>(siteVisit, form);
 		}).orElse(null);
 	}
-
-	private void filterUserLookup(DynamicFormResponseDto form) {
+	
+	private void getFilteredForm(DynamicFormResponseDto form) {
 		UUID currentUserId = AppUtil.getCurrentUserId();
 	    List<UserBasicDto> subordinates = userService.findSubordinates();
-	    List<CustomerMiniDto> customers = customerService.getCustomersVisibleToUser(currentUserId);
-	    Set<UUID> allowedCustomerIds = customers.stream().map(CustomerMiniDto::getCustomerId).collect(Collectors.toSet());
-	    
-	    Set<UUID> allowedUserIds = subordinates.stream()
-	            .map(UserBasicDto::userId)
-	            .collect(Collectors.toSet());
-	    
-	    for (DynamicFormMetaRow row : form.getFields()) {
-	        if ("user_id".equals(row.getColumnName())
-	                && "select".equalsIgnoreCase(row.getFieldType())
-	                && row.getLookupData() != null) {
-
-	            List<Map<String, Object>> lookupData = (List<Map<String, Object>>) row.getLookupData();
-	            List<Map<String, Object>> filtered = lookupData.stream()
-	                    .filter(m -> {
-	                        Object keyObj = m.get("key");
-	                        return keyObj instanceof UUID
-	                                && allowedUserIds.contains((UUID) keyObj);
-	                    })
-	                    .collect(Collectors.toList());
-	            row.setLookupData(filtered);
-	        }
-	        
-	        if("customer_id".equals(row.getColumnName())
-	                && "select".equalsIgnoreCase(row.getFieldType())
-	                && row.getLookupData() != null) {
-	        	List<Map<String, Object>> lookupData = (List<Map<String, Object>>) row.getLookupData();
-	            List<Map<String, Object>> filtered = lookupData.stream()
-	                    .filter(m -> {
-	                        Object keyObj = m.get("key");
-	                        return keyObj instanceof UUID
-	                                && allowedCustomerIds.contains((UUID) keyObj);
-	                    })
-	                    .collect(Collectors.toList());
-	            row.setLookupData(filtered);
-	        }
-	    }
+	    List<CustomerMiniDto> visibleCustomers = customerService.getCustomersVisibleToUser(currentUserId);
+		AppUtil.filterLookup(form, subordinates, visibleCustomers);
 	}
 }

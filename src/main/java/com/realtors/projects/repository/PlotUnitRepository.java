@@ -129,48 +129,13 @@ public class PlotUnitRepository {
 	public List<PlotUnitStatus> getPlotStats(UUID projectId) {
 		String sql = """
 					SELECT p.project_id, COUNT(*) AS total,
-					    SUM(
-					        CASE
-					            WHEN NOT EXISTS (
-					                SELECT 1
-					                FROM sales s
-					                WHERE s.plot_id = p.plot_id
-					            ) THEN 1 ELSE 0
-					        END
-					    ) AS available,
-					    SUM(
-					        CASE
-					            WHEN EXISTS (
-					                SELECT 1
-					                FROM sales s
-					                WHERE s.plot_id = p.plot_id
-					                  AND s.confirmed_at IS NULL
-					            ) THEN 1 ELSE 0
-					        END
-					    ) AS booked,
-					    SUM(
-					        CASE
-					            WHEN EXISTS (
-					                SELECT 1
-					                FROM sales s
-					                WHERE s.plot_id = p.plot_id
-					                  AND s.confirmed_at IS NOT NULL
-					            ) THEN 1 ELSE 0
-					        END
-					    ) AS sold,
-					    SUM(
-					        CASE
-					            WHEN EXISTS (
-					                SELECT 1
-					                FROM sales s
-					                WHERE s.plot_id = p.plot_id
-					            ) THEN 1 ELSE 0
-					        END
-					    ) AS cancelled
-					
+					    SUM(CASE WHEN p.status = 'AVAILABLE' THEN 1 ELSE 0 END) AS available,
+					    SUM(CASE WHEN p.status = 'BOOKED' THEN 1 ELSE 0 END) AS booked,
+					    SUM(CASE WHEN p.status = 'SOLD' THEN 1 ELSE 0 END) AS sold,
+					    SUM(CASE WHEN p.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled
 					FROM plot_units p
 					WHERE p.project_id = ?
-					GROUP BY p.project_id
+					GROUP BY p.project_id;
 
 							""";
 		return jdbc.query(sql, ROW_MAPPER, projectId);

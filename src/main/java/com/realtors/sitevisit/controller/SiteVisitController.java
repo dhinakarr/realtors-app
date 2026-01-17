@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
+import com.realtors.common.util.AppUtil;
 import com.realtors.dashboard.dto.UserPrincipalDto;
 import com.realtors.dashboard.dto.UserRole;
 import com.realtors.sitevisit.dto.PaymentPatchDTO;
@@ -55,13 +56,14 @@ public class SiteVisitController {
     
     @GetMapping("/form")
     public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getVistForm(@AuthenticationPrincipal UserPrincipalDto principal) {
-    	DynamicFormResponseDto form = visitService.getVisitFormData(isCommonRole(principal));
+    	DynamicFormResponseDto form = visitService.getVisitFormData(AppUtil.isCommonRole(principal));
     	return ResponseEntity.ok(ApiResponse.success("Form details fetched", form, HttpStatus.OK));
     }
     
     @GetMapping("/form/{visitId}")
-    public ResponseEntity<ApiResponse<EditResponseDto<SiteVisitResponseDTO>>> getVistEditForm(@PathVariable UUID visitId) {
-    	EditResponseDto<SiteVisitResponseDTO> form = visitService.editEditFormResponse(visitId);
+    public ResponseEntity<ApiResponse<EditResponseDto<SiteVisitResponseDTO>>> getVistEditForm(@AuthenticationPrincipal UserPrincipalDto principal, 
+    											@PathVariable UUID visitId) {
+    	EditResponseDto<SiteVisitResponseDTO> form = visitService.editEditFormResponse(visitId, AppUtil.isCommonRole(principal));
     	return ResponseEntity.ok(ApiResponse.success("Form details fetched", form, HttpStatus.OK));
     }
 

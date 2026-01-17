@@ -40,9 +40,10 @@ spring:
       add-mappings: false
 
 server:
+  address: 0.0.0.0
+  port: 8080
   servlet:
     context-path: /
-  port: 8080
 
 logging:
   level:

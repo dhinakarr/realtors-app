@@ -113,11 +113,17 @@ public class UserController {
 
 	/** ✅ Get user by ID */
 	@GetMapping("/{id}")
-	public ResponseEntity<ApiResponse<AppUserDto>> getUserById(@PathVariable UUID id) {
-		
-		Optional<AppUserDto> user = appUserService.getUserById(id);
-		return user.map(u -> ResponseEntity.ok(ApiResponse.success("User found", u, HttpStatus.OK))).orElseGet(
-				() -> ResponseEntity.badRequest().body(ApiResponse.failure("User not found", HttpStatus.NOT_FOUND)));
+	public ResponseEntity<ApiResponse<AppUserDto>> getUserById(@PathVariable String id) {
+		try {
+	        UUID uuid = UUID.fromString(id);
+	        return appUserService.getUserById(uuid)
+	            .map(u -> ResponseEntity.ok(ApiResponse.success("User found", u, HttpStatus.OK)))
+	            .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+	                .body(ApiResponse.failure("User not found", HttpStatus.NOT_FOUND)));
+	    } catch (IllegalArgumentException e) {
+	        return ResponseEntity.badRequest()
+	            .body(ApiResponse.failure("Invalid UUID format", HttpStatus.BAD_REQUEST));
+	    }
 	}
 
 	/** ✅ Update user */

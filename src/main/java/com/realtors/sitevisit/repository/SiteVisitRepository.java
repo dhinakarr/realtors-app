@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -25,6 +27,7 @@ public class SiteVisitRepository {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final NamedParameterJdbcTemplate namedJdbcTemplate;
+	private static final Logger logger = LoggerFactory.getLogger(SiteVisitRepository.class);
 
 	public UUID create(SiteVisitRequestDTO dto) {
 		UUID id = UUID.randomUUID();
@@ -40,18 +43,33 @@ public class SiteVisitRepository {
 		return id;
 	}
 
-	public SiteVisitResponseDTO findById(UUID visitId, boolean isCommonRole) {
-		StringBuilder sql = selectQuery(isCommonRole);
-		sql.append(" AND sv.site_visit_id = ?");
-		sql.append(
-				"""
-						    GROUP BY sv.site_visit_id, sv.visit_date, sv.user_id, u.full_name, sv.project_id, p.project_name,  sv.vehicle_type,
-						        sv.expense_amount, sv.remarks,  acc.total_paid, acc.balance, acc.status
-						    ORDER BY sv.visit_date DESC
-						""");
-		SiteVisitResponseDTO dto = jdbcTemplate.query(sql.toString(), new SiteVisitRowMapper(), visitId).get(0);
-		return dto;
+	public SiteVisitResponseDTO findById(
+	        UUID visitId,
+	        boolean isCommonRole
+	) {
+	    StringBuilder sql = selectQuery(isCommonRole);
+
+	    sql.append(" AND sv.site_visit_id = :siteVisitId ");
+	    sql.append("""
+	        GROUP BY sv.site_visit_id, sv.visit_date, sv.user_id, u.full_name,
+	                 sv.project_id, p.project_name, sv.vehicle_type,
+	                 sv.expense_amount, sv.remarks,
+	                 acc.total_paid, acc.balance, acc.status
+	        ORDER BY sv.visit_date DESC
+	    """);
+
+	    MapSqlParameterSource params = new MapSqlParameterSource()
+	            .addValue("siteVisitId", visitId)
+	            .addValue("currentUserId", AppUtil.getCurrentUserId())
+	            .addValue("isCommonRole", isCommonRole);
+
+	    return namedJdbcTemplate
+	            .query(sql.toString(), params, new SiteVisitRowMapper())
+	            .stream()
+	            .findFirst()
+	            .orElse(null);
 	}
+
 
 	public void patch(UUID siteVisitId, SiteVisitPatchDTO dto) {
 

@@ -1,6 +1,7 @@
 package com.realtors.common.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -33,7 +34,7 @@ public class WebConfig implements WebMvcConfigurer {
 		// Let Spring map all other static files
 		registry.addResourceHandler("/**").addResourceLocations("classpath:/static/");
 	}
-
+	
 	@Override
 	public void addViewControllers(ViewControllerRegistry registry) {
 		// Root → index.html
