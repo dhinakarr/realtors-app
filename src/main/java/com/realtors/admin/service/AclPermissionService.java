@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -87,17 +88,6 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	}
 
 	public PagedResult<AclPermissionDto> getAllPaginated(int page, int size) {
-		/*
-		 * return new FeatureListResponseDto<>( "Permissions", "table",
-		 * List.of("Role Name", "Feature Name", "Create", "Read", "Update", "Delete",
-		 * "Status"), Map.ofEntries( Map.entry("Feature Name", "featureName"),
-		 * Map.entry("Role Name", "roleName"), Map.entry("Create", "canCreate"),
-		 * Map.entry("Read", "canRead"), Map.entry("Update", "canUpdate"),
-		 * Map.entry("Delete", "canDelete"), Map.entry("Status", "status")),
-		 * "permissionId", false, // pagination enabled super.findAllPaginated(page,
-		 * size, null), // <-- MUST return PagedResult<AppUserDto>
-		 * super.getLookupData(lookupDefs) // <-- fully dynamic lookup map );
-		 */
 		PagedResult<AclPermissionDto> retObj = super.findAllPaginated(page, size, null);
 		UUID record = retObj.data().getFirst().getPermissionId();
 		audit.auditAsync(TABLE_NAME, record, EnumConstants.PAGED.toString(), 
@@ -188,29 +178,7 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 		return list;
 	}
 
-	/*
-	 * // @Cacheable(value = CACHE_NAME, key = "'role:' + #roleId") public
-	 * List<ModulePermissionDto> findPermissionsByRole(UUID roleId) {
-	 * List<Map<String, Object>> result =
-	 * jdbcTemplate.queryForList(permissionbyRoleQuery, roleId); Map<UUID,
-	 * ModulePermissionDto> moduleMap = new LinkedHashMap<>(); for (Map<String,
-	 * Object> row : result) { UUID moduleId = (UUID) row.get("module_id"); String
-	 * moduleName = (String) row.get("module_name");
-	 * 
-	 * FeaturePermissionDto feature = new FeaturePermissionDto((UUID)
-	 * row.get("permission_id"), (UUID) row.get("role_id"), (String)
-	 * row.get("role_name"), (UUID) row.get("feature_id"), (String)
-	 * row.get("feature_name"), (String) row.get("url"), (String)
-	 * row.get("feature_type"), (Boolean) row.get("can_create"), (Boolean)
-	 * row.get("can_read"), (Boolean) row.get("can_update"), (Boolean)
-	 * row.get("can_delete"), (String) row.get("status"));
-	 * 
-	 * moduleMap.computeIfAbsent(moduleId, id -> new ModulePermissionDto(id,
-	 * moduleName, new ArrayList<>())) .features().add(feature); }
-	 * audit.auditAsync(TABLE_NAME, roleId, "GET By Role",
-	 * AppUtil.getCurrentUserId(), AuditContext.getIpAddress(),
-	 * AuditContext.getUserAgent()); return new ArrayList<>(moduleMap.values()); }
-	 */
+	
 	// ------------------------------------------------------------
 	// BULK INSERT (fast batch)
 	// ------------------------------------------------------------
@@ -258,6 +226,48 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return rows.length > 0 ? true : false;
 	}
+	
+	@Transactional("txManager")
+	public void bulkUpsertPermissions(UUID roleId, List<AclPermissionDto> permissions) {
+
+	    String sql = """
+	        INSERT INTO acl_permissions
+	        (role_id, feature_id, can_create, can_read, can_update, can_delete,
+	         created_by, updated_by, status, created_at, updated_at)
+	        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	        ON CONFLICT (role_id, feature_id)
+	        DO UPDATE SET
+	            can_create = EXCLUDED.can_create,
+	            can_read   = EXCLUDED.can_read,
+	            can_update = EXCLUDED.can_update,
+	            can_delete = EXCLUDED.can_delete,
+	            updated_at = CURRENT_TIMESTAMP,
+	            updated_by = EXCLUDED.updated_by
+	        """;
+
+	    UUID userId = AppUtil.getCurrentUserId();
+
+	    jdbcTemplate.batchUpdate(
+	        sql,
+	        permissions,
+	        permissions.size(),
+	        (ps, p) -> {
+
+	            // 🔒 Enforce rule: no READ → no other permissions
+	            boolean canRead = p.isCanRead();
+
+	            ps.setObject(1, roleId);
+	            ps.setObject(2, p.getFeatureId());
+	            ps.setBoolean(3, canRead && p.isCanCreate());
+	            ps.setBoolean(4, canRead);
+	            ps.setBoolean(5, canRead && p.isCanUpdate());
+	            ps.setBoolean(6, canRead && p.isCanDelete());
+	            ps.setObject(7, userId);
+	            ps.setObject(8, userId);
+	        }
+	    );
+	}
+
 
 	// ------------------------------------------------------------
 	// BULK UPDATE (fast batch)
@@ -314,28 +324,42 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	}
 
 	private List<ModulePermissionDto> mapToModulePermissionDto(List<Map<String, Object>> rows) {
-		Map<UUID, ModulePermissionDto> moduleMap = new LinkedHashMap<>();
+	    Map<UUID, ModulePermissionDto> moduleMap = new LinkedHashMap<>();
 
-		for (Map<String, Object> row : rows) {
+	    for (Map<String, Object> row : rows) {
+	        UUID moduleId = (UUID) row.get("module_id");
+	        String moduleName = (String) row.get("module_name");
 
-			UUID moduleId = (UUID) row.get("module_id");
-			String moduleName = (String) row.get("module_name");
+	        FeaturePermissionDto feature = new FeaturePermissionDto(
+	            (UUID) row.get("permission_id"),
+	            (UUID) row.get("role_id"),
+	            (String) row.get("role_name"),
+	            (Integer) row.get("role_level"),
+	            (String) row.get("finance_role"),
+	            (UUID) row.get("feature_id"),
+	            (String) row.get("feature_name"),
+	            (String) row.get("url"),
+	            (String) row.get("feature_type"),
+	            Boolean.TRUE.equals(row.get("can_create")),
+	            Boolean.TRUE.equals(row.get("can_read")),
+	            Boolean.TRUE.equals(row.get("can_update")),
+	            Boolean.TRUE.equals(row.get("can_delete")),
+	            (String) row.get("status")
+	        );
 
-			FeaturePermissionDto feature = new FeaturePermissionDto((UUID) row.get("permission_id"),
-					(UUID) row.get("role_id"), 
-					(String) row.get("role_name"), 
-					(Integer)row.get("role_level"), (String)(row.get("finance_role")),
-					(UUID) row.get("feature_id"), (String) row.get("feature_name"), (String) row.get("url"), (String) row.get("feature_type"),
-					Boolean.TRUE.equals(row.get("can_create")), Boolean.TRUE.equals(row.get("can_read")),
-					Boolean.TRUE.equals(row.get("can_update")), Boolean.TRUE.equals(row.get("can_delete")),
-					(String) row.get("status"));
+	        // Only include features with at least one permission
+	        if (feature.canCreate() || feature.canRead() || feature.canUpdate() || feature.canDelete()) {
+	            moduleMap.computeIfAbsent(moduleId, id -> new ModulePermissionDto(id, moduleName, new ArrayList<>()))
+	                     .features().add(feature);
+	        }
+	    }
 
-			moduleMap.computeIfAbsent(moduleId, id -> new ModulePermissionDto(id, moduleName, new ArrayList<>()))
-					.features().add(feature);
-		}
-
-		return new ArrayList<>(moduleMap.values());
+	    // Remove modules that ended up with no features (if any)
+	    return moduleMap.values().stream()
+	                    .filter(m -> !m.features().isEmpty())
+	                    .toList();
 	}
+
 
 	private static final String permissionbyRoleQuery = """
 			SELECT m.module_id, m.module_name, p.permission_id, r.role_id, r.role_name, r.role_level, r.finance_role, f.feature_id, f.feature_name, f.url, f.feature_type,

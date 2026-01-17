@@ -52,14 +52,14 @@ public class AclPermissionController {
     }
 
     @PostMapping("/bulk/{roleId}")
-    public ResponseEntity<ApiResponse<AclPermissionDto>> createBulk(@PathVariable String roleId, @RequestBody List<AclPermissionDto> dto) {
-    	UUID role = UUID.fromString(roleId);
-    	boolean flag = permissionService.bulkInsert(role, dto);
-    	if (flag) 
-    		return ResponseEntity.ok(ApiResponse.success("Acl Data Created", null, HttpStatus.CREATED)) ;
-    	else
-    	 return ResponseEntity.badRequest().body((ApiResponse.failure("Data failed to insert", HttpStatus.EXPECTATION_FAILED)));
-        
+    public ResponseEntity<ApiResponse<Void>> bulkSave(
+            @PathVariable UUID roleId,
+            @RequestBody List<AclPermissionDto> dto
+    ) {
+        permissionService.bulkUpsertPermissions(roleId, dto);
+        return ResponseEntity.ok(
+            ApiResponse.success("Permissions saved successfully", null, HttpStatus.OK)
+        );
     }
     
     @PostMapping
