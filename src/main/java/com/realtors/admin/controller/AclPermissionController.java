@@ -33,7 +33,7 @@ public class AclPermissionController {
 		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
 	}
 
-    @GetMapping
+    @GetMapping("/base") // get all the permissions irrespecitve of roles
     public ResponseEntity<ApiResponse<List<ModulePermissionDto>>> getAll() {
     	List<ModulePermissionDto> list = this.permissionService.findPermissionsByRole(null);
         return ResponseEntity.ok(ApiResponse.success("Acl Data Fetched", list,  HttpStatus.OK));
@@ -46,8 +46,8 @@ public class AclPermissionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<Optional<AclPermissionDto>>> getById(@PathVariable UUID id) {
-    	Optional<AclPermissionDto> dto = permissionService.findById(id);
+    public ResponseEntity<ApiResponse<List<ModulePermissionDto>>> getById(@PathVariable UUID id) {
+    	List<ModulePermissionDto> dto = permissionService.findPermissionsByRole(id);
         return ResponseEntity.ok(ApiResponse.success("Acl Data Fetched", dto, HttpStatus.OK));
     }
 

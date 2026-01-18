@@ -98,18 +98,30 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		}
 		return dto;
 	}
+	
+	private void getFilteredForm(DynamicFormResponseDto form) {
+		UUID currentUserId = AppUtil.getCurrentUserId();
+		AppUtil.filterUserLookUp(form, findSubordinates());
+	}
 
 	/** ✅ User form response */
-	public DynamicFormResponseDto getUserFormData() {
+	public DynamicFormResponseDto getUserFormData(boolean isCommonRole) {
 		audit.auditAsync("users", null, EnumConstants.FORM.toString(), AppUtil.getCurrentUserId(),
 				AuditContext.getIpAddress(), AuditContext.getUserAgent());
-		return super.buildDynamicFormResponse();
+		DynamicFormResponseDto form = super.buildDynamicFormResponse();
+		if (!isCommonRole) {
+			getFilteredForm(form);
+	    }
+		return form;
 	}
 
 	/** ✅ Update user form response */
-	public EditResponseDto<AppUserDto> editUserResponse(UUID currentUserId) {
+	public EditResponseDto<AppUserDto> editUserResponse(UUID currentUserId, boolean isCommonRole) {
 		Optional<AppUserDto> opt = super.findById(currentUserId);
 		DynamicFormResponseDto form = super.buildDynamicFormResponse();
+		if (!isCommonRole) {
+			getFilteredForm(form);
+	    }
 		audit.auditAsync("users", opt.isPresent() ? opt.get().getUserId() : null, EnumConstants.EDIT_FORM.toString(),
 				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return opt.map(user -> new EditResponseDto<>(user, form)).orElse(null);
@@ -140,15 +152,16 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 
 		return data;
 	}
-	
+
 	public List<UserMiniDto> getUsersByRole(UUID roleId) {
-		String sql = "SELECT user_id, full_name from app_users where role_id=?";
-		return jdbcTemplate.query(sql, new Object[]{roleId}, (rs, rowNum) -> {
-	        UserMiniDto dto = new UserMiniDto();
-	        dto.setUserId(UUID.fromString(rs.getString("user_id")));
-	        dto.setFullName(rs.getString("full_name"));
-	        return dto;
-	    });
+		String sql = "SELECT user_id, full_name, employee_id from app_users where role_id=?";
+		return jdbcTemplate.query(sql, new Object[] { roleId }, (rs, rowNum) -> {
+			UserMiniDto dto = new UserMiniDto();
+			dto.setUserId(UUID.fromString(rs.getString("user_id")));
+			dto.setFullName(rs.getString("full_name"));
+			dto.setEmployeeId(rs.getString("employee_id"));
+			return dto;
+		});
 	}
 
 	/** ✅ Update user */
@@ -166,7 +179,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		data.setPasswordHash(hashedPassword);
 
 		if (userExists(data.getEmail(), data.getMobile())) {
-			throw new IllegalArgumentException("Register with different mobile.");
+			throw new IllegalArgumentException("Register with different Email.");
 		}
 
 		byte[] imageBytes = null;
@@ -179,7 +192,10 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 			logger.error("Error reading profile image", ioe);
 			return null;
 		}
-
+		
+		String employeeId = generateEmployeeId("D", data.getBranchCode(), data.getRoleId(), data.getManagerId());
+		data.setEmployeeId(employeeId);
+		
 		// meta is ALREADY a Map<String, Object> → no need to parse!
 		Map<String, Object> meta = data.getMeta(); // ← Just get it directly
 		// If you want a mutable copy (safe)
@@ -222,7 +238,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 
 		audit.auditAsync("users", null, EnumConstants.SEARCH.toString(), AppUtil.getCurrentUserId(),
 				AuditContext.getIpAddress(), AuditContext.getUserAgent());
-		return super.search(searchText, List.of("full_name", "email", "mobile"), null);
+		return super.search(searchText, List.of("full_name", "email", "mobile", "employee_id"), null);
 	}
 
 	// Get Paged modules data thi
@@ -274,13 +290,26 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	}
 
 	public boolean userExists(String email, String mobile) {
-		String sql = """
-				SELECT COUNT(*)
-				FROM app_users
-				WHERE status = 'ACTIVE'
-				  AND (email = ? OR mobile = ?)
-				""";
-		Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email, mobile);
+		StringBuilder sql = new StringBuilder("""
+				    SELECT COUNT(*)
+				    FROM app_users
+				    WHERE status = 'ACTIVE'
+				""");
+
+		List<Object> params = new ArrayList<>();
+		if (email != null && !email.isBlank()) {
+			sql.append(" AND email = ?");
+			params.add(email);
+		}
+		if (mobile != null && !mobile.isBlank()) {
+			sql.append(" AND mobile = ?");
+			params.add(mobile);
+		}
+		// If neither provided, nothing to check
+		if (params.isEmpty()) {
+			return false;
+		}
+		Integer count = jdbcTemplate.queryForObject(sql.toString(), params.toArray(), Integer.class);
 		return count != null && count > 0;
 	}
 
@@ -316,15 +345,14 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	public List<UserTreeDto> findUserTree() {
 		UUID rootUserId = AppUtil.getCurrentUserId();
 		String sql = """
-				    SELECT user_id, full_name, manager_id, email, mobile
+				    SELECT user_id, full_name, manager_id, email, mobile, employee_id
 				    FROM app_users
 				    WHERE status = 'ACTIVE'
 				""";
 		List<UserFlatDto> flatList = namedJdbcTemplate.query(sql,
 				(rs, rowNum) -> new UserFlatDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
-						rs.getObject("manager_id", UUID.class), rs.getString("email"), rs.getString("mobile"))
-				);
-		
+						rs.getObject("manager_id", UUID.class), rs.getString("email"), rs.getString("mobile"), rs.getString("employee_id")));
+
 		UserTreeDto root = buildTree(flatList, rootUserId);
 		return root == null ? List.of() : List.of(root);
 	}
@@ -336,7 +364,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		// Create nodes ONLY for allowed users
 		for (UserFlatDto u : flatList) {
 			if (allowedIds.contains(u.getUserId())) {
-				map.put(u.getUserId(), new UserTreeDto(u.getUserId(), u.getFullName()));
+				map.put(u.getUserId(), new UserTreeDto(u.getUserId(), u.getFullName(), u.getEmployeeId()));
 			}
 		}
 		// Build hierarchy ONLY within subtree
@@ -380,25 +408,45 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	public List<UserBasicDto> findSubordinates() {
 		UUID userId = AppUtil.getCurrentUserId();
 		String sql = """
-						 	WITH RECURSIVE subordinates AS (
-					            -- include self
-					            SELECT user_id, full_name
-					            FROM app_users
-					            WHERE user_id = :userId
-					
-					            UNION ALL
-					
-					            -- include subordinates recursively
-					            SELECT u.user_id, u.full_name
-					            FROM app_users u
-					            JOIN subordinates s ON u.manager_id = s.user_id
-					        )
-					        SELECT DISTINCT user_id, full_name
-					        FROM subordinates
-				 		""";
+					WITH RECURSIVE subordinates AS (
+					    SELECT user_id, full_name, employee_id
+					    FROM app_users
+					    WHERE user_id = :userId
+					    UNION ALL
+					    SELECT u.user_id,u.full_name,u.employee_id
+					    FROM app_users u
+					    JOIN subordinates s  ON u.manager_id = s.user_id
+					)
+					SELECT user_id, full_name, employee_id FROM subordinates;
+				""";
 		MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
 		return namedJdbcTemplate.query(sql, params,
-				(rs, rowNum) -> new UserBasicDto(rs.getObject("user_id", UUID.class), rs.getString("full_name")));
+				(rs, rowNum) -> new UserBasicDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"), rs.getString("employee_id")));
 	}
+	
+	public String generateEmployeeId(String companyInitial, String branchCode, UUID roleId, UUID managerId) {
+	    // 1️⃣ Get role codes
+	    String sqlRole = "SELECT role_code, sub_role_code FROM roles WHERE role_id = ?";
+	    Map<String,Object> roleMap = jdbcTemplate.queryForMap(sqlRole, roleId);
+	    String roleCode = (String) roleMap.get("role_code");
+	    String subRoleCode = (String) roleMap.get("sub_role_code");
+
+	    // 2️⃣ Find max sequence for this branch + role + subrole
+	    String sqlSeq = """
+	        SELECT COALESCE(MAX(CAST(SUBSTRING(employee_id FROM 9 FOR 3) AS INT)),0) as max_seq
+	        FROM app_users
+	        WHERE branch_code = ? AND role_id = ?
+	    """;
+	    Integer maxSeq = jdbcTemplate.queryForObject(sqlSeq, Integer.class, branchCode, roleId);
+	    int nextSeq = (maxSeq != null ? maxSeq : 0) + 1;
+
+	    String seqStr = String.format("%03d", nextSeq);
+
+	    // 3️⃣ Compose employee_id
+	    return companyInitial + branchCode + roleCode + subRoleCode + seqStr;
+	}
+
+
+
 
 }

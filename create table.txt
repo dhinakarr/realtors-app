@@ -1393,3 +1393,150 @@ LEFT JOIN (
 ) sv
   ON sv.user_id = s.sold_by
  AND sv.project_id = s.project_id;
+ =======================================================
+ 18-Jan-2026
+ ========================
+ALTER TABLE acl_permissions ADD CONSTRAINT uq_acl_role_feature UNIQUE (role_id, feature_id);
+CREATE UNIQUE INDEX uq_acl_role_feature_null_safe ON acl_permissions (COALESCE(role_id, '00000000-0000-0000-0000-000000000000'), feature_id);
+
+ALTER TABLE roles
+ADD COLUMN role_code CHAR(2),        -- R1
+ADD COLUMN sub_role_code CHAR(2);     -- R2
+
+
+ALTER TABLE app_users
+ADD COLUMN employee_id VARCHAR(20) UNIQUE,
+ADD COLUMN branch_code CHAR(2),
+ADD COLUMN seq_no INT;
+
+
+INSERT INTO form_metadata
+(table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
+VALUES
+('app_users', 'email', 'Email Address', 'email', TRUE, FALSE,  NULL, NULL, NULL,
+ '{"pattern": "^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$",
+   "maxLength": 55, "placeholder": "user@example.com", "patternMessage": "Please enter valid mail address"}'::jsonb,
+ 1),
+ ('app_users', 'mobile', 'Mobile Number', 'number', TRUE, FALSE, NULL, NULL, NULL,
+ '{"pattern": "^[0-9]+$", "required": true, "maxLength": 15, "minLength": 10, "placeholder": "9999999999",
+  "patternMessage": "Please enter only numbers of minimum 10 digits"}'::jsonb,
+ 2),
+ ('app_users', 'full_name', 'User Name', 'text', TRUE, FALSE, NULL, NULL, NULL,
+ '{"message": "Your name is required", "required": true, "maxLength": 55, "minLength": 5, "placeholder": "Your Name"}'::jsonb,
+ 3),
+('app_users', 'role_id', 'Role', 'select', TRUE, FALSE, 'roles', 'role_id', 'role_name',
+ '{"placeholder":"Assign role to user"}'::jsonb,
+ 4),
+('app_users', 'manager_id', 'Manager', 'select', TRUE, FALSE, 'app_users', 'user_id', 'full_name',
+ '{"searchable":true,"placeholder":"Search manager by name"}'::jsonb,
+ 5),
+('app_users', 'branch_code', 'Branch', 'select', FALSE, TRUE,  NULL, '["CH"]'::jsonb, '["Chennai"]'::jsonb,
+ '{"patternMessage": "Please Select Branch"}'::jsonb,
+ 6),
+('app_users', 'address', 'Address', 'textarea', FALSE, FALSE, NULL, NULL, NULL,
+ '{"placeholder":"Your complete address"}'::jsonb,
+ 7)
+
+
+
+CREATE TABLE employee_sequence (
+    branch_code CHAR(2),
+    role_code CHAR(2),
+    sub_role_code CHAR(2),
+    last_seq INT DEFAULT 0,
+    PRIMARY KEY (branch_code, role_code, sub_role_code)
+);
+
+
+CREATE OR REPLACE FUNCTION set_role_codes()
+RETURNS TRIGGER AS $$
+DECLARE
+    parent_role RECORD;
+BEGIN
+    -- Map finance_role to role_code
+    CASE NEW.finance_role
+        WHEN 'MD' THEN NEW.role_code := '10';
+        WHEN 'PH' THEN NEW.role_code := '11';
+        WHEN 'PM' THEN NEW.role_code := '12';
+        WHEN 'PA' THEN NEW.role_code := '13';
+        WHEN 'HR' THEN NEW.role_code := '14';
+        WHEN 'FINANCE' THEN NEW.role_code := '15';
+        ELSE NEW.role_code := '99'; -- fallback
+    END CASE;
+
+    -- Set sub_role_code
+    IF NEW.parent_role_id IS NULL THEN
+        NEW.sub_role_code := '00';  -- top-level
+    ELSE
+        SELECT * INTO parent_role FROM roles WHERE role_id = NEW.parent_role_id;
+        IF parent_role IS NULL THEN
+            RAISE EXCEPTION 'Parent role not found for id %', NEW.parent_role_id;
+        END IF;
+
+        -- Sub-role code is 2-digit, e.g., first child gets 01, second 02
+        SELECT LPAD(COUNT(*) + 1::text, 2, '0') INTO NEW.sub_role_code
+        FROM roles
+        WHERE parent_role_id = NEW.parent_role_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger
+CREATE TRIGGER before_insert_roles_codes
+BEFORE INSERT ON roles
+FOR EACH ROW
+EXECUTE FUNCTION set_role_codes();
+
+CREATE TRIGGER before_update_roles_codes
+BEFORE UPDATE OF parent_role_id, finance_role ON roles
+FOR EACH ROW
+EXECUTE FUNCTION set_role_codes();
+
+Migration Scripts:
+=========================
+update app_users set branch_code='CH'
+
+UPDATE roles
+SET role_code = CASE finance_role
+    WHEN 'MD' THEN '10'
+    WHEN 'PH' THEN '11'
+    WHEN 'PM' THEN '12'
+    WHEN 'PA' THEN '13'
+    WHEN 'HR' THEN '20'
+    WHEN 'FINANCE' THEN '21'
+    ELSE '00'
+END,
+sub_role_code = COALESCE(sub_role_code, '00');
+
+DO $$
+DECLARE
+    r RECORD;
+    v_role_code VARCHAR(2);
+    v_sub_role_code VARCHAR(2);
+    seq INT;
+BEGIN
+    FOR r IN SELECT user_id, role_id FROM app_users WHERE employee_id IS NULL AND status = 'ACTIVE'
+    LOOP
+        -- Fetch role and sub-role codes
+        SELECT role_code, sub_role_code
+        INTO v_role_code, v_sub_role_code
+        FROM roles
+        WHERE role_id = r.role_id;
+
+        -- Determine the next sequence for this role/sub-role combo
+        SELECT COALESCE(
+                   MAX(CAST(SUBSTRING(employee_id FROM 8 FOR 3) AS INT)), 0
+               ) + 1
+        INTO seq
+        FROM app_users
+        WHERE employee_id LIKE 'DCH' || v_role_code || v_sub_role_code || '%';
+
+        -- Update employee_id
+        UPDATE app_users
+        SET employee_id = 'DCH' || v_role_code || v_sub_role_code || LPAD(seq::text, 3, '0')
+        WHERE user_id = r.user_id;
+    END LOOP;
+END $$;
+========================================================================

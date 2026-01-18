@@ -10,11 +10,13 @@ import lombok.Data;
 public class UserTreeDto {
 	private UUID userId;
     private String userName;
+    private String employeeId;
 
     private List<UserTreeDto> children = new ArrayList<>();
     
-    public UserTreeDto(UUID userId, String userName) {
+    public UserTreeDto(UUID userId, String userName, String employeeId) {
     	this.userId = userId;
     	this.userName = userName;
+    	this.employeeId = employeeId;
     }
 }

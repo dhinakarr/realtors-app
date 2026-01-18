@@ -31,6 +31,8 @@ public class AppUserDto {
     @Size(max = 55)
     private String fullName;
     private String address; 
+    String branchCode;
+    String employeeId;
     private @JsonIgnore Timestamp lastLogin;
     private @JsonIgnore Timestamp createdAt;
     private @JsonIgnore Timestamp updatedAt;

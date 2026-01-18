@@ -4,12 +4,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.UserBasicDto;
 import com.realtors.admin.dto.UserMiniDto;
 import com.realtors.admin.dto.UserTreeDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.common.util.AppUtil;
+import com.realtors.customers.dto.CustomerMiniDto;
+import com.realtors.dashboard.dto.UserPrincipalDto;
 import com.realtors.admin.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -65,17 +69,17 @@ public class UserController {
 	                .body(ApiResponse.failure(ex.getMessage(), HttpStatus.BAD_REQUEST));
 	    }
 	}
-
-
+	
 	@GetMapping("/form")
-	public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getUserForm() {
-		DynamicFormResponseDto users = appUserService.getUserFormData();
+	public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getUserForm(@AuthenticationPrincipal UserPrincipalDto principal) {
+		DynamicFormResponseDto users = appUserService.getUserFormData(AppUtil.isCommonRole(principal));
 		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
 	}
 
 	@GetMapping("/editForm/{id}")
-	public ResponseEntity<ApiResponse<EditResponseDto<AppUserDto>>> getUserEditForm(@PathVariable UUID id) {
-		EditResponseDto<AppUserDto> users = appUserService.editUserResponse(id);
+	public ResponseEntity<ApiResponse<EditResponseDto<AppUserDto>>> getUserEditForm(@PathVariable UUID id,
+			@AuthenticationPrincipal UserPrincipalDto principal) {
+		EditResponseDto<AppUserDto> users = appUserService.editUserResponse(id, AppUtil.isCommonRole(principal));
 		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
 	}
 	

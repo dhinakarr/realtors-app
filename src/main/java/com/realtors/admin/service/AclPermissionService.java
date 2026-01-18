@@ -314,16 +314,29 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 
 //    @Cacheable(value = CACHE_NAME, key = "'role:' + #roleId")
 	public List<ModulePermissionDto> findPermissionsByRole(UUID roleId) {
-		String sql = (roleId == null) ? PERMISSIONS_FOR_ALL : permissionbyRoleQuery;
-		List<Map<String, Object>> rows = (roleId == null) ? jdbcTemplate.queryForList(sql)
-				: jdbcTemplate.queryForList(sql, roleId);
-		List<ModulePermissionDto> list = mapToModulePermissionDto(rows);
-		audit.auditAsync(TABLE_NAME, roleId, "GET By Role", 
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
-		return list;
+	    boolean isGeneric = (roleId == null);
+
+	    String sql = isGeneric ? PERMISSIONS_FOR_ALL : permissionbyRoleQuery;
+	    List<Map<String, Object>> rows = isGeneric
+	            ? jdbcTemplate.queryForList(sql)
+	            : jdbcTemplate.queryForList(sql, roleId, roleId);
+
+	    List<ModulePermissionDto> list =
+	            mapToModulePermissionDto(rows, !isGeneric);
+
+	    audit.auditAsync(TABLE_NAME, roleId, "GET By Role",
+	            AppUtil.getCurrentUserId(),
+	            AuditContext.getIpAddress(),
+	            AuditContext.getUserAgent());
+
+	    return list;
 	}
 
-	private List<ModulePermissionDto> mapToModulePermissionDto(List<Map<String, Object>> rows) {
+
+	private List<ModulePermissionDto> mapToModulePermissionDto(
+	        List<Map<String, Object>> rows,
+	        boolean filterByPermission
+	) {
 	    Map<UUID, ModulePermissionDto> moduleMap = new LinkedHashMap<>();
 
 	    for (Map<String, Object> row : rows) {
@@ -344,43 +357,56 @@ public class AclPermissionService extends AbstractBaseService<AclPermissionDto, 
 	            Boolean.TRUE.equals(row.get("can_read")),
 	            Boolean.TRUE.equals(row.get("can_update")),
 	            Boolean.TRUE.equals(row.get("can_delete")),
-	            (String) row.get("status")
+	            (String) row.get("permission_status")
 	        );
 
-	        // Only include features with at least one permission
-	        if (feature.canCreate() || feature.canRead() || feature.canUpdate() || feature.canDelete()) {
-	            moduleMap.computeIfAbsent(moduleId, id -> new ModulePermissionDto(id, moduleName, new ArrayList<>()))
-	                     .features().add(feature);
+	        if (!filterByPermission ||
+	            feature.canCreate() || feature.canRead()
+	            || feature.canUpdate() || feature.canDelete()) {
+
+	            moduleMap
+	                .computeIfAbsent(moduleId,
+	                    id -> new ModulePermissionDto(id, moduleName, new ArrayList<>()))
+	                .features().add(feature);
 	        }
 	    }
 
-	    // Remove modules that ended up with no features (if any)
 	    return moduleMap.values().stream()
-	                    .filter(m -> !m.features().isEmpty())
-	                    .toList();
+	            .filter(m -> !filterByPermission || !m.features().isEmpty())
+	            .toList();
 	}
 
 
 	private static final String permissionbyRoleQuery = """
-			SELECT m.module_id, m.module_name, p.permission_id, r.role_id, r.role_name, r.role_level, r.finance_role, f.feature_id, f.feature_name, f.url, f.feature_type,
-			    p.can_create, p.can_read, p.can_update, p.can_delete, p.status
-			FROM acl_permissions p
-			JOIN roles r ON r.role_id = p.role_id JOIN features f ON f.feature_id = p.feature_id
-			JOIN modules m ON m.module_id = f.module_id WHERE p.status = 'ACTIVE' AND r.status = 'ACTIVE'
-			  AND f.status = 'ACTIVE' AND m.status = 'ACTIVE' AND r.role_id = ?
+			SELECT m.module_id, m.module_name, f.feature_id, f.feature_name, f.url, f.feature_type, r.role_id, r.role_name, r.role_level, r.finance_role, p.permission_id,
+			    COALESCE(p.can_create, false) AS can_create,
+			    COALESCE(p.can_read, false)   AS can_read,
+			    COALESCE(p.can_update, false) AS can_update,
+			    COALESCE(p.can_delete, false) AS can_delete,
+			    COALESCE(p.status, 'INACTIVE') AS permission_status
+			FROM modules m
+			JOIN features f ON f.module_id = m.module_id AND f.status = 'ACTIVE'
+			LEFT JOIN acl_permissions p ON p.feature_id = f.feature_id AND p.role_id = ?
+			JOIN roles r ON r.role_id = ? AND r.status = 'ACTIVE'
+			WHERE m.status = 'ACTIVE'
 			ORDER BY m.module_name, f.feature_name
 			""";
 
 	// Query for ALL permissions (no role filtering)
 	private static final String PERMISSIONS_FOR_ALL = """
-			    SELECT
-			        m.module_id, m.module_name, p.permission_id, r.role_id, r.role_name, r.role_level, r.finance_role, f.feature_id, f.feature_name, f.url, f.feature_type,
-			        p.can_create, p.can_read, p.can_update, p.can_delete, p.status
-			    FROM acl_permissions p
-			    JOIN roles r ON r.role_id = p.role_id JOIN features f ON f.feature_id = p.feature_id
-			    JOIN modules m ON m.module_id = f.module_id
-			    WHERE p.status = 'ACTIVE' AND r.status = 'ACTIVE' AND f.status = 'ACTIVE'
-			      AND m.status = 'ACTIVE' AND r.role_id = p.role_id ORDER BY m.module_name, f.feature_name
+			    SELECT m.module_id, m.module_name, f.feature_id, f.feature_name, f.url, f.feature_type, p.permission_id,
+					    COALESCE(p.can_create, false) AS can_create,
+					    COALESCE(p.can_read, false)   AS can_read,
+					    COALESCE(p.can_update, false) AS can_update,
+					    COALESCE(p.can_delete, false) AS can_delete,
+					    COALESCE(p.status, 'INACTIVE') AS permission_status
+					FROM modules m
+					JOIN features f  ON f.module_id = m.module_id  AND f.status = 'ACTIVE'
+					LEFT JOIN acl_permissions p
+					    ON p.feature_id = f.feature_id
+					    AND p.role_id IS NULL   -- 👈 GENERIC ACL
+					WHERE  m.status = 'ACTIVE'
+					ORDER BY m.module_name, f.feature_name
 			""";
 
 	public PermissionFormDto getPermissionFormData() {

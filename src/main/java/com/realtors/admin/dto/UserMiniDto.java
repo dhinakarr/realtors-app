@@ -8,4 +8,5 @@ import lombok.Data;
 public class UserMiniDto {
 	UUID userId;
 	String fullName;
+	String employeeId;
 }
