@@ -33,6 +33,8 @@ public class AppUserDto {
     private String address; 
     String branchCode;
     String employeeId;
+    String hierarchyCode;
+    int seqNo;
     private @JsonIgnore Timestamp lastLogin;
     private @JsonIgnore Timestamp createdAt;
     private @JsonIgnore Timestamp updatedAt;

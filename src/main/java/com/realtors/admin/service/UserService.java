@@ -3,6 +3,7 @@ package com.realtors.admin.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
+import com.realtors.admin.dto.EmployeeCode;
 import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.UserBasicDto;
 import com.realtors.admin.dto.UserFlatDto;
@@ -42,6 +43,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	private JdbcTemplate jdbcTemplate;
 	private final AuditTrailService audit;
 	private final UserAuthService userAuthService;
+	private final EmployeeCodeService codeService;
 	@Autowired
 	private NamedParameterJdbcTemplate namedJdbcTemplate;
 
@@ -53,7 +55,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 			new LookupDefinition("roles", "roles", "role_id", "role_name", "roleName"),
 			new LookupDefinition("app_users", "app_users", "manager_id", "full_name", "managerName"));
 
-	public UserService(JdbcTemplate jdbcTemplate, AuditTrailService audit, UserAuthService userAuthService) {
+	public UserService(JdbcTemplate jdbcTemplate, AuditTrailService audit, 
+						UserAuthService userAuthService, EmployeeCodeService codeService) {
 		super(AppUserDto.class, "app_users", jdbcTemplate, Set.of("role_name", "managerName"));
 		// Add multiple foreign key lookups
 		addDependentLookup("role_id", "roles", "role_id", "role_name", "roleName");
@@ -61,6 +64,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		this.jdbcTemplate = jdbcTemplate;
 		this.audit = audit;
 		this.userAuthService = userAuthService;
+		this.codeService = codeService;
 	}
 
 	@Override
@@ -193,9 +197,11 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 			return null;
 		}
 		
-		String employeeId = generateEmployeeId("D", data.getBranchCode(), data.getRoleId(), data.getManagerId());
-		data.setEmployeeId(employeeId);
-		
+//		String employeeId = generateEmployeeId("D", data.getBranchCode(), data.getRoleId(), data.getManagerId());
+		EmployeeCode code = codeService.generateEmployeeCode(data.getRoleId(), data.getManagerId(), data.getBranchCode());
+		data.setEmployeeId(code.employeeId());
+		data.setHierarchyCode(code.hierarchyCode());
+		data.setSeqNo(code.seqNo());
 		// meta is ALREADY a Map<String, Object> → no need to parse!
 		Map<String, Object> meta = data.getMeta(); // ← Just get it directly
 		// If you want a mutable copy (safe)
@@ -445,8 +451,5 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	    // 3️⃣ Compose employee_id
 	    return companyInitial + branchCode + roleCode + subRoleCode + seqStr;
 	}
-
-
-
 
 }

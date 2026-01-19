@@ -1407,31 +1407,72 @@ ADD COLUMN sub_role_code CHAR(2);     -- R2
 ALTER TABLE app_users
 ADD COLUMN employee_id VARCHAR(20) UNIQUE,
 ADD COLUMN branch_code CHAR(2),
-ADD COLUMN seq_no INT;
+ADD COLUMN seq_no INT,
+ADD COLUMN hierarchy_code CHAR(2) NOT NULL;
 
+
+
+CREATE UNIQUE INDEX ux_empid ON app_users(employee_id);
+
+CREATE TABLE ph_hierarchy_seq (
+    branch_code CHAR(2) PRIMARY KEY,
+    last_hierarchy INT NOT NULL DEFAULT 10
+);
+
+ALTER TABLE roles
+ADD CONSTRAINT chk_finance_role
+CHECK (finance_role IN ('MD','PH','PM','PA','HR','FINANCE', 'CUSTOMER', 'OWNER'));
+
+ALTER TABLE app_users
+ADD CONSTRAINT uq_employee_id UNIQUE (employee_id);
+
+
+CREATE TYPE finance_role_enum AS ENUM (
+  'MD','PH','PM','PA','HR','FINANCE', 'CUSTOMER', 'OWNER'
+);
+
+ALTER TABLE roles
+ALTER COLUMN finance_role TYPE finance_role_enum
+USING finance_role::finance_role_enum;
+
+CREATE TABLE emp_seq_tmp (
+    branch_code CHAR(2) NOT NULL,
+    hierarchy_code CHAR(2) NOT NULL,
+    last_seq INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (branch_code, hierarchy_code)
+);
+
+ALTER TABLE emp_seq_tmp RENAME TO employee_sequence;
+drop table employee_sequence
+CREATE TABLE employee_sequence (
+    branch_code CHAR(2) NOT NULL,
+    hierarchy_code CHAR(2) NOT NULL,
+    last_seq INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (branch_code, hierarchy_code)
+);
 
 INSERT INTO form_metadata
 (table_name, column_name, display_label, field_type, is_hidden, is_required, lookup_table, lookup_key, lookup_label, extra_settings, sort_order)
 VALUES
-('app_users', 'email', 'Email Address', 'email', TRUE, FALSE,  NULL, NULL, NULL,
- '{"pattern": "^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$",
+('app_users', 'email', 'Email Address', 'email', FALSE, TRUE,  NULL, NULL, NULL,
+ '{"pattern": "^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$", "required": true,
    "maxLength": 55, "placeholder": "user@example.com", "patternMessage": "Please enter valid mail address"}'::jsonb,
  1),
- ('app_users', 'mobile', 'Mobile Number', 'number', TRUE, FALSE, NULL, NULL, NULL,
+ ('app_users', 'mobile', 'Mobile Number', 'number', FALSE, TRUE, NULL, NULL, NULL,
  '{"pattern": "^[0-9]+$", "required": true, "maxLength": 15, "minLength": 10, "placeholder": "9999999999",
   "patternMessage": "Please enter only numbers of minimum 10 digits"}'::jsonb,
  2),
- ('app_users', 'full_name', 'User Name', 'text', TRUE, FALSE, NULL, NULL, NULL,
- '{"message": "Your name is required", "required": true, "maxLength": 55, "minLength": 5, "placeholder": "Your Name"}'::jsonb,
+ ('app_users', 'full_name', 'User Name', 'text', FALSE, TRUE, NULL, NULL, NULL,
+ '{"patternMessage": "Your name is required", "required": true, "maxLength": 55, "minLength": 5, "placeholder": "Your Name"}'::jsonb,
  3),
-('app_users', 'role_id', 'Role', 'select', TRUE, FALSE, 'roles', 'role_id', 'role_name',
- '{"placeholder":"Assign role to user"}'::jsonb,
+('app_users', 'role_id', 'Role', 'select', FALSE, TRUE, 'roles', 'role_id', 'role_name',
+ '{"placeholder":"Assign role to user", "required": true, "patternMessage": "Please select Role"}'::jsonb,
  4),
-('app_users', 'manager_id', 'Manager', 'select', TRUE, FALSE, 'app_users', 'user_id', 'full_name',
- '{"searchable":true,"placeholder":"Search manager by name"}'::jsonb,
+('app_users', 'manager_id', 'Manager', 'select', FALSE, TRUE, 'app_users', 'user_id', 'full_name',
+ '{"searchable":true,"placeholder":"Search manager by name", "required": true, "patternMessage": "Please select Reporting Manager"}'::jsonb,
  5),
 ('app_users', 'branch_code', 'Branch', 'select', FALSE, TRUE,  NULL, '["CH"]'::jsonb, '["Chennai"]'::jsonb,
- '{"patternMessage": "Please Select Branch"}'::jsonb,
+ '{"required": true, "patternMessage": "Please Select Branch"}'::jsonb,
  6),
 ('app_users', 'address', 'Address', 'textarea', FALSE, FALSE, NULL, NULL, NULL,
  '{"placeholder":"Your complete address"}'::jsonb,
@@ -1439,104 +1480,108 @@ VALUES
 
 
 
-CREATE TABLE employee_sequence (
-    branch_code CHAR(2),
-    role_code CHAR(2),
-    sub_role_code CHAR(2),
-    last_seq INT DEFAULT 0,
-    PRIMARY KEY (branch_code, role_code, sub_role_code)
-);
-
-
-CREATE OR REPLACE FUNCTION set_role_codes()
-RETURNS TRIGGER AS $$
-DECLARE
-    parent_role RECORD;
-BEGIN
-    -- Map finance_role to role_code
-    CASE NEW.finance_role
-        WHEN 'MD' THEN NEW.role_code := '10';
-        WHEN 'PH' THEN NEW.role_code := '11';
-        WHEN 'PM' THEN NEW.role_code := '12';
-        WHEN 'PA' THEN NEW.role_code := '13';
-        WHEN 'HR' THEN NEW.role_code := '14';
-        WHEN 'FINANCE' THEN NEW.role_code := '15';
-        ELSE NEW.role_code := '99'; -- fallback
-    END CASE;
-
-    -- Set sub_role_code
-    IF NEW.parent_role_id IS NULL THEN
-        NEW.sub_role_code := '00';  -- top-level
-    ELSE
-        SELECT * INTO parent_role FROM roles WHERE role_id = NEW.parent_role_id;
-        IF parent_role IS NULL THEN
-            RAISE EXCEPTION 'Parent role not found for id %', NEW.parent_role_id;
-        END IF;
-
-        -- Sub-role code is 2-digit, e.g., first child gets 01, second 02
-        SELECT LPAD(COUNT(*) + 1::text, 2, '0') INTO NEW.sub_role_code
-        FROM roles
-        WHERE parent_role_id = NEW.parent_role_id;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger
-CREATE TRIGGER before_insert_roles_codes
-BEFORE INSERT ON roles
-FOR EACH ROW
-EXECUTE FUNCTION set_role_codes();
-
-CREATE TRIGGER before_update_roles_codes
-BEFORE UPDATE OF parent_role_id, finance_role ON roles
-FOR EACH ROW
-EXECUTE FUNCTION set_role_codes();
-
-Migration Scripts:
-=========================
-update app_users set branch_code='CH'
-
-UPDATE roles
-SET role_code = CASE finance_role
-    WHEN 'MD' THEN '10'
-    WHEN 'PH' THEN '11'
-    WHEN 'PM' THEN '12'
-    WHEN 'PA' THEN '13'
-    WHEN 'HR' THEN '20'
-    WHEN 'FINANCE' THEN '21'
-    ELSE '00'
-END,
-sub_role_code = COALESCE(sub_role_code, '00');
-
 DO $$
 DECLARE
-    r RECORD;
-    v_role_code VARCHAR(2);
-    v_sub_role_code VARCHAR(2);
-    seq INT;
+    rec RECORD;
+
+    v_hierarchy_code CHAR(2);
+    v_level_code CHAR(2);
+    v_seq INT;
+    v_employee_id TEXT;
 BEGIN
-    FOR r IN SELECT user_id, role_id FROM app_users WHERE employee_id IS NULL AND status = 'ACTIVE'
+    FOR rec IN
+        SELECT
+            u.user_id,
+            u.branch_code,
+            u.manager_id,
+            r.finance_role
+        FROM app_users u
+        JOIN roles r ON r.role_id = u.role_id
+        WHERE u.employee_id IS NULL
+          AND u.branch_code IS NOT NULL
+        ORDER BY u.created_at
     LOOP
-        -- Fetch role and sub-role codes
-        SELECT role_code, sub_role_code
-        INTO v_role_code, v_sub_role_code
-        FROM roles
-        WHERE role_id = r.role_id;
+        /* -------------------------------
+           STEP 1: Resolve hierarchy_code
+           ------------------------------- */
 
-        -- Determine the next sequence for this role/sub-role combo
-        SELECT COALESCE(
-                   MAX(CAST(SUBSTRING(employee_id FROM 8 FOR 3) AS INT)), 0
-               ) + 1
-        INTO seq
-        FROM app_users
-        WHERE employee_id LIKE 'DCH' || v_role_code || v_sub_role_code || '%';
+        IF rec.finance_role IN ('MD', 'FINANCE', 'HR') THEN
+            v_hierarchy_code := '10';
 
-        -- Update employee_id
+		ELSIF rec.finance_role = 'PH' THEN
+			-- Ensure row exists
+			INSERT INTO ph_hierarchy_seq (branch_code, last_hierarchy)
+			VALUES (rec.branch_code, 10)
+			ON CONFLICT (branch_code) DO NOTHING;
+		
+			-- Increment and fetch (this guarantees first PH = 11)
+			UPDATE ph_hierarchy_seq
+			SET last_hierarchy = last_hierarchy + 1
+			WHERE branch_code = rec.branch_code
+			RETURNING last_hierarchy INTO v_hierarchy_code;
+		
+			v_hierarchy_code := LPAD(v_hierarchy_code::TEXT, 2, '0');
+
+        ELSE
+            -- PM / PA → inherit PH hierarchy
+            SELECT u2.hierarchy_code
+            INTO v_hierarchy_code
+            FROM app_users u2
+            WHERE u2.user_id = rec.manager_id;
+
+            IF v_hierarchy_code IS NULL THEN
+                RAISE EXCEPTION 'Hierarchy not found for user %', rec.user_id;
+            END IF;
+        END IF;
+
+        /* -------------------------------
+           STEP 2: Resolve level code
+           ------------------------------- */
+
+        CASE rec.finance_role
+            WHEN 'MD' THEN v_level_code := '01';
+            WHEN 'FINANCE' THEN v_level_code := '01';
+            WHEN 'HR' THEN v_level_code := '01';
+            WHEN 'PH' THEN v_level_code := '01';
+            WHEN 'PM' THEN v_level_code := '02';
+            WHEN 'PA' THEN v_level_code := '03';
+			WHEN 'OWNER' THEN v_level_code := '04';
+			WHEN 'CUSTOMER' THEN v_level_code := '04';
+            ELSE
+                RAISE EXCEPTION 'Unknown role %', rec.finance_role;
+        END CASE;
+
+        /* -------------------------------
+           STEP 3: Sequence per hierarchy
+           ------------------------------- */
+
+        INSERT INTO emp_seq_tmp (branch_code, hierarchy_code, last_seq)
+        VALUES (rec.branch_code, v_hierarchy_code, 1)
+        ON CONFLICT (branch_code, hierarchy_code)
+        DO UPDATE SET last_seq = emp_seq_tmp.last_seq + 1
+        RETURNING last_seq INTO v_seq;
+
+        /* -------------------------------
+           STEP 4: Build employee ID
+           ------------------------------- */
+
+        v_employee_id :=
+              'D'
+           || rec.branch_code
+           || v_hierarchy_code
+           || v_level_code
+           || LPAD(v_seq::TEXT, 3, '0');
+
+        /* -------------------------------
+           STEP 5: Update user
+           ------------------------------- */
+
         UPDATE app_users
-        SET employee_id = 'DCH' || v_role_code || v_sub_role_code || LPAD(seq::text, 3, '0')
-        WHERE user_id = r.user_id;
+        SET employee_id = v_employee_id,
+            hierarchy_code = v_hierarchy_code,
+            seq_no = v_seq
+        WHERE user_id = rec.user_id;
+
     END LOOP;
 END $$;
 ========================================================================
