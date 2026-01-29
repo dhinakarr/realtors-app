@@ -35,6 +35,7 @@ import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.common.Utils;
 import com.realtors.projects.dto.ProjectDetailDto;
+import com.realtors.projects.dto.ProjectDocumentDto;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.dto.ProjectFileDto;
 import com.realtors.projects.dto.ProjectResponse;
@@ -173,4 +174,63 @@ public class ProjectController {
 			return false;
 		}
 	}
+	
+	
+	
+	@PostMapping(value="/{projectId}/documents", consumes = { "multipart/form-data" })
+	public ResponseEntity<ApiResponse<?>> uploadDocument(@PathVariable UUID projectId, 
+																								@RequestParam String documentType, @RequestParam String documentNumber,
+																								@RequestParam MultipartFile files) throws Exception {
+		service.uploadDocument(projectId, documentType, documentNumber, files);
+		return ResponseEntity.ok(ApiResponse.success("Document uploaded", null));
+	}
+	
+	@GetMapping("/{projectId}/documents")
+	public ResponseEntity<ApiResponse<List<ProjectDocumentDto>>> getDocuments(@PathVariable  UUID projectId) {
+		if (projectId == null)
+			return ResponseEntity.badRequest().body(ApiResponse.failure("Project Id is mandatory", null));
+		
+		List<ProjectDocumentDto> list = service.findDocumentsByUserId(projectId);
+		return ResponseEntity.ok(ApiResponse.success("User documents fetched", list));
+	}
+	
+	@DeleteMapping(value = "/documents/{docId}", produces = "application/json")
+	public ResponseEntity<ApiResponse<?>> deleteDocument(@PathVariable String docId) {
+		if (docId == null || docId.isBlank()) {
+	        return ResponseEntity.badRequest().body(ApiResponse.failure("Document Id is mandatory", null));
+	    }
+	    Long id;
+	    try {
+	        id = Long.parseLong(docId);
+	    } catch (NumberFormatException e) {
+	        return ResponseEntity.badRequest().body(ApiResponse.failure("Invalid Document Id", null));
+	    }
+		
+		service.deleteDocument(id);
+		logger.info("@UserController.getDocuments document deleted");
+	    return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
+	}
+	
+	@GetMapping("/documents/{docId}/download")
+	public ResponseEntity<Resource> downloadDocument(@PathVariable Long docId) throws IOException {
+		ProjectDocumentDto doc = service.findByDocumentId(docId);
+		if (doc == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		}
+
+		Path path = Paths.get(doc.getFilePath());
+		if (!Files.exists(path)) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		}
+		Resource resource = new UrlResource(path.toUri());
+		String contentType = Files.probeContentType(path);
+		if (contentType == null) {
+			contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+		}
+
+		String disposition = "attachment; filename=\"" + doc.getFileName() + "\"";
+		return ResponseEntity.ok().contentType(MediaType.parseMediaType(contentType))
+				.header(HttpHeaders.CONTENT_DISPOSITION, disposition).body(resource);
+	}
+	
 }

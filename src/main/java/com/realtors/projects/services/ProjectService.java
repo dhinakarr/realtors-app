@@ -1,5 +1,6 @@
 package com.realtors.projects.services;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -7,17 +8,24 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.realtors.admin.dto.UserDocumentDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.common.EnumConstants;
 import com.realtors.common.service.AuditContext;
 import com.realtors.common.service.AuditTrailService;
+import com.realtors.common.service.FileSavingService;
+import com.realtors.common.service.FileStorageContext;
 import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.ProjectDetailDto;
+import com.realtors.projects.dto.ProjectDocumentDto;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.dto.ProjectSummaryDto;
 import com.realtors.projects.repository.ProjectRepository;
@@ -29,14 +37,16 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	private final ProjectRepository repo;
 	private final PlotUnitService plotService;
 	private final AuditTrailService audit;
+	private final FileSavingService fileService;
 
 	public ProjectService(JdbcTemplate jdbc, ProjectRepository repo, PlotUnitService plotService,
-			AuditTrailService audit) {
+			AuditTrailService audit, FileSavingService fileService) {
 		super(ProjectDto.class, "projects", jdbc);
 		this.jdbc = jdbc;
 		this.repo = repo;
 		this.plotService = plotService;
 		this.audit = audit;
+		this.fileService= fileService; 
 	}
 
 	@Override
@@ -132,5 +142,75 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		audit.auditAsync("projects", id, EnumConstants.DELETE.toString(), AppUtil.getCurrentUserId(),
 				AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return super.softDelete(id);
+	}
+	
+	
+	@Transactional("txManager")
+	public void uploadDocument(UUID projectId, String documentType, String documentNumber, MultipartFile file)
+			throws Exception {
+
+		if (file == null) {
+			throw new IllegalArgumentException("No files uploaded");
+		}
+		FileStorageContext ctx = new FileStorageContext(file, projectId, "projects", "/documents/");
+		String imagePathUrl = fileService.saveFile(ctx);
+
+		ProjectDocumentDto docDto = new ProjectDocumentDto();
+		docDto.setProjectId(projectId);
+		docDto.setDocumentNumber(documentNumber);
+		docDto.setDocumentType(documentType);
+		docDto.setFileName(file.getOriginalFilename());
+		docDto.setFilePath(imagePathUrl);
+		docDto.setUploadedAt(LocalDateTime.now());
+		docDto.setUploadedBy(AppUtil.getCurrentUserId());
+		
+		save(docDto);
+	}
+
+	private void save(ProjectDocumentDto d) {
+		String sql = """
+				    INSERT INTO project_documents
+				    (project_id, document_type, document_number, file_name, file_path, uploaded_at, uploaded_by)
+				    VALUES (?, ?, ?, ?, ?, ?, ?)
+				""";
+		jdbcTemplate.update(sql, d.getProjectId(), d.getDocumentType(), d.getDocumentNumber(), d.getFileName(),
+				d.getFilePath(), d.getUploadedAt(), d.getUploadedBy());
+	}
+
+	public ProjectDocumentDto findByDocumentId(Long docId) {
+		List<ProjectDocumentDto> list = jdbcTemplate.query(
+		        "SELECT * FROM project_documents WHERE document_id = ?",
+		        new BeanPropertyRowMapper<>(ProjectDocumentDto.class),
+		        docId
+		    );
+		    return list.isEmpty() ? null : list.get(0);
+	}
+	
+	public void deleteDocument(Long docId) {
+		ProjectDocumentDto dto = findByDocumentId(docId);
+		UUID projectId = dto.getProjectId();
+		fileService.deleteDocument(projectId, "projects", "/documents/", dto.getFileName());
+		// delete DB record
+		delete(docId);
+	}
+	
+	private void delete(Long docId) {
+		jdbcTemplate.update("DELETE FROM project_documents WHERE document_id = ?", docId);
+	}
+	
+	public List<ProjectDocumentDto> findDocumentsByUserId(UUID userId) {
+		String sql = "SELECT *  FROM project_documents WHERE project_id = ?";
+		return jdbcTemplate.query(sql, new Object[] { userId }, (rs, rowNum) -> {
+			ProjectDocumentDto d = new ProjectDocumentDto();
+			d.setDocumentId(rs.getLong("document_id"));
+			d.setProjectId(UUID.fromString(rs.getString("project_id")));
+			d.setDocumentType(rs.getString("document_type"));
+			d.setDocumentNumber(rs.getString("document_number"));
+			d.setFileName(rs.getString("file_name"));
+			d.setFilePath(rs.getString("file_path"));
+			d.setUploadedBy(rs.getString("uploaded_by") != null ? UUID.fromString(rs.getString("uploaded_by")) : null);
+			d.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
+			return d;
+		});
 	}
 }

@@ -35,5 +35,5 @@ public class ProjectSummaryDto {
 
 	    // This is the key: files belong to the project
 	    List<ProjectFileDto> files  = new ArrayList<>();  // ← 0 or 1 when no filter, 0..n when filtered
-	
+	    private List<ProjectDocumentDto> documents = new ArrayList<>();
 }
