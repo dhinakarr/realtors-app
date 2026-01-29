@@ -3,20 +3,23 @@ package com.realtors.admin.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.realtors.admin.dto.AppUserDto;
+import com.realtors.admin.dto.ListUserDto;
 import com.realtors.admin.dto.PagedResult;
-import com.realtors.admin.dto.UserBasicDto;
+import com.realtors.admin.dto.UserDocumentDto;
 import com.realtors.admin.dto.UserMiniDto;
 import com.realtors.admin.dto.UserTreeDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.common.ApiResponse;
 import com.realtors.common.util.AppUtil;
-import com.realtors.customers.dto.CustomerMiniDto;
 import com.realtors.dashboard.dto.UserPrincipalDto;
 import com.realtors.admin.service.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +28,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +50,63 @@ public class UserController {
 	public UserController(UserService appUserService) {
 		this.appUserService = appUserService;
 	}
+	
+	@PostMapping(value="/{userId}/documents", consumes = { "multipart/form-data" })
+	public ResponseEntity<ApiResponse<?>> uploadDocument(@PathVariable UUID userId, 
+																								@RequestParam String documentType, @RequestParam String documentNumber,
+																								@RequestParam MultipartFile files) throws Exception {
+		appUserService.uploadDocument(userId, documentType, documentNumber, files);
+		return ResponseEntity.ok(ApiResponse.success("Document uploaded", null));
+	}
+	
+	@GetMapping("/{userId}/documents")
+	public ResponseEntity<ApiResponse<List<UserDocumentDto>>> getDocuments(@PathVariable  UUID userId) {
+		if (userId == null)
+			return ResponseEntity.badRequest().body(ApiResponse.failure("User Id is mandatory", null));
+		
+		List<UserDocumentDto> list = appUserService.findDocumentsByUserId(userId);
+		return ResponseEntity.ok(ApiResponse.success("User documents fetched", list));
+	}
+	
+	@DeleteMapping(value = "/documents/{docId}", produces = "application/json")
+	public ResponseEntity<ApiResponse<?>> deleteDocument(@PathVariable String docId) {
+		if (docId == null || docId.isBlank()) {
+	        return ResponseEntity.badRequest().body(ApiResponse.failure("Document Id is mandatory", null));
+	    }
+	    Long id;
+	    try {
+	        id = Long.parseLong(docId);
+	    } catch (NumberFormatException e) {
+	        return ResponseEntity.badRequest().body(ApiResponse.failure("Invalid Document Id", null));
+	    }
+		
+		appUserService.deleteDocument(id);
+		logger.info("@UserController.getDocuments document deleted");
+	    return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
+	}
+	
+	@GetMapping("/documents/{docId}/download")
+	public ResponseEntity<Resource> downloadDocument(@PathVariable Long docId) throws IOException {
+		UserDocumentDto doc = appUserService.findByDocumentId(docId);
+		if (doc == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		}
 
+		Path path = Paths.get(doc.getFilePath());
+		if (!Files.exists(path)) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		}
+		Resource resource = new UrlResource(path.toUri());
+		String contentType = Files.probeContentType(path);
+		if (contentType == null) {
+			contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+		}
+
+		String disposition = "attachment; filename=\"" + doc.getFileName() + "\"";
+		return ResponseEntity.ok().contentType(MediaType.parseMediaType(contentType))
+				.header(HttpHeaders.CONTENT_DISPOSITION, disposition).body(resource);
+	}
+	
 	@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ApiResponse<AppUserDto>> createUser(
 	        @RequestPart("dto") String dtoJson,
@@ -91,8 +154,9 @@ public class UserController {
 
 	/** ✅ Get all users */
 	@GetMapping
-	public ResponseEntity<ApiResponse<List<AppUserDto>>> getAllUsers() {
-		List<AppUserDto> users = appUserService.getAllUsers();
+	public ResponseEntity<ApiResponse<List<ListUserDto>>> getAllUsers(@AuthenticationPrincipal UserPrincipalDto principal) {
+		logger.info("@UserController.getAllUsers principal: {}", principal.getRoles().toString());
+		List<ListUserDto> users = appUserService.getAllUsers(AppUtil.isCommonRole(principal));
 		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
 	}
 	
@@ -103,15 +167,15 @@ public class UserController {
 	}
 
 	@GetMapping("/search")
-	public ResponseEntity<ApiResponse<List<AppUserDto>>> searchModules(@RequestParam String searchText) {
-		List<AppUserDto> users = appUserService.searchUsers(searchText);
+	public ResponseEntity<ApiResponse<List<ListUserDto>>> searchModules(@AuthenticationPrincipal UserPrincipalDto principal, @RequestParam String searchText) {
+		List<ListUserDto> users = appUserService.searchUsers(searchText, AppUtil.isCommonRole(principal));
 		return ResponseEntity.ok(ApiResponse.success("Active Users fetched", users));
 	}
 
 	@GetMapping("/pages")
-	public ResponseEntity<ApiResponse<PagedResult<AppUserDto>>> getPagedData(@RequestParam int page,
+	public ResponseEntity<ApiResponse<PagedResult<ListUserDto>>> getPagedData(@AuthenticationPrincipal UserPrincipalDto principal, @RequestParam int page,
 			@RequestParam int size) {
-		PagedResult<AppUserDto> users = appUserService.getPaginatedUsers(page, size);
+		PagedResult<ListUserDto> users = appUserService.getPaginatedUsers(page, size, AppUtil.isCommonRole(principal));
 		return ResponseEntity.ok(ApiResponse.success("Active Users fetched", users));
 	}
 

@@ -31,7 +31,6 @@ public class FileStorageProperties {
     
     public Path getProjectFolder(UUID projectId, String module) {
         Path folder = Paths.get(this.getUploadDir(), module, projectId.toString());
-
         try {
             if (!Files.exists(folder)) {
                 Files.createDirectories(folder);

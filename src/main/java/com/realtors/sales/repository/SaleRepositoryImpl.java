@@ -2,8 +2,6 @@ package com.realtors.sales.repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -13,12 +11,10 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 //import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Repository;
 
-import com.realtors.dashboard.dto.DashboardScope;
-import com.realtors.dashboard.dto.FinancialSummaryDTO;
 import com.realtors.dashboard.dto.ReceivableDetailDTO;
+import com.realtors.dashboard.dto.SaleDetailDTO;
 import com.realtors.sales.dto.SaleDTO;
 import com.realtors.sales.dto.SalesStatus;
 import com.realtors.sales.finance.dto.CashFlowItemDTO;
@@ -34,8 +30,8 @@ public class SaleRepositoryImpl implements SaleRepository {
 
 	private final JdbcTemplate jdbc;
 //	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
-	private static final RowMapper<ReceivableDetailDTO> ROW_MAPPER =
-            new BeanPropertyRowMapper<>(ReceivableDetailDTO.class);
+	private static final RowMapper<ReceivableDetailDTO> ROW_MAPPER = new BeanPropertyRowMapper<>(ReceivableDetailDTO.class);
+	private static final RowMapper<SaleDetailDTO> SALE_MAPPER = new BeanPropertyRowMapper<>(SaleDetailDTO.class);
 	
 	@Override
     public List<ReceivableDetailDTO> findSalesByStatus(List<String> statuses) {
@@ -48,6 +44,12 @@ public class SaleRepositoryImpl implements SaleRepository {
                      "WHERE sale_status IN (" + placeholders + ")";
         return jdbc.query(sql, ROW_MAPPER, statuses.toArray());
     }
+	
+	@Override
+	public SaleDetailDTO getSaleDetails(UUID saleId) {
+		String sql = "SELECT * FROM v_receivable_details where sale_id=? ";
+		return jdbc.query(sql, SALE_MAPPER, saleId).getFirst();
+	}
 	
 	@Override
 	public SaleDTO createSale(UUID plotId, UUID projectId, UUID customerId, UUID soldBy, BigDecimal area,
@@ -213,5 +215,11 @@ public class SaleRepositoryImpl implements SaleRepository {
 	    return items.stream()
 	        .filter(i -> i.getStatus() == status)
 	        .toList();
+	}
+
+	@Override
+	public void deleteBySaleId(UUID saleId) {
+		String sql = "DELETE FROM sales where sale_id=?";
+		jdbc.update(sql, saleId);
 	}
 }

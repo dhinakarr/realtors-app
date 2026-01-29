@@ -2,7 +2,6 @@ package com.realtors.dashboard.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -16,8 +15,11 @@ public class SaleDetailDTO {
     private UUID saleId;
     private UUID projectId;
     private String projectName;
+    private UUID customerId;
     private String customerName;
+    private UUID agentId;
     private String agentName;
+    private UUID plotId;
     private String plotNumber;
     private BigDecimal saleAmount;
     private BigDecimal baseAmount;

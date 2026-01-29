@@ -9,22 +9,25 @@ import java.util.UUID;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
-//import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.realtors.admin.dto.RoleType;
 import com.realtors.admin.service.UserAuthService;
+import com.realtors.alerts.domain.event.EventType;
+import com.realtors.alerts.domain.event.SaleCreatedEvent;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDto;
 import com.realtors.customers.service.CustomerService;
 import com.realtors.dashboard.dto.ReceivableDetailDTO;
+import com.realtors.dashboard.dto.SaleDetailDTO;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.repository.PlotUnitRepository;
 import com.realtors.projects.services.PlotUnitService;
 import com.realtors.projects.services.ProjectService;
 import com.realtors.sales.dto.CancelRequest;
-import com.realtors.sales.dto.PaymentType;
 import com.realtors.sales.dto.PlotStatus;
 import com.realtors.sales.dto.SaleCreateRequest;
 import com.realtors.sales.dto.SaleDTO;
@@ -45,10 +48,9 @@ public class SaleService {
 	private final CommissionService commissionService;
 	private final CustomerService customerService;
 	private final UserAuthService authService;
-	private final CommissionPaymentService comPayService;
 	private final PaymentRepositoryImpl paymentRepo;
 	private final CommissionDistributionService commisionDistributionService;
-	
+	private final ApplicationEventPublisher publisher;
 	private static final Logger logger = LoggerFactory.getLogger(SaleService.class);
 
 	public SaleDTO getSaleById(UUID saleId) {
@@ -100,20 +102,22 @@ public class SaleService {
 		// insert customer into user_auth table to enable login access to customer
 		CustomerDto customerDto = customerService.getCustomer(request.getCustomerId());
 		if (!authService.isUserPresent(customerDto.getCustomerId())) {
-			authService.createUserAuth(customerDto.getCustomerId(), customerDto.getEmail(), "Test@123",
-					customerDto.getRoleId(), "CUSTOMER");
+			authService.createUserAuth(customerDto.getCustomerId(), customerDto.getEmail(), null, 
+					customerDto.getRoleId(), customerDto.getMobile().toString(), RoleType.CUSTOMER.name());
 		}
 		// 6. Distribute commission after sale creation
-//		comPayService.distributeCommission(sale.getSaleId(), area);
 		commisionDistributionService.distributeCommission(project.getProjectId(), userId, basePrice, area, sale.getSaleId());
+		
+		// 7. Send Notification
+		SaleDetailDTO saleDetail = saleRepository.getSaleDetails(sale.getSaleId());
+		publisher.publishEvent(new SaleCreatedEvent(userId.toString(), sale.getSaleId().toString(), EventType.SALE_CREATED.name(), userId.toString(), saleDetail));
+		
 		return sale;
 	}
 
 	public void confirmSale(UUID saleId) {
 		SaleDTO sale = saleRepository.findById(saleId);
-		// Update sale status
 		saleRepository.updateSaleStatus(saleId, "CONFIRMED");
-		// Optionally recalc commission (if dynamic)
 		commissionService.distributeCommission(sale);
 	}
 
@@ -150,9 +154,13 @@ public class SaleService {
 	public PlotUnitDto cancelBooking(UUID plotId, CancelRequest request) {
 		SaleDTO sale = saleRepository.findSaleByPlotId(plotId);
 		
-		commissionService.reversePayment(sale.getSaleId(), null, SalesStatus.CANCELLED.name());
-		paymentRepo.paymentReversed(sale.getSaleId(), PaymentType.REVERSED.name());
-		saleRepository.updateSaleStatus(sale.getSaleId(), SalesStatus.CANCELLED.name());
+//		commissionService.reversePayment(sale.getSaleId(), null, SalesStatus.CANCELLED.name());
+		commissionService.deleteBySaleId(sale.getSaleId());
+//		paymentRepo.paymentReversed(sale.getSaleId(), PaymentType.REVERSED.name());
+		paymentRepo.deleteBySaleId(sale.getSaleId());
+//		saleRepository.updateSaleStatus(sale.getSaleId(), SalesStatus.CANCELLED.name());
+		saleRepository.deleteBySaleId(sale.getSaleId());
+		logger.info("@SaleService.cancelBooking saleId: {}", sale.getSaleId());
 		
 		Map<String, Object> partialData = new HashMap<>();
 		partialData.put("remarks", request.getReason());
@@ -161,6 +169,5 @@ public class SaleService {
 		
 		return dto;
 	}
-	
 	
 }

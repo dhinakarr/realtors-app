@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Booking Confirmation</title>
+
+    <!-- Email-safe styling -->
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f5f6fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .header {
+            background: #001F3F;
+            padding: 20px;
+            text-align: center;
+        }
+        .header img {
+            height: 50px;
+			text-align:left;
+        }
+        .content {
+            padding: 30px;
+            color: #333333;
+        }
+        .footer {
+            background: #f0f0f0;
+            padding: 15px;
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: #28a745;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <img src="cid:logo" alt="Company Logo"/>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <h2>Hello <span th:text="${customerName}">Customer</span>,</h2>
+
+        <p>
+            🎉 Congratulations on booking
+            <strong>Plot No. <span th:text="${plotNumber}"></span></strong>
+            in our <strong><span th:text="${projectName}"></span></strong> project.
+        </p>
+
+        <p>
+            This booking is valid until
+            <strong th:text="${validTill}"></strong>
+            for the next payment.
+        </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        © <span th:text="${year}"></span> Your Company Name.<br/>
+        This is an automated message. Please do not reply.
+    </div>
+
+</div>
+</body>
+</html>

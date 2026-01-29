@@ -1585,3 +1585,35 @@ BEGIN
     END LOOP;
 END $$;
 ========================================================================
+21-Jan-2026
+==================
+
+CREATE TABLE IF NOT EXISTS public.user_documents
+(
+    document_id bigint NOT NULL DEFAULT nextval('user_documents_document_id_seq'::regclass),
+    user_id uuid NOT NULL,
+    document_type character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    document_number character varying(100) COLLATE pg_catalog."default",
+    file_path character varying(300) COLLATE pg_catalog."default",
+    file_name character varying(300) COLLATE pg_catalog."default",
+    uploaded_by uuid,
+    uploaded_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT user_documents_pkey PRIMARY KEY (document_id),
+    CONSTRAINT user_documents_user_id_fkey FOREIGN KEY (user_id)
+        REFERENCES public.app_users (user_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+CREATE SEQUENCE IF NOT EXISTS public.user_documents_document_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1;
+
+ALTER SEQUENCE public.user_documents_document_id_seq
+    OWNED BY public.user_documents.document_id;
+
+ALTER SEQUENCE public.user_documents_document_id_seq
+    OWNER TO postgres;

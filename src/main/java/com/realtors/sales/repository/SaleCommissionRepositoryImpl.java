@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 
 	private final JdbcTemplate jdbc;
+	private static final Logger logger = LoggerFactory.getLogger(SaleCommissionRepositoryImpl.class);
 
 	@Override
 	public List<SaleCommissionDTO> findBySaleId(UUID saleId) {
@@ -216,7 +219,7 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 			    SET status=?, is_released = ?, released_at = now()
 			    WHERE sale_id = ?
 			""";
-
+logger.info("@SaleCommissionRepositoryImpl.updateStatus saleId: {}", saleId);
 		jdbc.update(sql, status, released, saleId);
 		
 	}
@@ -242,6 +245,15 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 				WHERE  sale_id=? AND user_id=?
 			""";
 		jdbc.update(sql, saleId, userId);
+	}
+
+	@Override
+	public void deleteBySaleId(UUID saleId) {
+		String sql = """
+				DELETE FROM sale_commissions
+				WHERE  sale_id=? 
+			""";
+		jdbc.update(sql, saleId);
 	}
 
 

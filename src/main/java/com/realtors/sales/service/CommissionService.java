@@ -104,4 +104,8 @@ public class CommissionService {
 	public void reversePayment(UUID saleId, UUID userId, String status) {
 		saleCommissionRepository.updateStatus(saleId, userId, status, false);
 	}
+	
+	public void deleteBySaleId(UUID saleId) {
+		saleCommissionRepository.deleteBySaleId(saleId);
+	}
 }

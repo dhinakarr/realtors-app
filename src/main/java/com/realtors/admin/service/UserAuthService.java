@@ -2,6 +2,7 @@ package com.realtors.admin.service;
 
 import com.realtors.admin.dto.LoginResponse;
 import com.realtors.admin.dto.ModulePermissionDto;
+import com.realtors.alerts.dto.RecipientDetail;
 import com.realtors.common.EnumConstants;
 import com.realtors.common.service.AuditContext;
 import com.realtors.common.service.AuditTrailService;
@@ -43,6 +44,20 @@ public class UserAuthService {
 	}
 
 	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+	
+	public RecipientDetail getRecipientDetail(UUID userId) {
+		logger.info("@UserAuthervice.getRecipientDetail  userId={}", userId);
+		String sql = "SELECT  * FROM user_auth where user_id=? ";
+		List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, userId);
+		if (data.isEmpty())
+			return null;
+		
+		UUID user = (UUID) data.get(0).get("user_id");
+		String email = (String) data.get(0).get("username");
+		String mobile = (String) data.get(0).get("mobile");
+		logger.info("@UserAuthervice.getRecipientDetail  user={}, email={}, mobile={}", user, email, mobile);
+		return new RecipientDetail(user, email, mobile);
+	}
 
 	public LoginResponse login(String email, String password) {
 		String authSql = "SELECT  * FROM user_auth where username=? ";
@@ -82,14 +97,14 @@ public class UserAuthService {
 	        return rows > 0;
 	 }
 	 
-	 public void createUserAuth(UUID userId, String username, String password, UUID roleId) {
-		 createUserAuth(userId, username, password, roleId, null);
+	 public void createUserAuth(UUID userId, String username, String password, UUID roleId, String mobile) {
+		 createUserAuth(userId, username, password, roleId, mobile, null);
 	 }
 	 
-	 public void createUserAuth(UUID userId, String username, String password, UUID roleId, String userType) {
+	 public void createUserAuth(UUID userId, String username, String password, UUID roleId, String mobile, String userType) {
 		 String hashedPassword = passwordEncoder.encode(password==null? "Test@123":password);
 		 String type = userType == null ? "INTERNAL" : "CUSTOMER";
-		 String insertSql= "INSERT INTO user_auth (user_id, username, password_hash, role_id, user_type) values(?,?,?,?,?)";
+		 String insertSql= "INSERT INTO user_auth (user_id, username, password_hash, role_id, mobile, user_type) values(?,?,?,?,?, ?)";
 		 jdbcTemplate.update(insertSql, new PreparedStatementSetter() {
 	            @Override
 	            public void setValues(PreparedStatement ps) throws SQLException {
@@ -97,7 +112,8 @@ public class UserAuthService {
 	                ps.setString(2, username);
 	                ps.setString(3, hashedPassword);
 	                ps.setObject(4, roleId);
-	                ps.setString(5, type);
+	                ps.setString(5, mobile);
+	                ps.setString(6, type);
 	            }
 	        });
 	 }

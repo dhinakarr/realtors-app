@@ -159,6 +159,14 @@ public class PaymentRepositoryImpl {
 	    jdbc.update(sql, paymentType, saleId);
 	}
 	
+	public void deleteBySaleId(UUID saleId) {
+	    String sql = """
+	        DELETE FROM payments
+	        WHERE sale_id = ?
+	    """;
+	    jdbc.update(sql, saleId);
+	}
+	
 	public PaymentDTO verify(UUID paymentId, UUID verifierId) {
 	    String sql = """
 	        UPDATE payments

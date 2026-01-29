@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.realtors.dashboard.dto.ReceivableDetailDTO;
+import com.realtors.dashboard.dto.SaleDetailDTO;
 import com.realtors.sales.dto.SaleDTO;
 import com.realtors.sales.finance.dto.CashFlowItemDTO;
 import com.realtors.sales.finance.dto.CashFlowStatus;
@@ -17,6 +18,8 @@ public interface SaleRepository {
 	SaleDTO findById(UUID saleId);
 
 	void updateSaleStatus(UUID saleId, String status);
+	
+	void deleteBySaleId(UUID saleId);
 
 	public BigDecimal getTotalAmount(UUID saleId);
 
@@ -31,4 +34,6 @@ public interface SaleRepository {
 	public List<CashFlowItemDTO> findReceivables(LocalDate from, LocalDate to, CashFlowStatus status);
 	
 	public List<ReceivableDetailDTO> findSalesByStatus(List<String> status);
+	
+	SaleDetailDTO getSaleDetails(UUID saleId);
 }

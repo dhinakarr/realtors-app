@@ -24,4 +24,5 @@ public interface SaleCommissionRepository {
     public List<PayableDetailsDTO> getPayableDetails();
     public void handleCommissionReversal(UUID saleId);
     public void deleteCommissionData(UUID saleId, UUID userId);
+    public void deleteBySaleId(UUID saleId);
 }

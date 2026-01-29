@@ -18,7 +18,7 @@ public class UserDeviceRepository {
 
 	private final JdbcTemplate jdbc;
 
-	public List<String> findActiveTokens(Long userId) {
+	public List<String> findActiveTokens(UUID userId) {
 		return jdbc.query("""
 				    SELECT device_token
 				    FROM user_devices

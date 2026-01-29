@@ -37,7 +37,7 @@ public class CommissionDistributionService {
 	@Transactional("txManager")
 	public List<SaleCommissionDTO> distributeCommission(UUID projectId, UUID soldByUserId, BigDecimal saleAmount,
 			BigDecimal sqft, UUID saleId) {
-
+		logger.info("@CommissionDistributionService.distributeCommission saleId: {}", saleId);
 		DistributionContext ctx = buildContext(projectId, soldByUserId, saleAmount, sqft, saleId);
 		for (CommissionSpreadRuleDTO rule : ctx.rules) {
 			processRule(ctx, rule);

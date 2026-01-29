@@ -33,15 +33,6 @@ public class FileStorageService {
 	@Value("${file.upload-dir}")
 	private String uploadDir;
 	
-	/*
-	 * public String saveProjectFile(UUID projectId, MultipartFile file) throws
-	 * IOException { String baseFolder = fileStorageProperties.getUploadDir() +
-	 * "/projects/" ; String projectFolder = baseFolder + projectId;
-	 * Files.createDirectories(Paths.get(projectFolder)); String fileName =
-	 * System.currentTimeMillis() + "_" + file.getOriginalFilename(); Path filePath
-	 * = Paths.get(projectFolder, fileName); Files.write(filePath, file.getBytes());
-	 * return filePath.toString(); }
-	 */	
 	public ProjectFileDto storeFile(UUID projectId, MultipartFile file) throws IOException {
 		UUID fileId = UUID.randomUUID();
         Path projectFolder = fileStorageProperties.getProjectFolder(projectId, "projects");
@@ -72,13 +63,6 @@ public class FileStorageService {
 	}
 	
 	public boolean deleteFile(String filePath) {
-		/*
-		 * String baseFolder = fileStorageProperties.getUploadDir() + "/projects/" ;
-		 * logger.info("@FileStorage.deletFile  baseFolder: "+ baseFolder); String
-		 * fileFolder = baseFolder+projectId ;
-		 * logger.info("@FileStorage.deletFile  baseFolder: "+ fileFolder); Path path =
-		 * Paths.get(URI.create(fileFolder));
-		 */
 		boolean flag = false;
 		String normalizedPath = filePath.replace("\\", "/");
 		Path path = Paths.get(normalizedPath);

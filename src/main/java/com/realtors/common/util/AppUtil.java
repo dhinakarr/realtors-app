@@ -2,6 +2,8 @@ package com.realtors.common.util;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,6 +33,10 @@ public class AppUtil {
     	String userIdStr = (String) request.getAttribute("userId");
     	return UUID.fromString(userIdStr);
     }
+	
+	public static String getFormattedDate(LocalDate date) {
+		return date.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
+	}
 
 	public static UUID getCurrentUserIdOld() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

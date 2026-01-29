@@ -18,8 +18,12 @@ public class FirebaseConfig {
 	@PostConstruct
 	public void init() throws IOException {
 
+		if (!FirebaseApp.getApps().isEmpty()) {
+            return; // already initialized
+        }
+		
 		InputStream serviceAccount = new ClassPathResource(
-				"diamond-realty-8bf53-firebase-adminsdk-fbsvc-d476c8f8f7.json").getInputStream();
+				"firebaseServiceKey.json").getInputStream();
 
 		FirebaseOptions options = FirebaseOptions.builder().setCredentials(GoogleCredentials.fromStream(serviceAccount))
 				.build();

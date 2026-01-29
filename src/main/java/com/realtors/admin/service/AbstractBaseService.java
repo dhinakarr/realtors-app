@@ -27,7 +27,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 	private final Class<T> dtoClass;
 	private final String tableName;
-	protected Set<String> excludeColumns = new HashSet();
+	protected Set<String> excludeColumns = new HashSet<String>();
 
 	protected AbstractBaseService(Class<T> dtoClass, String tableName, JdbcTemplate jdbcTemplate) {
 		this.dtoClass = dtoClass;

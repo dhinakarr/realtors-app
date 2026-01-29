@@ -1,55 +1,86 @@
 package com.realtors.alerts.repository;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.realtors.alerts.dto.NotificationDto;
-import com.realtors.alerts.dto.NotificationType;
-import com.realtors.alerts.rowmapper.NotificationRowMapper;
-
-import lombok.RequiredArgsConstructor;
+import com.realtors.alerts.domain.notification.NotificationStatus;
+import com.realtors.alerts.dto.NotificationInstruction;
+import com.realtors.alerts.dto.NotificationResponse;
+import com.realtors.alerts.messages.NotificationMessage;
 
 @Repository
-@RequiredArgsConstructor
 public class NotificationRepository {
 
-	private final JdbcTemplate jdbc;
+	private final JdbcTemplate jdbcTemplate;
 
-	public void save(Long userId, String title, String message, NotificationType type, Long referenceId) {
-
-		jdbc.update("""
-				    INSERT INTO notifications
-				    (user_id, title, message, type, reference_id)
-				    VALUES (?, ?, ?, ?, ?)
-				""", userId, title, message, type.name(), referenceId);
+	public NotificationRepository(JdbcTemplate jdbcTemplate) {
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
-	public List<NotificationDto> findByUser(UUID userId) {
+	public void saveSuccess(NotificationInstruction req, String channel, String recipient) {
+		NotificationMessage msg = req.messages().getFirst();
+		String body = msg.getBody() == null ? null : msg.getBody();
+		String title = msg.getTitle() == null ? null : msg.getTitle();
+		jdbcTemplate.update("""
+				    INSERT INTO notification_log
+				    (event_id, event_type, channel, recipient, title, message, status)
+				    VALUES (?, ?, ?, ?, ?, ?, ?)
+				""", req.eventId(), req.eventType(), channel, recipient, title, body,
+				NotificationStatus.SENT.name());
+	}
 
-		return jdbc.query("""
-				    SELECT notification_id, title, message, type, is_read, created_at
-				    FROM notifications
-				    WHERE user_id = ?
+	public void saveFailure(NotificationInstruction req, String channel, String recipient, String reason) {
+		jdbcTemplate.update("""
+				    INSERT INTO notification_log
+				    (event_id, event_type, channel, recipient, title, message, status, failure_reason)
+				    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+				""", req.eventId(), req.eventType(), channel, recipient, req.messages().getFirst().toString(),
+				NotificationStatus.FAILED.name(), reason);
+	}
+
+	public List<NotificationResponse> findByUser(String userId, int limit, int offset) {
+
+		return jdbcTemplate.query("""
+				    SELECT id, event_id, event_type, channel, title, message, read 
+				    FROM notification_log where recipient=? and read=false
 				    ORDER BY created_at DESC
-				""", new NotificationRowMapper(), userId);
+				    LIMIT ? OFFSET ?
+				""", new Object[] { userId, limit, offset }, (rs, i) -> {
+			NotificationResponse dto = new NotificationResponse();
+			dto.setId(rs.getLong("id"));
+			dto.setEventId(rs.getString("event_id"));
+			dto.setEventType(rs.getString("event_type"));
+			dto.setChannel(rs.getString("channel"));
+			dto.setTitle(rs.getString("title"));
+			dto.setMessage(rs.getString("message"));
+			dto.setRead(rs.getBoolean("read"));
+			return dto;
+		});
 	}
 
-	public void markAsRead(Long notificationId) {
-		jdbc.update("""
-				    UPDATE notifications
-				    SET is_read = true
-				    WHERE notification_id = ?
-				""", notificationId);
-	}
-
-	public long unreadCount(UUID userId) {
-		return jdbc.queryForObject("""
+	public Long countUnread(String userId) {
+		return jdbcTemplate.queryForObject("""
 				    SELECT COUNT(*)
-				    FROM notifications
-				    WHERE user_id = ? AND is_read = false
+				    FROM notification_log
+				    WHERE recipient = ? AND read = false
 				""", Long.class, userId);
+	}
+
+	public void markAsRead(Long notificationId, String userId) {
+		jdbcTemplate.update("""
+				    UPDATE notification_log
+				    SET read = true
+				    WHERE id = ? AND recipient = ?
+				""", notificationId, userId);
+	}
+
+	public void markAllAsRead(String userId) {
+		jdbcTemplate.update("""
+				    UPDATE notification_log
+				    SET read = true
+				    WHERE recipient = ?
+				""", userId);
 	}
 }

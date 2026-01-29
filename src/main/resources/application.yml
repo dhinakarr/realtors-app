@@ -1,8 +1,19 @@
 spring:
+  mail:
+     host: smtp.gmail.com
+     port: 587
+     username: apkdhina@gmail.com
+     password: jrle ydzn nzak rvod
+     properties: 
+       mail: 
+         smtp:
+           auth: true
+           starttls:
+             enable: true
   cache:
     caffeine:
       spec: expireAfterWrite=1h,maximumSize=1000
-
+  
   mvc:
     pathmatch:
        matching-strategy: ANT_PATH_MATCHER
@@ -44,6 +55,12 @@ server:
   port: 8080
   servlet:
     context-path: /
+
+app:
+  backend:
+    base-url: http://127.0.0.1:8080
+  frontend:
+    base-url: http://127.0.0.1:5173
 
 logging:
   level:
