@@ -14,7 +14,6 @@ import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.dto.form.LookupDefinition;
 import com.realtors.common.EnumConstants;
-import com.realtors.common.service.AuditContext;
 import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.service.FileStorageContext;
 import com.realtors.common.service.FileSavingService;
@@ -40,7 +39,7 @@ import java.util.*;
 @Service
 public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 
-	private static final Logger logger = LoggerFactory.getLogger(AppUserService.class);
+	private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 	ObjectMapper mapper = new ObjectMapper();
 
 	@Autowired
@@ -82,8 +81,6 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 
 	/** ✅ User form response */
 	public DynamicFormResponseDto getUserFormData(boolean isCommonRole) {
-		audit.auditAsync("users", null, EnumConstants.FORM.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		DynamicFormResponseDto form = super.buildDynamicFormResponse();
 		if (!isCommonRole) {
 			getFilteredForm(form);
@@ -98,8 +95,6 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		if (!isCommonRole) {
 			getFilteredForm(form);
 		}
-		audit.auditAsync("users", opt.isPresent() ? opt.get().getUserId() : null, EnumConstants.EDIT_FORM.toString(),
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return opt.map(user -> new EditResponseDto<>(user, form)).orElse(null);
 	}
 
@@ -123,6 +118,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		docDto.setUploadedBy(AppUtil.getCurrentUserId());
 		
 		save(docDto);
+		audit.auditAsync("app_users", userId, EnumConstants.UPDATE);
 	}
 
 	private void save(UserDocumentDto d) {
@@ -150,6 +146,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		fileService.deleteDocument(userId, "users", "/documents/", dto.getFileName());
 		// delete DB record
 		delete(docId);
+		audit.auditAsync("app_users", userId, EnumConstants.DELETE_DOCUMENT);
 	}
 	
 	private void delete(Long docId) {
@@ -209,8 +206,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	/** ✅ Update user */
 	public AppUserDto updateUser(AppUserDto dto, UUID currentUserId) {
 		AppUserDto data = super.update(currentUserId, dto);
-		audit.auditAsync("users", data.getUserId(), EnumConstants.UPDATE.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("app_users", data.getUserId(), EnumConstants.UPDATE);
 		return data;
 	}
 
@@ -250,8 +246,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		Map<String, Object> updatedMap = mapper.convertValue(data, Map.class);
 		AppUserDto obj = super.createWithFiles(updatedMap);
 		userAuthService.createUserAuth(obj.getUserId(), obj.getEmail(), null, obj.getRoleId(), obj.getMobile(), null);
-		audit.auditAsync("users", obj.getUserId(), EnumConstants.CREATE_WITH_FILES.toString(),
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("app_users", obj.getUserId(), EnumConstants.CREATE_WITH_FILES);
 		// You can use a GenericInsertUtil that supports files
 		return obj;
 	}
@@ -259,27 +254,25 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	// ---------------- UPDATE ----------------
 	public AppUserDto updateWithFiles(UUID id, Map<String, Object> updates) {
 		AppUserDto data = super.patchUpdateWithFile(id, updates);
-		audit.auditAsync("users", data.getUserId(), EnumConstants.PATCH.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("app_users", data.getUserId(), EnumConstants.PATCH);
 		return data;
 	}
 
 	/** ✅ Soft delete */
 	public boolean softDeleteUser(UUID userId) {
-		audit.auditAsync("users", userId, EnumConstants.DELETE.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("app_users", userId, EnumConstants.DELETE);
 		return super.softDelete(userId);
 	}
 
 	public AppUserDto partialUpdate(UUID id, Map<String, Object> dto) {
 		AppUserDto data = super.patch(id, dto);
-		audit.auditAsync("users", data.getUserId(), EnumConstants.PATCH.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("app_users", data.getUserId(), EnumConstants.PATCH);
 		return data;
 	}
 
 	/** ✅ Update meta JSONB */
 	public boolean updateMeta(UUID id, Map<String, Object> meta) {
+		audit.auditAsync("app_users", id, EnumConstants.UPDATE_DOCUMENT);
 		try {
 			PGobject metaObj = new PGobject();
 			metaObj.setType("jsonb");
@@ -296,8 +289,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	/** ✅ Update last login */
 	public boolean updateLastLogin(UUID userId) {
 		int rows = jdbcTemplate.update("UPDATE app_users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?", userId);
-		audit.auditAsync("users", userId, EnumConstants.UPDATE.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("app_users", userId, EnumConstants.UPDATE);
 		return rows > 0;
 	}
 
@@ -445,10 +437,6 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 
 	/** ✅ Get user by ID */
 	public Optional<AppUserDto> getUserById(UUID id) {
-		Optional<AppUserDto> opt = super.findById(id);
-		audit.auditAsync("users", opt.isPresent() ? opt.get().getUserId() : null, EnumConstants.BY_ID.toString(),
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
-
 		return super.findById(id);
 	}
 

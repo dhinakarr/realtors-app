@@ -1,6 +1,7 @@
 package com.realtors.projects.controller;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -13,11 +14,15 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +30,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -74,10 +80,10 @@ public class ProjectController {
 	@GetMapping
 	public ResponseEntity<ApiResponse<List<ProjectSummaryDto>>> getAll() {
 		List<ProjectSummaryDto> projects = service.getAciveProjects(); // active projects only
-		
+
 		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", projects, HttpStatus.OK));
 	}
-	
+
 	@GetMapping("/details/{id}")
 	public ResponseEntity<ApiResponse<ProjectDetailDto>> getProjectDetails(@PathVariable String id) {
 		UUID projectId = UUID.fromString(id);
@@ -95,20 +101,20 @@ public class ProjectController {
 	public ResponseEntity<ApiResponse<ProjectResponse>> createProject(@ModelAttribute ProjectDto dto,
 			@RequestPart(value = "files", required = false) MultipartFile[] files) {
 
-		  ProjectResponse response = facade.createProjectWithFilesAndPlots(dto, files);
-		  return ResponseEntity.ok(ApiResponse.success("Projects Fetched", response, HttpStatus.OK));
+		ProjectResponse response = facade.createProjectWithFilesAndPlots(dto, files);
+		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", response, HttpStatus.OK));
 	}
 
 	@DeleteMapping("/file/delete/{fileId}")
 	public ResponseEntity<ApiResponse<?>> deleteFile(@PathVariable String fileId) {
 		UUID file = UUID.fromString(fileId);
 		boolean deleted = fileService.deleteFile(file);
-		if (deleted) 
+		if (deleted)
 			return ResponseEntity.ok(ApiResponse.success("File deleted", null, HttpStatus.OK));
-		else 
+		else
 			return ResponseEntity.badRequest().body(ApiResponse.failure("Failed to delete file"));
 	}
-	
+
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> delete(@PathVariable UUID id) {
 		boolean deleted = service.deleteProject(id);
@@ -121,11 +127,12 @@ public class ProjectController {
 	public ResponseEntity<ApiResponse<ProjectDto>> patch(@PathVariable UUID id,
 			@RequestPart(value = "files", required = false) MultipartFile[] files,
 			@RequestParam Map<String, Object> otherFields) { // This contains all other fields
-		
+
 		Map<String, Object> updates = new HashMap<String, Object>();
 		ProjectDto updated = new ProjectDto();
 		if (otherFields != null && !otherFields.isEmpty()) {
-			Set<String> integerFields = Set.of("noOfPlots", "plotStartNumber", "pricePerSqft", "regCharges", "docCharges", "otherCharges", "guidanceValue"); 
+			Set<String> integerFields = Set.of("noOfPlots", "plotStartNumber", "pricePerSqft", "regCharges",
+					"docCharges", "otherCharges", "guidanceValue");
 			updates = Utils.castNumberFields(otherFields, integerFields);
 		}
 		if (updates.isEmpty()) {
@@ -136,33 +143,36 @@ public class ProjectController {
 		uploadFiles(updated.getProjectId(), files);
 		return ResponseEntity.ok(ApiResponse.success("Updated successfully", updated, HttpStatus.OK));
 	}
-	
+
 	@GetMapping("/file/{fileId}")
 	public ResponseEntity<Resource> serveFile(@PathVariable UUID fileId) throws IOException {
-	    ProjectFileDto file = fileService.getFileById(fileId);
-	    if (file == null) {
-	        return ResponseEntity.notFound().build();
-	    }
-	    Path path = Paths.get(file.getFilePath());
-	    if (!Files.exists(path)) {
-	        return ResponseEntity.notFound().build();
-	    }
-	    Resource resource = new UrlResource(path.toUri());
-	    return ResponseEntity.ok()
-	            .contentType(getMediaType(path))
-	            .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFileName() + "\"")
-	            .body(resource);
+		logger.info("@ProjectController.serveFile /file/{fileId}: {}", fileId);
+		ProjectFileDto file = fileService.getFileById(fileId);
+		if (file == null) {
+			return ResponseEntity.notFound().build();
+		}
+		Path path = Paths.get(file.getFilePath());
+		logger.info("@ProjectController.serveFile path: {}", path.toString());
+		if (!Files.exists(path)) {
+			return ResponseEntity.notFound().build();
+		}
+		Resource resource = new UrlResource(path.toUri());
+		logger.info("@ProjectController.serveFile resource: {}", resource.toString());
+		return ResponseEntity.ok().contentType(getMediaType(path))
+				.header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFileName() + "\"")
+				.body(resource);
 	}
 
 	private MediaType getMediaType(Path path) {
-	    try {
-	        String mime = Files.probeContentType(path);
-	        return mime != null ? MediaType.parseMediaType(mime) : MediaType.APPLICATION_OCTET_STREAM;
-	    } catch (IOException e) {
-	        return MediaType.APPLICATION_OCTET_STREAM;
-	    }
+		try {
+			String mime = Files.probeContentType(path);
+			logger.info("@ProjectController.getMediaType mime: {}", mime);
+			return mime != null ? MediaType.parseMediaType(mime) : MediaType.APPLICATION_OCTET_STREAM;
+		} catch (IOException e) {
+			return MediaType.APPLICATION_OCTET_STREAM;
+		}
 	}
-	
+
 	private boolean uploadFiles(UUID projectId, MultipartFile[] files) {
 		try {
 			if (files != null) {
@@ -174,43 +184,41 @@ public class ProjectController {
 			return false;
 		}
 	}
-	
-	
-	
-	@PostMapping(value="/{projectId}/documents", consumes = { "multipart/form-data" })
-	public ResponseEntity<ApiResponse<?>> uploadDocument(@PathVariable UUID projectId, 
-																								@RequestParam String documentType, @RequestParam String documentNumber,
-																								@RequestParam MultipartFile files) throws Exception {
+
+	@PostMapping(value = "/{projectId}/documents", consumes = { "multipart/form-data" })
+	public ResponseEntity<ApiResponse<?>> uploadDocument(@PathVariable UUID projectId,
+			@RequestParam String documentType, @RequestParam String documentNumber, @RequestParam MultipartFile files)
+			throws Exception {
 		service.uploadDocument(projectId, documentType, documentNumber, files);
 		return ResponseEntity.ok(ApiResponse.success("Document uploaded", null));
 	}
-	
+
 	@GetMapping("/{projectId}/documents")
-	public ResponseEntity<ApiResponse<List<ProjectDocumentDto>>> getDocuments(@PathVariable  UUID projectId) {
+	public ResponseEntity<ApiResponse<List<ProjectDocumentDto>>> getDocuments(@PathVariable UUID projectId) {
 		if (projectId == null)
 			return ResponseEntity.badRequest().body(ApiResponse.failure("Project Id is mandatory", null));
-		
+
 		List<ProjectDocumentDto> list = service.findDocumentsByUserId(projectId);
 		return ResponseEntity.ok(ApiResponse.success("User documents fetched", list));
 	}
-	
+
 	@DeleteMapping(value = "/documents/{docId}", produces = "application/json")
 	public ResponseEntity<ApiResponse<?>> deleteDocument(@PathVariable String docId) {
 		if (docId == null || docId.isBlank()) {
-	        return ResponseEntity.badRequest().body(ApiResponse.failure("Document Id is mandatory", null));
-	    }
-	    Long id;
-	    try {
-	        id = Long.parseLong(docId);
-	    } catch (NumberFormatException e) {
-	        return ResponseEntity.badRequest().body(ApiResponse.failure("Invalid Document Id", null));
-	    }
-		
+			return ResponseEntity.badRequest().body(ApiResponse.failure("Document Id is mandatory", null));
+		}
+		Long id;
+		try {
+			id = Long.parseLong(docId);
+		} catch (NumberFormatException e) {
+			return ResponseEntity.badRequest().body(ApiResponse.failure("Invalid Document Id", null));
+		}
+
 		service.deleteDocument(id);
 		logger.info("@UserController.getDocuments document deleted");
-	    return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
+		return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
 	}
-	
+
 	@GetMapping("/documents/{docId}/download")
 	public ResponseEntity<Resource> downloadDocument(@PathVariable Long docId) throws IOException {
 		ProjectDocumentDto doc = service.findByDocumentId(docId);
@@ -228,9 +236,51 @@ public class ProjectController {
 			contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
 		}
 
-		String disposition = "attachment; filename=\"" + doc.getFileName() + "\"";
+		boolean inline = contentType.startsWith("image/") || contentType.startsWith("video/")
+				|| contentType.startsWith("audio/") || contentType.equals("application/pdf");
+
+		String disposition = inline ? "inline; filename=\"" + doc.getFileName() + "\""
+				: "attachment; filename=\"" + doc.getFileName() + "\"";
+
 		return ResponseEntity.ok().contentType(MediaType.parseMediaType(contentType))
 				.header(HttpHeaders.CONTENT_DISPOSITION, disposition).body(resource);
 	}
-	
+
+	@GetMapping("/documents/{id}/view")
+	public ResponseEntity<ResourceRegion> viewDocument(@PathVariable Long id,
+			@RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader) throws IOException {
+
+		ProjectDocumentDto doc = service.findByDocumentId(id);
+		if (doc == null) {
+			return ResponseEntity.notFound().build();
+		}
+
+		Path path = Paths.get(doc.getFilePath());
+		if (!Files.exists(path)) {
+			return ResponseEntity.notFound().build();
+		}
+
+		UrlResource resource = new UrlResource(path.toUri());
+		long contentLength = Files.size(path);
+		MediaType mediaType = getMediaType(path);
+
+		// ✅ Default chunk size (1MB)
+		long chunkSize = 1024 * 1024;
+
+		if (rangeHeader == null) {
+			// No range → send first chunk
+			ResourceRegion region = new ResourceRegion(resource, 0, Math.min(chunkSize, contentLength));
+			return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).contentType(mediaType).body(region);
+		}
+
+		HttpRange range = HttpRange.parseRanges(rangeHeader).get(0);
+		long start = range.getRangeStart(contentLength);
+		long end = range.getRangeEnd(contentLength);
+		long rangeLength = Math.min(chunkSize, end - start + 1);
+
+		ResourceRegion region = new ResourceRegion(resource, start, rangeLength);
+
+		return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).contentType(mediaType).body(region);
+	}
+
 }

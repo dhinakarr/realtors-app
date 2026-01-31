@@ -61,8 +61,6 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 			return new EditResponseDto<>(null, form);
 		}
 		ProjectSummaryDto opt = this.repo.getProjects(projectId).getFirst();
-		audit.auditAsync("projects", opt.getProjectId(), EnumConstants.EDIT_FORM.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return new EditResponseDto<>(opt, form);
 	}
 
@@ -70,8 +68,6 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	public List<ProjectSummaryDto> getAciveProjects() {
 		List<ProjectSummaryDto> projects = this.repo.getProjects(null);
 
-		audit.auditAsync("projects", projects.getFirst().getProjectId(), EnumConstants.GET_ALL.toString(),
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return projects;
 	}
 
@@ -80,37 +76,29 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	public ProjectDetailDto getProjectDetails(UUID projectId) {
 		ProjectDetailDto dto = new ProjectDetailDto(this.repo.getProjects(projectId).getFirst(),
 				this.plotService.getByProject(projectId), this.plotService.getPlotStat(projectId));
-		audit.auditAsync("projects", projectId, EnumConstants.GET_ALL.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return dto;
 	}
 
 	// this will get all projects data irrespective of the status
 	public List<ProjectDto> getAllProjects() {
 		List<ProjectDto> list = super.findAllWithInactive();
-		audit.auditAsync("projects", list.getFirst().getProjectId(), EnumConstants.GET_ALL.toString(),
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return super.findAllWithInactive();
 	}
 
 	public Optional<ProjectDto> getProject(UUID id) {
 		Optional<ProjectDto> opt = super.findById(id);
-		audit.auditAsync("projects", opt.isPresent() ? opt.get().getProjectId() : null, EnumConstants.BY_ID.toString(),
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
 		return super.findById(id);
 	}
 
 	public ProjectDto createProject(ProjectDto dto) {
 		ProjectDto data = super.create(dto);
-		audit.auditAsync("projects", data.getProjectId(), EnumConstants.CREATE.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("projects", data.getProjectId(), EnumConstants.CREATE);
 		return data;
 	}
 
 	public ProjectDto updateProject(UUID id, ProjectDto dto) {
 		ProjectDto data = super.update(id, dto);
-		audit.auditAsync("projects", data.getProjectId(), EnumConstants.UPDATE.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("projects", data.getProjectId(), EnumConstants.UPDATE);
 		return data;
 	}
 
@@ -133,14 +121,12 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 			plotService.generatePlots(projectId, plotNumbers);
 		}
 
-		audit.auditAsync("projects", data.getProjectId(), EnumConstants.PATCH.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("projects", data.getProjectId(), EnumConstants.PATCH);
 		return data;
 	}
 
 	public boolean deleteProject(UUID id) {
-		audit.auditAsync("projects", id, EnumConstants.DELETE.toString(), AppUtil.getCurrentUserId(),
-				AuditContext.getIpAddress(), AuditContext.getUserAgent());
+		audit.auditAsync("projects", id, EnumConstants.DELETE);
 		return super.softDelete(id);
 	}
 	
@@ -163,7 +149,7 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		docDto.setFilePath(imagePathUrl);
 		docDto.setUploadedAt(LocalDateTime.now());
 		docDto.setUploadedBy(AppUtil.getCurrentUserId());
-		
+		audit.auditAsync("projects", projectId, EnumConstants.UPDATE_DOCUMENT);
 		save(docDto);
 	}
 
@@ -190,6 +176,7 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		ProjectDocumentDto dto = findByDocumentId(docId);
 		UUID projectId = dto.getProjectId();
 		fileService.deleteDocument(projectId, "projects", "/documents/", dto.getFileName());
+		audit.auditAsync("projects", projectId, EnumConstants.DELETE_DOCUMENT);
 		// delete DB record
 		delete(docId);
 	}

@@ -57,7 +57,15 @@ public class AppUtil {
 	    }
 	    return p.getUserId();
 	}
-
+	
+	public static UUID getCurrentRoleId() {
+	    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+	    if (auth == null || !(auth.getPrincipal() instanceof UserPrincipalDto p)) {
+	        return null;
+	    }
+	    return p.getRoleId();
+	}
+	
 	
 	public static BigDecimal nz(BigDecimal value) {
 		return value == null ? BigDecimal.ZERO : value;

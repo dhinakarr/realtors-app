@@ -24,6 +24,7 @@ public class SaleNotificationListener {
 	@org.springframework.context.event.EventListener
 	@Async("alertsExecutor")
 	public void handle(SaleCreatedEvent event) {
+		logger.debug("@SaleNotificationListener.handle event: {}", event);
 		notificationService.send(messageBuilder.build(event));
 	}
 }

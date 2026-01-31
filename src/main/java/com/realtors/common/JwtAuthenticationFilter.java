@@ -65,12 +65,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 					String userId = claims.get("userId", String.class);
 
 					UUID userUuid = UUID.fromString(claims.get("userId", String.class));
+					UUID roleId = UUID.fromString(claims.get("roleId", String.class));
 					String roleCode = claims.get("roleCode", String.class);
 					UserRole role = UserRole.from(roleCode);
 					
-					UserPrincipalDto principal = new UserPrincipalDto(userUuid, Set.of(role));
+					UserPrincipalDto principal = new UserPrincipalDto(userUuid, Set.of(role), roleId);
 					principal.setUserId(userUuid);
 					principal.setRoles(Set.of(role));
+					principal.setRoleId(roleId);
 
 					UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
 

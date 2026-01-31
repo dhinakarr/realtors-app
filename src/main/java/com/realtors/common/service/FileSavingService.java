@@ -41,11 +41,10 @@ public class FileSavingService {
 		try {
 			Files.createDirectories(folderPath);
 			// 🔥 delete existing files
-			try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
-				for (Path path : stream) {
-					Files.deleteIfExists(path);
-				}
-			}
+			/*
+			 * try (DirectoryStream<Path> stream = Files.newDirectoryStream(folderPath)) {
+			 * for (Path path : stream) { Files.deleteIfExists(path); } }
+			 */
 
 			Path filePath = folderPath.resolve(context.profileImage().getOriginalFilename());
 			context.profileImage().transferTo(filePath.toFile());

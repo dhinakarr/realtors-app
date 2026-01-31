@@ -6,6 +6,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import com.realtors.common.EnumConstants;
+import com.realtors.common.util.AppUtil;
+
 import java.util.UUID;
 
 @Service
@@ -16,9 +19,16 @@ public class AuditTrailService {
     public AuditTrailService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
-
+    
     @Async("auditExecutor")
-    public void auditAsync(String tableName, UUID recordId, String action, UUID performedBy,
+    public void auditAsync(String tableName, UUID recordId, EnumConstants action) {
+    	String ipAddress = AuditContext.getIpAddress();
+    	String userAgent = AuditContext.getUserAgent();
+    	UUID performedBy = AppUtil.getCurrentUserId();
+    	auditAsync(tableName, recordId, action.toString(), performedBy, ipAddress, userAgent);
+    }
+    
+    private void auditAsync(String tableName, UUID recordId, String action, UUID performedBy,
                          String ipAddress, String userAgent) {
         try {
             String sql = """

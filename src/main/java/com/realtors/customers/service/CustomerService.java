@@ -29,7 +29,9 @@ import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.admin.service.RoleService;
 import com.realtors.admin.service.UserAuthService;
 import com.realtors.admin.service.UserHierarchyService;
+import com.realtors.common.EnumConstants;
 import com.realtors.common.config.FileStorageProperties;
+import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDocumentDto;
 import com.realtors.customers.dto.CustomerDto;
@@ -47,10 +49,11 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	private final UserHierarchyService hierarchyService;
 	private final RoleService roleService;
 	private final JdbcTemplate jdbc;
+	private final AuditTrailService audit; 
 
 	public CustomerService(CustomerRepository customerRepo, CustomerDocumentRepository documentRepo,
 			FileStorageProperties fileStorageProperties, JdbcTemplate jdbc, UserAuthService authService,
-			RoleService roleService, UserHierarchyService hierarchyService) {
+			RoleService roleService, UserHierarchyService hierarchyService, AuditTrailService audit) {
 		super(CustomerDto.class, "customers", jdbc, Set.of("documents"));
 		this.customerRepo = customerRepo;
 		this.documentRepo = documentRepo;
@@ -58,6 +61,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		this.jdbc = jdbc;
 		this.hierarchyService = hierarchyService;
 		this.roleService = roleService;
+		this.audit = audit;
 	}
 
 	@Override
@@ -148,8 +152,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 			created.setProfileImagePath(imagePathUrl);
 		}
 		
-		//authService.createUserAuth(customerId, created.getEmail(), "Test@123", roleId, RoleType.CUSTOMER.toString());
-		
+		audit.auditAsync("customers", customerId, EnumConstants.CREATE);
 		return created;
 	}
 
@@ -171,6 +174,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		docDto.setUploadedAt(LocalDateTime.now());
 		docDto.setUploadedBy(AppUtil.getCurrentUserId());
 		documentRepo.save(docDto);
+		audit.auditAsync("customers", customerId, EnumConstants.CREATE_DOCUMNET);
 	}
 
 	public List<CustomerDocumentDto> getAllDocuments(UUID customerId) {
@@ -208,6 +212,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		}
 		fileToDelete = null;
 		customerRepo.updatePartial(customerId, Map.of("profile_image_path", ""));
+		audit.auditAsync("customers", customerId, EnumConstants.DELETE_DOCUMENT);
 		return true;
 	}
 
@@ -219,14 +224,17 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 
 	public CustomerDto updateCustomer(CustomerDto dto) {
 		customerRepo.updateCustomer(dto);
+		audit.auditAsync("customers", dto.getCustomerId(), EnumConstants.UPDATE);
 		return getCustomer(dto.getCustomerId());
 	}
 	
 	public CustomerDto patchUpdate(UUID customerId, Map<String, Object> updates) {
+		audit.auditAsync("customers", customerId, EnumConstants.PATCH);
 		return super.patch(customerId, updates);
 	}
 
 	public boolean deleteCustomer(UUID customerId) {
+		audit.auditAsync("customers", customerId, EnumConstants.DELETE);
 		return super.softDelete(customerId);
 	}
 
@@ -242,6 +250,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 		}
 		// delete DB record
 		documentRepo.delete(docId);
+		audit.auditAsync("customers", customerId, EnumConstants.DELETE_DOCUMENT);
 	}
 
 	public CustomerDto updateCustomerWithProfileImage(UUID customerId, Map<String, Object> updates,
@@ -250,6 +259,7 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 			String publicUrl = saveFile(profileImage, customerId, "/profile/");
 			updates.put("profile_image_path", publicUrl);
 		}
+		audit.auditAsync("customers", customerId, EnumConstants.UPDATE_WITH_FILES);
 		return customerRepo.updatePartial(customerId, updates);
 	}
 
@@ -270,10 +280,12 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	}
 
 	public List<Map<String, Object>> addComment(String customerId, Map<String, Object> comment) {
+		audit.auditAsync("customers", UUID.fromString(customerId), EnumConstants.CREATE_COMMENT);
 		return customerRepo.addComment(UUID.fromString(customerId), comment);
 	}
 
 	public List<Map<String, Object>> deleteComment(String customerId, int index) {
+		audit.auditAsync("customers", UUID.fromString(customerId), EnumConstants.DELETE_COMMENT);
 		return customerRepo.deleteComment(UUID.fromString(customerId), index);
 	}
 	

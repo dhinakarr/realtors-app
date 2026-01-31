@@ -14,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerMiniDto;
 import com.realtors.sitevisit.dto.AgentDto;
@@ -50,12 +52,15 @@ public class SiteVisitServiceImpl {
 	private final SiteVisitCustomerRepository customerRepo;
 	private final SiteVisitAccountRepository accountRepo;
 	private final SiteVisitPaymentRepository paymentRepo;
+	private final AuditTrailService audit; 
+    private String TABLE_NAME = "user_devices";
 
 	@Transactional
 	public UUID createSiteVisit(SiteVisitRequestDTO dto) {
 		UUID siteVisitId = visitRepo.create(dto);
 		customerRepo.insert(siteVisitId, dto.getCustomerId());
 		accountRepo.create(siteVisitId, dto.getExpenseAmount());
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.CREATE);
 		return siteVisitId;
 	}
 
@@ -78,6 +83,7 @@ public class SiteVisitServiceImpl {
 		String status = balance.signum() <= 0 ? "CLOSED" : "OPEN";
 		// 3. Update account
 		accountRepo.updateTotals(siteVisitId, totalPaid, balance, status);
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.CREATE);
 	}
 
 	public SiteVisitFormDataDto getFormData() {
@@ -132,6 +138,7 @@ public class SiteVisitServiceImpl {
 	    if (dto.getExpenseAmount() != null &&  dto.getExpenseAmount().compareTo(oldExpense) != 0) {
 	        recalcAccount(siteVisitId);
 	    }
+	    audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.PATCH);
 	}
 
 	@Transactional
@@ -139,6 +146,7 @@ public class SiteVisitServiceImpl {
 	    paymentRepo.patch(paymentId, dto);
 	    // Always recalc (amount might change)
 	    recalcAccount(siteVisitId);
+	    audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.PATCH);
 	}
 
 	@Transactional(readOnly = true)
@@ -153,6 +161,7 @@ public class SiteVisitServiceImpl {
                 "Cannot delete visit with payments");
         }
         visitRepo.delete(siteVisitId);
+        audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.DELETE);
     }
 
 	@Transactional
@@ -180,6 +189,7 @@ public class SiteVisitServiceImpl {
 				    SET status = 'REJECTED'
 				    WHERE site_visit_id = ?::uuid
 				""", siteVisitId);
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.REJECT);
 	}
 
 	@Transactional
@@ -193,6 +203,7 @@ public class SiteVisitServiceImpl {
 				    SET status = 'PAID'
 				    WHERE site_visit_id = ?::uuid
 				""", siteVisitId);
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.CLOSE);
 	}
 
 	@Transactional
@@ -214,6 +225,7 @@ public class SiteVisitServiceImpl {
 					""", UUID.randomUUID(), siteVisitId, e.getExpenseTypeId(), e.getAmount(), e.getPaidBy(),
 					e.getExpenseDate(), e.getBillReference(), e.getRemarks());
 		}
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.UPDATE);
 	}
 
 	@Transactional
@@ -235,6 +247,7 @@ public class SiteVisitServiceImpl {
 					""", UUID.randomUUID(), siteVisitId, p.getUserId(), p.getAmount(), p.getPaymentMode(),
 					p.getPaymentDate(), p.getRemarks());
 		}
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.UPDATE);
 	}
 
 	@Transactional
@@ -253,6 +266,7 @@ public class SiteVisitServiceImpl {
 				    VALUES (?, ?, ?, ?, ?, ?)
 				""", siteVisitId, vehicle.getVehicleId(), vehicle.getFuelCost(), vehicle.getDriverCost(),
 				vehicle.getTollCost(), vehicle.getRentCost());
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.UPDATE);
 	}
 
 	public void updateCustomers(UUID siteVisitId, List<UUID> customerIds) {
@@ -420,6 +434,7 @@ public class SiteVisitServiceImpl {
 				""", UUID.randomUUID(), siteVisitId, payments.getUserId(), payments.getAmount(),
 				payments.getPaymentMode(), OffsetDateTime.now(), payments.getRemarks());
 		SiteVisitPaymentResponseDTO paymentsDto = getPayments(siteVisitId);
+		audit.auditAsync(TABLE_NAME, siteVisitId, EnumConstants.CREATE);
 		return paymentsDto;
 	}
 
@@ -449,6 +464,7 @@ public class SiteVisitServiceImpl {
 		});
 	}
 	public void deletePayments(UUID visitId, UUID paymentId) {
+		audit.auditAsync(TABLE_NAME, visitId, EnumConstants.DELETE);
 		paymentRepo.delete(paymentId, visitId);
 	}
 }

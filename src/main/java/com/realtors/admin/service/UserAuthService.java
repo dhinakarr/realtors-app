@@ -4,9 +4,7 @@ import com.realtors.admin.dto.LoginResponse;
 import com.realtors.admin.dto.ModulePermissionDto;
 import com.realtors.alerts.dto.RecipientDetail;
 import com.realtors.common.EnumConstants;
-import com.realtors.common.service.AuditContext;
 import com.realtors.common.service.AuditTrailService;
-import com.realtors.common.util.AppUtil;
 import com.realtors.common.util.JwtUtil;
 
 import org.slf4j.Logger;
@@ -85,19 +83,18 @@ public class UserAuthService {
 		List<ModulePermissionDto> returnDto = this.permissionService.findPermissionsByRole(roleId);
 		Map<String, Object> map = Map.of("accessToken", token, "refreshToken", refToken, "userId", userId.toString(),
 				"email", email, "roleId",roleId.toString(), "userType", userType);
-		audit.auditAsync("AUTH", userId, "LOGIN", AppUtil.getCurrentUserId(), AuditContext.getIpAddress(),
-				AuditContext.getUserAgent());
+		audit.auditAsync("user_auth", userId, EnumConstants.LOGIN);
 		return new LoginResponse(map, returnDto);
 	}
 	
 	 private boolean updateLastLogin(UUID userId) {
 	        int rows = jdbcTemplate.update("UPDATE user_auth SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?", userId);
-	        audit.auditAsync("users", userId, EnumConstants.UPDATE.toString(), 
-	    			AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+	        audit.auditAsync("user_auth", userId, EnumConstants.UPDATE);
 	        return rows > 0;
 	 }
 	 
 	 public void createUserAuth(UUID userId, String username, String password, UUID roleId, String mobile) {
+		 audit.auditAsync("user_auth", userId, EnumConstants.CREATE);
 		 createUserAuth(userId, username, password, roleId, mobile, null);
 	 }
 	 
@@ -105,6 +102,7 @@ public class UserAuthService {
 		 String hashedPassword = passwordEncoder.encode(password==null? "Test@123":password);
 		 String type = userType == null ? "INTERNAL" : "CUSTOMER";
 		 String insertSql= "INSERT INTO user_auth (user_id, username, password_hash, role_id, mobile, user_type) values(?,?,?,?,?, ?)";
+		 audit.auditAsync("user_auth", userId, EnumConstants.CREATE);
 		 jdbcTemplate.update(insertSql, new PreparedStatementSetter() {
 	            @Override
 	            public void setValues(PreparedStatement ps) throws SQLException {

@@ -3,9 +3,8 @@ package com.realtors.admin.service;
 
 import com.realtors.admin.dto.LoginResponse;
 import com.realtors.admin.dto.ModulePermissionDto;
-import com.realtors.common.service.AuditContext;
+import com.realtors.common.EnumConstants;
 import com.realtors.common.service.AuditTrailService;
-import com.realtors.common.util.AppUtil;
 import com.realtors.common.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -72,8 +71,7 @@ public class AuthService {
                 "userId", userId.toString(),
                 "email", email
         );
-        audit.auditAsync("AUTH", userId, "LOGIN", 
-				AppUtil.getCurrentUserId(), AuditContext.getIpAddress(), AuditContext.getUserAgent());
+        audit.auditAsync("AUTH", userId, EnumConstants.LOGIN);
         return 	new LoginResponse(map, returnDto);
     }
 }

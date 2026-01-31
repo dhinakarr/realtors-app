@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 //import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.AppUtil;
 import com.realtors.dashboard.dto.ReceivableDetailDTO;
 import com.realtors.sales.dto.PaymentDTO;
@@ -30,11 +32,14 @@ public class PaymentService {
 	private final PaymentRepositoryImpl paymentRepo;
 	private final SaleRepository salestRepo;
 	private final SaleLifecycleService saleLifecycleService;
+	private final AuditTrailService audit;
+	private String TABLE_NAME = "payments";
 	private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
 	public PaymentDTO addPayment(PaymentDTO dto) {
 	    PaymentDTO saved = paymentRepo.save(dto);
 	    saleLifecycleService.recalculate(saved.getSaleId(), saved.getPaymentType());
+	    audit.auditAsync(TABLE_NAME, saved.getPaymentId(), EnumConstants.CREATE);
 	    return saved;
 	}
 	
@@ -83,6 +88,7 @@ public class PaymentService {
 		validatePayment(dto, sale);
 		paymentRepo.save(dto);
 		saleLifecycleService.recalculate(sale.getSaleId(), dto.getPaymentType());
+		audit.auditAsync(TABLE_NAME, dto.getPaymentId(), EnumConstants.CREATE);
 		return dto;
 	}
 
@@ -96,6 +102,7 @@ public class PaymentService {
 		dto.setPaymentId(paymentId);
 		paymentRepo.update(dto);
 		saleLifecycleService.evaluateSaleStatus(existing.getSaleId());
+		audit.auditAsync(TABLE_NAME, paymentId, EnumConstants.UPDATE);
 		return dto;
 	}
 
@@ -173,6 +180,7 @@ public class PaymentService {
 		}
 	    paymentRepo.softDelete(paymentId, AppUtil.getCurrentUserId());
 	    saleLifecycleService.recalculate(payment.getSaleId(), payment.getPaymentType());
+	    audit.auditAsync(TABLE_NAME, paymentId, EnumConstants.DELETE);
 	}
 	
 	private void validatePayment(PaymentDTO dto, SaleDTO sale) {

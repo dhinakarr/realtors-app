@@ -1,9 +1,12 @@
 spring:
   servlet:
+    mime-mapping:
+      mp4: video/mp4
+      webm: video/webm
     multipart:
       enabled: true
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 100MB
+      max-request-size: 100MB
   mail:
      host: smtp.gmail.com
      port: 587
@@ -53,11 +56,14 @@ spring:
 
   web:
     resources:
-      add-mappings: false
+      add-mappings: true
 
 server:
   address: 0.0.0.0
   port: 8080
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
   servlet:
     context-path: /
 
@@ -68,8 +74,11 @@ app:
     base-url: http://127.0.0.1:5173
 
 logging:
+  file:
+    name: logs/application.log
   level:
-    root: INFO
+    root: ERROR
+    com.realtors: DEBUG 
     com.realitor.common.util.JsonAwareRowMapper: INFO
     org.springframework.web.servlet.resource.ResourceHttpRequestHandler: OFF
     org.springframework.jdbc.core.BeanPropertyRowMapper: WARN

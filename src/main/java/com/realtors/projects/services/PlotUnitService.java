@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.AppUtil;
 import com.realtors.projects.dto.PlotDetailsDto;
 import com.realtors.projects.dto.PlotUnitDto;
@@ -13,7 +15,6 @@ import com.realtors.projects.dto.PlotUnitStatus;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.repository.PlotUnitRepository;
 import com.realtors.projects.repository.ProjectRepository;
-import com.realtors.sales.dto.CancelRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,13 +27,16 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     private final PlotPricingService pricingService;
     private ProjectRepository projectRepository;
     private JdbcTemplate jdbcTemplate;
+    private final AuditTrailService audit;
+    private String TABLE_NAME="plot_units";
     
     public PlotUnitService(PlotUnitRepository repo, JdbcTemplate jdbcTemplate, 
-    		PlotPricingService pricingService, ProjectRepository projectRepository) {
+    		PlotPricingService pricingService, ProjectRepository projectRepository, AuditTrailService audit) {
     	super(PlotUnitDto.class, "plot_units", jdbcTemplate);
     	this.repo = repo;
     	this.pricingService = pricingService;
     	this.projectRepository = projectRepository;
+    	this.audit = audit;
     }
     
     @Override
@@ -54,6 +58,7 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     }
 
     public PlotUnitDto createPlot(PlotUnitDto dto) {
+    	audit.auditAsync(TABLE_NAME, dto.getPlotId(), EnumConstants.CREATE);
         return super.create(dto);
     }
 
@@ -108,23 +113,28 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	partialData.put("registrationCharges", registrationCharges);
     	partialData.put("totalPrice", totalPrice);
     	partialData.put("isPrime", isPrime);
+    	audit.auditAsync(TABLE_NAME, plotId, EnumConstants.PATCH);
     	return super.patch(plotId, partialData);
     }
     
     public PlotUnitDto updateCancel(UUID plotId, Map<String, Object> partialData) {
+    	audit.auditAsync(TABLE_NAME, plotId, EnumConstants.UPDATE);
     	return super.patch(plotId, partialData);
     }
 
     public void delete(UUID id) {
+    	audit.auditAsync(TABLE_NAME, id, EnumConstants.DELETE);
         repo.delete(id);
     	//super.softDelete(id);
     }
     
     public boolean deleteByProjectId(UUID projectId) {
+    	audit.auditAsync(TABLE_NAME, projectId, EnumConstants.DELETE);
         return repo.deleteByProjectId(projectId);
     }
 
     public int update(PlotUnitDto dto) {
+    	audit.auditAsync(TABLE_NAME, dto.getPlotId(), EnumConstants.UPDATE);
         return repo.update(dto);
     }
 

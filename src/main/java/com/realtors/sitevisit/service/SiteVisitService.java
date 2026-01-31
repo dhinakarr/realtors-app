@@ -1,9 +1,7 @@
 package com.realtors.sitevisit.service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -14,7 +12,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.realtors.admin.dto.UserBasicDto;
-import com.realtors.admin.dto.form.DynamicFormMetaRow;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
@@ -32,6 +29,7 @@ public class SiteVisitService extends AbstractBaseService<SiteVisitResponseDTO, 
 	private final SiteVisitCustomerRepository repo;
 	private final CustomerService customerService;
 	private final UserService userService;
+	
 	private static final Logger logger = LoggerFactory.getLogger(SiteVisitService.class);
 
 	public SiteVisitService(JdbcTemplate jdbcTemplate, SiteVisitCustomerRepository repo, 

@@ -17,6 +17,8 @@ import com.realtors.admin.dto.RoleType;
 import com.realtors.admin.service.UserAuthService;
 import com.realtors.alerts.domain.event.EventType;
 import com.realtors.alerts.domain.event.SaleCreatedEvent;
+import com.realtors.common.EnumConstants;
+import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.AppUtil;
 import com.realtors.customers.dto.CustomerDto;
 import com.realtors.customers.service.CustomerService;
@@ -52,6 +54,9 @@ public class SaleService {
 	private final CommissionDistributionService commisionDistributionService;
 	private final ApplicationEventPublisher publisher;
 	private static final Logger logger = LoggerFactory.getLogger(SaleService.class);
+	
+	private final AuditTrailService audit; 
+    private String TABLE_NAME = "sales";
 
 	public SaleDTO getSaleById(UUID saleId) {
 		return saleRepository.findById(saleId);
@@ -112,6 +117,7 @@ public class SaleService {
 		SaleDetailDTO saleDetail = saleRepository.getSaleDetails(sale.getSaleId());
 		publisher.publishEvent(new SaleCreatedEvent(userId.toString(), sale.getSaleId().toString(), EventType.SALE_CREATED.name(), userId.toString(), saleDetail));
 		
+		audit.auditAsync(TABLE_NAME, sale.getSaleId(), EnumConstants.CREATE);
 		return sale;
 	}
 
@@ -134,6 +140,7 @@ public class SaleService {
 		SaleDTO sale = saleRepository.findById(saleId);
 		saleRepository.updateSaleStatus(saleId, SalesStatus.CANCELLED.name());
 		plotRepository.updatePlotStatus(sale.getPlotId(), PlotStatus.CANCELLED.name());
+		audit.auditAsync(TABLE_NAME, saleId, EnumConstants.DELETE);
 	}
 
 	private BigDecimal calculateExtraCharges(ProjectDto project) {
@@ -166,7 +173,7 @@ public class SaleService {
 		partialData.put("remarks", request.getReason());
 		partialData.put("status", SalesStatus.AVAILABLE.name());
 		PlotUnitDto dto = plotService.updateCancel(plotId, partialData);
-		
+		audit.auditAsync(TABLE_NAME, plotId, EnumConstants.CANCEL);
 		return dto;
 	}
 	

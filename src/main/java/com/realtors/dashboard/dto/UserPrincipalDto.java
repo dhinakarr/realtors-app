@@ -19,11 +19,13 @@ public class UserPrincipalDto implements UserDetails {
 	 */
 	private static final long serialVersionUID = 1L;
 	private UUID userId;
+	private UUID roleId;
     private Set<UserRole> roles;
     
-    public UserPrincipalDto(UUID userId, Set<UserRole> roles) {
+    public UserPrincipalDto(UUID userId, Set<UserRole> roles, UUID roleId) {
         this.userId = userId;
         this.roles = roles;
+        this.roleId = roleId;
     }
 
     public boolean hasRole(UserRole role) {
@@ -32,6 +34,10 @@ public class UserPrincipalDto implements UserDetails {
 
     public UUID getUserId() {
         return userId;
+    }
+    
+    public UUID getRoleId() {
+        return roleId;
     }
 
     @Override

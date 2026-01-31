@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.realtors.common.service.AuditTrailService;
 import com.realtors.sales.dto.CommissionRuleDTO;
 import com.realtors.sales.repository.CommissionRuleRepository;
 

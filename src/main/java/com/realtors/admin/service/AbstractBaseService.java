@@ -436,20 +436,24 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 				    try {
 				        ObjectMapper mapper = new ObjectMapper();
 
-				        List<String> options = mapper.readValue(
-				            m.getLookupKey(),
-				            new TypeReference<List<String>>() {}
+				        List<String> keys = mapper.readValue(
+				                m.getLookupKey(),
+				                new TypeReference<List<String>>() {}
+				        );
+
+				        List<String> values = mapper.readValue(
+				                m.getLookupLabel(),
+				                new TypeReference<List<String>>() {}
 				        );
 
 				        List<Map<String, Object>> optionMaps = new ArrayList<>();
-
-				        for (String opt : options) {
+				        int size = Math.min(keys.size(), values.size());
+				        for (int i = 0; i < size; i++) {
 				            Map<String, Object> map = new HashMap<>();
-				            map.put("key", opt);
-				            map.put("value", opt); // 🔑 IMPORTANT: frontend expects "value"
+				            map.put("key", keys.get(i));       // "CH"
+				            map.put("value", values.get(i));   // "Chennai"
 				            optionMaps.add(map);
 				        }
-
 				        row.setLookupData(optionMaps);
 				    } catch (Exception e) {
 				        row.setLookupData(Collections.emptyList());
