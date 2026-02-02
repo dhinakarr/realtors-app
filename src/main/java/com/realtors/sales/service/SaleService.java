@@ -2,6 +2,7 @@ package com.realtors.sales.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,8 +132,8 @@ public class SaleService {
 		return saleRepository.getTotalAmount(saleId);
 	}
 	
-	public BigDecimal getTotalSaleAmount() {
-		return saleRepository.getTotalSalesAmount();
+	public BigDecimal getTotalSaleAmount(LocalDate from, LocalDate to) {
+		return saleRepository.getTotalSalesAmount(from, to);
 	}
 
 	@Transactional

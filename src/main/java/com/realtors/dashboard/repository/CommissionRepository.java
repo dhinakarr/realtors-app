@@ -1,5 +1,6 @@
 package com.realtors.dashboard.repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -63,14 +64,14 @@ public class CommissionRepository {
         return jdbcTemplate.query(sql, new CommissionRowMapper(), agentId);
     }
     
-    public List<CommissionDetailsDTO> getCommissionsPaid(LocalDateTime from, LocalDateTime to) {
+    public List<CommissionDetailsDTO> getCommissionsPaid(LocalDate from, LocalDate to) {
 
         String sql = """
-            SELECT *
-            FROM v_commission_payable_details_payments
-            WHERE payment_date >= ?
-		    AND payment_date < ?
-            ORDER BY confirmed_at DESC
+            select * from v_commission_payable_details 
+			where commission_paid > 0 
+			AND  sale_date >= ?
+			AND sale_date < ?
+            ORDER BY sale_date DESC
         """;
         return jdbcTemplate.query(sql, ROW_MAPPER, from, to);
     }

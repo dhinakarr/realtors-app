@@ -114,7 +114,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	public List<T> findAllWithInactive() {
 //        String sql = "SELECT * FROM " + tableName + " ORDER BY updated_at DESC";
 		String sql = buildSelectWithLookups("t") + " ORDER BY t.updated_at DESC";
-		logger.info(() -> "Fetching all records (including INACTIVE) from table: " + tableName);
+//		logger.info(() -> "Fetching all records (including INACTIVE) from table: " + tableName);
 		return jdbcTemplate.query(sql, new JsonAwareRowMapper<>(dtoClass));
 	}
 

@@ -175,7 +175,7 @@ public class UserController {
 	@GetMapping("/pages")
 	public ResponseEntity<ApiResponse<PagedResult<ListUserDto>>> getPagedData(@AuthenticationPrincipal UserPrincipalDto principal, @RequestParam int page,
 			@RequestParam int size) {
-		PagedResult<ListUserDto> users = appUserService.getPaginatedUsers(page, size, AppUtil.isCommonRole(principal));
+		PagedResult<ListUserDto> users = appUserService.getPaginatedUsers(page-1, size, AppUtil.isCommonRole(principal));
 		return ResponseEntity.ok(ApiResponse.success("Active Users fetched", users));
 	}
 

@@ -211,6 +211,11 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 		String sql = "SELECT * FROM v_commission_payable_details WHERE commission_payable > 0";
 		return jdbc.query(sql, new PayableDetailsRowMapper());
 	}
+	
+	public List<PayableDetailsDTO> getPayableDetails(LocalDate from, LocalDate to) {
+		String sql = "SELECT * FROM v_commission_payable_details WHERE commission_payable > 0 AND sale_date BETWEEN ? AND ?";
+		return jdbc.query(sql, new PayableDetailsRowMapper(), from, to);
+	}
 
 	@Override
 	public void updateStatus(UUID saleId, UUID userId, String status, boolean released) {

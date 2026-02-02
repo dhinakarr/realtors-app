@@ -29,6 +29,8 @@ public interface SaleRepository {
 
 	public List<CashFlowItemDTO> findReceivables(LocalDate from, LocalDate to);
 
+	public BigDecimal getTotalSalesAmount(LocalDate from, LocalDate to);
+	
 	public BigDecimal getTotalSalesAmount();
 
 	public List<CashFlowItemDTO> findReceivables(LocalDate from, LocalDate to, CashFlowStatus status);

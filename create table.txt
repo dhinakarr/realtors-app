@@ -308,13 +308,13 @@ SELECT *
 FROM sales
 WHERE sold_by IN (SELECT user_id FROM manager_tree);
 
-CREATE VIEW v_receivable_details AS
+CREATE OR REPLACE VIEW v_receivable_details AS
 SELECT
     s.sale_id, s.project_id, pr.project_name, pl.plot_id, pl.plot_number, s.customer_id,
     c.customer_name, s.sold_by AS agent_id, u.full_name AS agent_name, s.total_price AS sale_amount,
     COALESCE(p.total_received, 0) AS total_received,
 	(s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
-    s.confirmed_at, s.sale_status
+    s.confirmed_at, s.sale_status, s.created_at as sale_date
 FROM sales s
 JOIN projects pr ON pr.project_id = s.project_id
 JOIN plot_units pl ON pl.plot_id = s.plot_id
@@ -1355,6 +1355,8 @@ LEFT JOIN (
 WHERE s.sale_status IN ('BOOKED','SOLD','COMPLETED','IN_PROGRESS')
   AND sc.commission_amount > 0;
 
+
+
 CREATE OR REPLACE VIEW v_user_performance_core AS
 SELECT
     s.sold_by                 AS user_id,
@@ -1647,3 +1649,65 @@ ALTER SEQUENCE public.user_documents_document_id_seq
 
 ALTER SEQUENCE public.user_documents_document_id_seq
     OWNER TO postgres;	
+===============================================================
+
+1-Feb-2026
+===============================
+
+CREATE OR REPLACE VIEW v_commission_payable_details
+ AS
+ SELECT sc.commission_id,
+    sc.sale_id,
+    sc.user_id AS agent_id,
+    u.full_name AS agent_name,
+    pr.project_id,
+    pr.project_name,
+    pl.plot_id,
+    pl.plot_number,
+    s.total_price AS sale_amount,
+    s.base_price AS base_amount,
+    COALESCE(cr.total_received, 0::numeric) AS customer_paid,
+    sc.commission_amount AS total_commission,
+    COALESCE(cp.total_paid) AS commission_paid,
+    LEAST(sc.commission_amount,
+        CASE
+            WHEN s.total_price > 0::numeric THEN COALESCE(cr.total_received, 0::numeric) / s.total_price * sc.commission_amount
+            ELSE 0::numeric
+        END) AS commission_eligible,
+    GREATEST(LEAST(sc.commission_amount,
+        CASE
+            WHEN s.total_price > 0::numeric THEN COALESCE(cr.total_received, 0::numeric) / s.total_price * sc.commission_amount
+            ELSE 0::numeric
+        END) - COALESCE(cp.total_paid, 0::numeric), 0::numeric) AS commission_payable,
+    s.sale_status,
+    s.confirmed_at, s.created_at as sale_date
+   FROM sale_commissions sc
+     JOIN sales s ON s.sale_id = sc.sale_id
+     JOIN app_users u ON u.user_id = sc.user_id
+     JOIN plot_units pl ON pl.plot_id = s.plot_id
+     JOIN projects pr ON pr.project_id = pl.project_id
+     LEFT JOIN ( SELECT payments.sale_id,
+            sum(payments.amount) AS total_received
+           FROM payments
+          WHERE payments.payment_type::text = 'RECEIVED'::text
+          GROUP BY payments.sale_id) cr ON cr.sale_id = s.sale_id
+     LEFT JOIN ( SELECT payments.sale_id,
+            payments.paid_to AS agent_id,
+            sum(payments.amount) AS total_paid
+           FROM payments
+          WHERE payments.payment_type::text = 'PAID'::text
+          GROUP BY payments.sale_id, payments.paid_to) cp ON cp.sale_id = sc.sale_id AND cp.agent_id = sc.user_id
+  WHERE (s.sale_status::text = ANY (ARRAY['BOOKED'::character varying, 'SOLD'::character varying, 'COMPLETED'::character varying, 'IN_PROGRESS'::character varying]::text[])) AND sc.commission_amount > 0::numeric;
+
+
+CREATE OR REPLACE VIEW v_commission_payment_transactions AS
+SELECT p.payment_id, p.payment_date, p.amount AS commission_amount, p.payment_mode, p.remarks, u.user_id AS agent_id,
+    u.full_name AS agent_name, s.sale_id, s.sale_status, s.total_price AS sale_amount, sc.commission_amount AS total_commission,
+	pl.plot_id, pl.plot_number, pr.project_id, pr.project_name
+FROM payments p
+JOIN sales s ON s.sale_id = p.sale_id
+JOIN sale_commissions sc ON sc.sale_id = s.sale_id AND sc.user_id = p.paid_to          -- 🔥 critical link
+JOIN app_users u ON u.user_id = p.paid_to
+JOIN plot_units pl ON pl.plot_id = s.plot_id
+JOIN projects pr ON pr.project_id = pl.project_id
+WHERE p.payment_type = 'PAID';	

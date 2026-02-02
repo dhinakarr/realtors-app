@@ -78,8 +78,8 @@ logging:
     name: logs/application.log
   level:
     root: ERROR
-    com.realtors: DEBUG 
-    com.realitor.common.util.JsonAwareRowMapper: INFO
+    com.realtors: INFO 
+    com.realitor.common.util.JsonAwareRowMapper: WARN
     org.springframework.web.servlet.resource.ResourceHttpRequestHandler: OFF
     org.springframework.jdbc.core.BeanPropertyRowMapper: WARN
 

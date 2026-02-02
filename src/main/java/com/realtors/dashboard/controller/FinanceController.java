@@ -3,6 +3,10 @@ package com.realtors.dashboard.controller;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,10 +32,22 @@ import lombok.RequiredArgsConstructor;
 public class FinanceController {
 
 	private final FinanceService service;
+	private static final Logger logger = LoggerFactory.getLogger(FinanceController.class);
 
 	@GetMapping("/summary")
-	public ResponseEntity<ApiResponse<FinanceSummaryDTO>> getSummary() {
-		return ResponseEntity.ok(ApiResponse.success("Finance summary", service.getSummary(), HttpStatus.OK));
+	public ResponseEntity<ApiResponse<FinanceSummaryDTO>> getSummary(
+	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+	) {
+		
+		logger.info("@FinanceController.getSummary FinanceSummaryDTO from:{}, to: {}", from, to);
+	    return ResponseEntity.ok(
+	        ApiResponse.success(
+	            "Finance summary",
+	            service.getSummary(from, to),
+	            HttpStatus.OK
+	        )
+	    );
 	}
 
 	@GetMapping("/cashflow")
@@ -43,32 +59,47 @@ public class FinanceController {
 	}
 	
 	@GetMapping("/receivable/details")
-	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getDetail() {
-		List<ReceivableDetailDTO> retValue = service.getReceivableDetails();
-		return ResponseEntity.ok(ApiResponse.success("Receivable Details", retValue, HttpStatus.OK));
+	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getReceivableDetails(
+	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+	        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+	) {
+		List<ReceivableDetailDTO> list = service.getReceivableDetails(from, to);
+	    return ResponseEntity.ok(
+	        ApiResponse.success(
+	            "Receivable Details",
+	            list,
+	            HttpStatus.OK
+	        )
+	    );
 	}
 	
 	@GetMapping("/payable/details")
-	public ResponseEntity<ApiResponse<List<PayableDetailsDTO>>> getPayableDetail() {
-		List<PayableDetailsDTO> retValue = service.getPayableDetails();
+	public ResponseEntity<ApiResponse<List<PayableDetailsDTO>>> getPayableDetail(
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
+		List<PayableDetailsDTO> retValue = service.getPayableDetails(from, to);
 		return ResponseEntity.ok(ApiResponse.success("Payable Details", retValue, HttpStatus.OK));
 	}
 	
 	@GetMapping("/sale/details")
-	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getSaleDetail() {
+	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getSaleDetail(@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
 		List<ReceivableDetailDTO> retValue = service.findSalesByStatus();
 		return ResponseEntity.ok(ApiResponse.success("Sale Details", retValue, HttpStatus.OK));
 	}
 	
 	@GetMapping("/received/details")
-	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getReceivedDetail() {
-		List<ReceivableDetailDTO> retValue = service.getReceivedByThisMonth();
+	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getReceivedDetail(
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
+		List<ReceivableDetailDTO> retValue = service.getReceivedByThisMonth(from, to);
 		return ResponseEntity.ok(ApiResponse.success("Received Details", retValue, HttpStatus.OK));
 	}
 	
 	@GetMapping("/paid/details")
-	public ResponseEntity<ApiResponse<List<CommissionDetailsDTO>>> getCommissionPaidDetail() {
-		List<CommissionDetailsDTO> retValue = service.getCommissionsPaidThisMonth();
+	public ResponseEntity<ApiResponse<List<CommissionDetailsDTO>>> getCommissionPaidDetail(@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
+			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
+		List<CommissionDetailsDTO> retValue = service.getCommissionsPaidThisMonth(from, to);
 		return ResponseEntity.ok(ApiResponse.success("Received Details", retValue, HttpStatus.OK));
 	}
 }

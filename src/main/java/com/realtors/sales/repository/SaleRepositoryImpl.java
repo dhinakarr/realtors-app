@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
@@ -32,6 +34,7 @@ public class SaleRepositoryImpl implements SaleRepository {
 //	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
 	private static final RowMapper<ReceivableDetailDTO> ROW_MAPPER = new BeanPropertyRowMapper<>(ReceivableDetailDTO.class);
 	private static final RowMapper<SaleDetailDTO> SALE_MAPPER = new BeanPropertyRowMapper<>(SaleDetailDTO.class);
+	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
 	
 	@Override
     public List<ReceivableDetailDTO> findSalesByStatus(List<String> statuses) {
@@ -162,6 +165,16 @@ public class SaleRepositoryImpl implements SaleRepository {
 	        WHERE sale_status IN ('BOOKED', 'IN_PROGRESS')
 	    """;
 	    return jdbc.queryForObject(sql, BigDecimal.class);
+	}
+	
+	public BigDecimal getTotalSalesAmount(LocalDate from, LocalDate to) {
+	    String sql = """
+	        SELECT COALESCE(SUM(total_price), 0)
+	        FROM sales
+	        WHERE sale_status IN ('BOOKED', 'IN_PROGRESS')
+	        AND created_at BETWEEN ? AND  ?
+	    """;
+	    return jdbc.queryForObject(sql, BigDecimal.class, from, to);
 	}
 	
 	@Override

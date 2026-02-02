@@ -49,8 +49,8 @@ public class PaymentService {
 	    return totalSales.subtract(AppUtil.nz(received));
 	}
 	
-	public BigDecimal getTotalReceivable() {
-		return paymentRepo.getTotalReceivables();
+	public BigDecimal getTotalReceivable(LocalDate from, LocalDate to) {
+		return paymentRepo.getTotalReceivables(from, to);
 	}
 	
 	public List<PaymentDTO> getPaymentsBySale(UUID saleId) {
@@ -125,33 +125,35 @@ public class PaymentService {
 		return paymentRepo.getTotalPaid(saleId);
 	}
 	
-	public BigDecimal getPaidThisMonth() {
-		return paymentRepo.getTotalPaidThisMonth();
+	public BigDecimal getPaidThisMonth(LocalDate from, LocalDate to) {
+		return paymentRepo.getTotalPaidThisMonth(from, to);
 	}
 	
-	public BigDecimal getPaidTotal() {
+	public BigDecimal getPaidTotal(LocalDate from, LocalDate to) {
 		return paymentRepo.getTotalPaid();
 	}
 	
 	
-	public BigDecimal getReceivedThisMonth() {
-		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-		LocalDateTime to   = LocalDateTime.now();
+	public BigDecimal getReceivedThisMonth(LocalDate from, LocalDate to) {
 		return paymentRepo.getReceivedBetween(from, to);
+	}
+	
+	public BigDecimal getReceivedThisMonth() {
+		return paymentRepo.getReceivedBetween();
 	}
 	
 	public BigDecimal getExpectedToday() {
 		return salestRepo.getOutstandingDueToday();
 	}
 	
-	public List<ReceivableDetailDTO> getReceivableDetails() {
-		return paymentRepo.getReceivableDetails();
+	public List<ReceivableDetailDTO> getReceivableDetails(LocalDate from, LocalDate to) {
+		List<ReceivableDetailDTO> list = paymentRepo.getReceivableDetails(from, to);
+		return list;
 	}
 	
-	public List<ReceivableDetailDTO> getReceivedDetails() {
-		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-		LocalDateTime to   = LocalDateTime.now();
-		return paymentRepo.getReceivedDetails(from, to);
+	public List<ReceivableDetailDTO> getReceivedDetails(LocalDate from, LocalDate to) {
+		List<ReceivableDetailDTO> list = paymentRepo.getReceivedDetails(from, to);
+		return list;
 	}
 	
 	public List<CashFlowItemDTO> getReceivables(

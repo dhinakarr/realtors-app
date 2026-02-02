@@ -7,6 +7,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class FinanceService {
 	private final PaymentService paymentService;
 	private final CommissionService commissionService;
 	private final SaleService saleService;
+	private static final Logger logger = LoggerFactory.getLogger(FinanceService.class);
 
 	public FinanceSummaryDTO getSummary(UUID saleId) {
 
@@ -40,14 +43,14 @@ public class FinanceService {
 				.commissionPaidThisMonth(commissionService.getPaidThisMonth()).build();
 	}
 
-	public FinanceSummaryDTO getSummary() {
-		BigDecimal totalSalesAmount = nz(saleService.getTotalSaleAmount());
-		BigDecimal totalReceivable      = nz(paymentService.getTotalReceivable());
-	    BigDecimal receivedThisMonth    = nz(paymentService.getReceivedThisMonth());
+	public FinanceSummaryDTO getSummary(LocalDate from, LocalDate to) {
+		BigDecimal totalSalesAmount = nz(saleService.getTotalSaleAmount(from, to));
+		BigDecimal totalReceivable      = nz(paymentService.getTotalReceivable(from, to));
+	    BigDecimal receivedThisMonth    = nz(paymentService.getReceivedThisMonth(from, to));
 	    BigDecimal expectedToday        = nz(paymentService.getExpectedToday());
-	    BigDecimal totalPayable         = nz(commissionService.getTotalPayable());
-	    BigDecimal paidTotal            = nz(paymentService.getPaidTotal());
-	    BigDecimal paidThisMonth        = nz(paymentService.getPaidThisMonth());
+	    BigDecimal totalPayable         = nz(commissionService.getTotalPayable(from, to));
+	    BigDecimal paidTotal            = nz(paymentService.getPaidTotal(from, to));
+	    BigDecimal paidThisMonth        = nz(paymentService.getPaidThisMonth(from, to));
 
 	    return FinanceSummaryDTO.builder()
 	    	.totalSaleAmount(totalSalesAmount)
@@ -63,24 +66,27 @@ public class FinanceService {
 		return value == null ? BigDecimal.ZERO : value;
 	}
 
-	public List<ReceivableDetailDTO> getReceivableDetails() {
-		return paymentService.getReceivableDetails();
+	public List<ReceivableDetailDTO> getReceivableDetails(LocalDate from, LocalDate to) {
+		List<ReceivableDetailDTO> list = paymentService.getReceivableDetails(from, to);
+		return list;
 	}
 	
-	public List<ReceivableDetailDTO> getReceivedByThisMonth() {
-		return paymentService.getReceivedDetails();
+	public List<ReceivableDetailDTO> getReceivedByThisMonth(LocalDate from, LocalDate to) {
+		List<ReceivableDetailDTO> list = paymentService.getReceivedDetails(from, to);
+		return list;
 	}
 	
 	public List<ReceivableDetailDTO> findSalesByStatus() {
 		return saleService.findSalesByStatus(List.of("BOOKED", "IN_PROGRESS"));
 	}
 
-	public List<PayableDetailsDTO> getPayableDetails() {
-		return commissionService.getPayableDetails();
+	public List<PayableDetailsDTO> getPayableDetails(LocalDate from, LocalDate to) {
+		List<PayableDetailsDTO> list = commissionService.getPayableDetails(from, to);
+		return list;
 	}
 	
-	public List<CommissionDetailsDTO> getCommissionsPaidThisMonth() {
-		return commissionService.getCommissionsPaid();
+	public List<CommissionDetailsDTO> getCommissionsPaidThisMonth(LocalDate from, LocalDate to) {
+		return commissionService.getCommissionsPaid(from, to);
 	}
 
 	public List<CashFlowItemDTO> getCashFlow(LocalDate from, LocalDate to, CashFlowType type, CashFlowStatus status) {

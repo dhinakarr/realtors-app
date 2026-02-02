@@ -1,5 +1,7 @@
 package com.realtors.admin.service;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -76,24 +78,32 @@ public class EmployeeCodeService {
 		if (managerId == null) {
 			throw new IllegalStateException("Manager required for role " + financeRole);
 		}
+		
+		List<String> result = jdbcTemplate.query(
+			    """
+			    WITH RECURSIVE chain AS (
+			        SELECT u.user_id, u.manager_id, u.hierarchy_code, r.finance_role
+			        FROM app_users u
+			        JOIN roles r ON r.role_id = u.role_id
+			        WHERE u.user_id = ?
+			        UNION ALL
+			        SELECT m.user_id, m.manager_id, m.hierarchy_code, r.finance_role
+			        FROM app_users m
+			        JOIN roles r ON r.role_id = m.role_id
+			        JOIN chain c ON c.manager_id = m.user_id
+			    )
+			    SELECT hierarchy_code
+			    FROM chain
+			    WHERE finance_role = 'PH'
+			    LIMIT 1
+			    """,
+			    (rs, rowNum) -> rs.getString(1),
+			    managerId
+			);
 
-		String phGroup = jdbcTemplate.queryForObject("""
-				    WITH RECURSIVE chain AS (
-				        SELECT u.user_id, u.manager_id, u.hierarchy_code, r.finance_role
-				        FROM app_users u
-				        JOIN roles r ON r.role_id = u.role_id
-				        WHERE u.user_id = ?
-				        UNION ALL
-				        SELECT m.user_id, m.manager_id, m.hierarchy_code, r.finance_role
-				        FROM app_users m
-				        JOIN roles r ON r.role_id = m.role_id
-				        JOIN chain c ON c.manager_id = m.user_id
-				    )
-				    SELECT hierarchy_code
-				    FROM chain
-				    WHERE finance_role = 'PH'
-				    LIMIT 1
-				""", String.class, managerId);
+		String phGroup = result.isEmpty()
+		        ? "10"   // 👈 DEFAULT PH GROUP
+		        : result.get(0);
 
 		String levelCode = switch (financeRole) {
 			case "PM" -> "02";

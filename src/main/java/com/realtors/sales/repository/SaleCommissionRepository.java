@@ -22,6 +22,7 @@ public interface SaleCommissionRepository {
     public BigDecimal getPaidThisMonth();
     public BigDecimal getTotalCommission(UUID saleId, UUID userId);
     public List<PayableDetailsDTO> getPayableDetails();
+    public List<PayableDetailsDTO> getPayableDetails(LocalDate from, LocalDate to);
     public void handleCommissionReversal(UUID saleId);
     public void deleteCommissionData(UUID saleId, UUID userId);
     public void deleteBySaleId(UUID saleId);

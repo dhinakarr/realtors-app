@@ -1,7 +1,6 @@
 package com.realtors.sales.repository;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -82,12 +81,10 @@ public class PaymentRepositoryImpl {
 		return jdbc.queryForObject(sql, BigDecimal.class, saleId);
 	}
 	
-	public BigDecimal getTotalPaidThisMonth() {
-		 LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-		 LocalDateTime to = LocalDateTime.now();
+	public BigDecimal getTotalPaidThisMonth(LocalDate from, LocalDate to) {
 		String sql = """
-				select SUM(commission_paid) from v_commission_payable_details_payments 
-				WHERE payment_date BETWEEN ? AND ?
+				select SUM(commission_paid) from v_commission_payable_details 
+				WHERE sale_date BETWEEN ? AND ?
 				""" ;
 		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
 	}
@@ -111,6 +108,22 @@ public class PaymentRepositoryImpl {
 					WHERE s.sale_status in ( 'BOOKED', 'IN_PROGRESS');
 		    """;
 		    return jdbc.queryForObject(sql, BigDecimal.class);
+	}
+	
+	public BigDecimal getTotalReceivables(LocalDate from, LocalDate to) {
+		String sql = """
+		        SELECT COALESCE(SUM(s.total_price), 0) - COALESCE(SUM(p.total_received), 0) AS total_receivable
+					FROM sales s
+					LEFT JOIN ( SELECT sale_id,  SUM(amount) AS total_received
+					    FROM payments
+					    WHERE payment_type = 'RECEIVED'
+					    AND payment_date >= ?
+					    AND payment_date < ?
+					    GROUP BY sale_id
+					) p ON p.sale_id = s.sale_id
+					WHERE s.sale_status in ( 'BOOKED', 'IN_PROGRESS');
+		    """;
+		    return jdbc.queryForObject(sql, BigDecimal.class, from, to);
 	}
 	
 	public PaymentDTO update(PaymentDTO dto) {
@@ -180,17 +193,27 @@ public class PaymentRepositoryImpl {
 	    return jdbc.queryForObject(sql, new PaymentRowMapper(), verifierId, paymentId);
 	}
 	
-	public BigDecimal getReceivedBetween(LocalDateTime from, LocalDateTime to) {
+	public BigDecimal getReceivedBetween(LocalDate from, LocalDate to) {
 		String sql = """
 			SELECT SUM(total_received) FROM v_receivable_details
 			WHERE total_received > 0
 			AND sale_id IN (
 			SELECT sale_id FROM payments
 			WHERE payment_type = 'RECEIVED'
-			AND payment_date >= ?
-			AND payment_date < ?);
+			AND payment_date BETWEEN ? AND  ?);
 		""";
 		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+	}
+	
+	public BigDecimal getReceivedBetween() {
+		String sql = """
+			SELECT SUM(total_received) FROM v_receivable_details
+			WHERE total_received > 0
+			AND sale_id IN (
+			SELECT sale_id FROM payments
+			WHERE payment_type = 'RECEIVED');
+		""";
+		return jdbc.queryForObject(sql, BigDecimal.class);
 	}
 	
 	public SaleWiseReceivable getSaleWiseReceivable() {
@@ -225,7 +248,7 @@ public class PaymentRepositoryImpl {
 		return jdbc.queryForObject(sql, ProjectWiseTotalReceivable.class);
 	}
 	
-	public List<ReceivableDetailDTO> getReceivedDetails(LocalDateTime from, LocalDateTime to) {
+	public List<ReceivableDetailDTO> getReceivedDetails(LocalDate from, LocalDate to) {
 		String sql = """
 				SELECT * FROM v_receivable_details
 				WHERE total_received > 0
@@ -233,14 +256,15 @@ public class PaymentRepositoryImpl {
 				SELECT sale_id
 				FROM payments
 				WHERE payment_type = 'RECEIVED'
-				AND payment_date BETWEEN ? AND ?)	
+				AND payment_date >= ?
+                AND payment_date < ?)
 				""";
-		return jdbc.query(sql, new ReceivableDetailsRowMapper(), Timestamp.valueOf(from), Timestamp.valueOf(to));
+		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to);
 	}
 	
-	public List<ReceivableDetailDTO> getReceivableDetails() {
-		String sql = "SELECT * FROM v_receivable_details WHERE outstanding_amount > 0";
-		return jdbc.query(sql, new ReceivableDetailsRowMapper());
+	public List<ReceivableDetailDTO> getReceivableDetails(LocalDate from, LocalDate to) {
+		String sql = "SELECT * FROM v_receivable_details WHERE outstanding_amount > 0 AND sale_date >= ? AND sale_date < ?";
+		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to);
 	}
 	
 	public List<ReceivableDetailDTO> findPendingByProject(UUID projectId) {

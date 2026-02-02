@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.realtors.admin.dto.AppUserDto;
@@ -33,6 +35,7 @@ public class CommissionService {
 	private final CommissionRuleRepository commissionRuleRepository;
 	private final SaleCommissionRepository saleCommissionRepository;
 	private final CommissionRepository commissionRepository;
+	private static final Logger logger = LoggerFactory.getLogger(CommissionService.class);
 
 	public void distributeCommission(SaleDTO sale) {
 		// 1. Fetch salesperson
@@ -72,6 +75,10 @@ public class CommissionService {
 		return saleCommissionRepository.findBySale(saleId, userId);
 	}
 
+	public BigDecimal getTotalPayable(LocalDate from, LocalDate to) {
+		return saleCommissionRepository.getTotalPayable();
+	}
+	
 	public BigDecimal getTotalPayable() {
 		return saleCommissionRepository.getTotalPayable();
 	}
@@ -91,14 +98,14 @@ public class CommissionService {
 		return list.stream().filter(i -> i.getStatus() == status).toList();
 	}
 
-	public List<PayableDetailsDTO> getPayableDetails() {
-		return saleCommissionRepository.getPayableDetails();
+	public List<PayableDetailsDTO> getPayableDetails(LocalDate from, LocalDate to) {
+		List<PayableDetailsDTO> list = saleCommissionRepository.getPayableDetails(from, to);
+		return list;
 	}
 	
-	public List<CommissionDetailsDTO> getCommissionsPaid() {
-		LocalDateTime from = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-		LocalDateTime to   = LocalDateTime.now();
-		return commissionRepository.getCommissionsPaid(from, to);
+	public List<CommissionDetailsDTO> getCommissionsPaid(LocalDate from, LocalDate to) {
+		List<CommissionDetailsDTO> list = commissionRepository.getCommissionsPaid(from, to);
+		return list;
 	}
 	
 	public void reversePayment(UUID saleId, UUID userId, String status) {
