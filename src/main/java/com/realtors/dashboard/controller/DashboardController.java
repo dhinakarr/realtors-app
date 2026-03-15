@@ -44,6 +44,8 @@ public class DashboardController {
     	DashboardScope scope = scopeServcie.resolve(principal);
     	 if(principal.hasRole(UserRole.CUSTOMER)) {
          	scope.setCustomerId(principal.getUserId());
+         } else if (principal.hasRole(UserRole.MD) || principal.hasRole(UserRole.FINANCE)) {
+        	 scope.setTeamView(true);
          }
         scope.setFromDate(from);
         scope.setToDate(to);

@@ -347,6 +347,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	}
 
 	private PagedResult<ListUserDto> findSelfAndSubordinatesPaginated(UUID userId, int page, int size) {
+		page = Math.max(page, 1);
 		int offset = (page - 1) * size;
 		String dataSql = """
 					    WITH RECURSIVE subordinates AS (

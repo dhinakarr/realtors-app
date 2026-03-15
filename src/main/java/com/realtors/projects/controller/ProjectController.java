@@ -1,7 +1,6 @@
 package com.realtors.projects.controller;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,7 +13,6 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.core.io.support.ResourceRegion;
@@ -22,7 +20,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,7 +69,6 @@ public class ProjectController {
 
 	@GetMapping("/form/{id}")
 	public ResponseEntity<ApiResponse<EditResponseDto<ProjectSummaryDto>>> getEditForm(@PathVariable UUID id) {
-//		logger.info("@ProjectController.getEditForm UUID id: "+id);
 		EditResponseDto<ProjectSummaryDto> projects = service.editResponse(id);
 		return ResponseEntity.ok(ApiResponse.success("Projects fetched successfully", projects, HttpStatus.OK));
 	}
@@ -146,18 +142,15 @@ public class ProjectController {
 
 	@GetMapping("/file/{fileId}")
 	public ResponseEntity<Resource> serveFile(@PathVariable UUID fileId) throws IOException {
-		logger.info("@ProjectController.serveFile /file/{fileId}: {}", fileId);
 		ProjectFileDto file = fileService.getFileById(fileId);
 		if (file == null) {
 			return ResponseEntity.notFound().build();
 		}
 		Path path = Paths.get(file.getFilePath());
-		logger.info("@ProjectController.serveFile path: {}", path.toString());
 		if (!Files.exists(path)) {
 			return ResponseEntity.notFound().build();
 		}
 		Resource resource = new UrlResource(path.toUri());
-		logger.info("@ProjectController.serveFile resource: {}", resource.toString());
 		return ResponseEntity.ok().contentType(getMediaType(path))
 				.header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFileName() + "\"")
 				.body(resource);
@@ -166,7 +159,6 @@ public class ProjectController {
 	private MediaType getMediaType(Path path) {
 		try {
 			String mime = Files.probeContentType(path);
-			logger.info("@ProjectController.getMediaType mime: {}", mime);
 			return mime != null ? MediaType.parseMediaType(mime) : MediaType.APPLICATION_OCTET_STREAM;
 		} catch (IOException e) {
 			return MediaType.APPLICATION_OCTET_STREAM;
@@ -215,7 +207,6 @@ public class ProjectController {
 		}
 
 		service.deleteDocument(id);
-		logger.info("@UserController.getDocuments document deleted");
 		return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
 	}
 

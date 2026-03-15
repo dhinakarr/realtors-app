@@ -6,7 +6,9 @@ CREATE TABLE roles (
     description VARCHAR(255),
 	parent_role_id UUID,
 	role_level int,
-	finance_role VARCHAR(50) DEFAULT 'INTERNAL'
+	finance_role VARCHAR(50),
+	role_code CHARECTER(2),
+	sub_role_code CHARECTER(2),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
@@ -29,6 +31,10 @@ CREATE TABLE app_users (
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
 	meta JSONB DEFAULT '{}'::jsonb,
 	manager_id UUID REFERENCES app_users(user_id),
+	employee_id VARCHAR(20),
+	branch_code CHARECTER(2),
+	seq_no int,
+	hierarchy_code CHARECTER(2),
     created_by UUID,
     updated_by UUID
 );
@@ -314,12 +320,14 @@ SELECT
     c.customer_name, s.sold_by AS agent_id, u.full_name AS agent_name, s.total_price AS sale_amount,
     COALESCE(p.total_received, 0) AS total_received,
 	(s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
-    s.confirmed_at, s.sale_status, s.created_at as sale_date
+    s.confirmed_at, s.sale_status, s.created_at as sale_date, u.manager_id,
+    m.full_name AS manager_name
 FROM sales s
 JOIN projects pr ON pr.project_id = s.project_id
 JOIN plot_units pl ON pl.plot_id = s.plot_id
 JOIN customers c ON c.customer_id = s.customer_id
 JOIN app_users u ON u.user_id = s.sold_by
+LEFT JOIN app_users m ON m.user_id = u.manager_id
 LEFT JOIN (
     SELECT sale_id, SUM(amount) AS total_received
     FROM payments
@@ -1711,3 +1719,63 @@ JOIN app_users u ON u.user_id = p.paid_to
 JOIN plot_units pl ON pl.plot_id = s.plot_id
 JOIN projects pr ON pr.project_id = pl.project_id
 WHERE p.payment_type = 'PAID';	
+
+=============================================================================
+14-Mar-2026:
+=================
+CREATE OR REPLACE VIEW v_receivable_details AS
+SELECT
+    s.sale_id, s.project_id, pr.project_name, pl.plot_id, pl.plot_number, s.customer_id,
+    c.customer_name, s.sold_by AS agent_id, u.full_name AS agent_name, s.total_price AS sale_amount,
+    COALESCE(p.total_received, 0) AS total_received,
+	(s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
+    s.confirmed_at, s.sale_status, s.created_at as sale_date, u.manager_id,
+    m.full_name AS manager_name, t.team_head_id,
+    t.team_head_name
+FROM sales s
+JOIN projects pr ON pr.project_id = s.project_id
+JOIN plot_units pl ON pl.plot_id = s.plot_id
+JOIN customers c ON c.customer_id = s.customer_id
+JOIN app_users u ON u.user_id = s.sold_by
+LEFT JOIN app_users m ON m.user_id = u.manager_id
+JOIN v_user_team_map t ON t.user_id = u.user_id
+LEFT JOIN (
+    SELECT sale_id, SUM(amount) AS total_received
+    FROM payments
+    WHERE payment_type = 'RECEIVED'
+    GROUP BY sale_id
+) p ON p.sale_id = s.sale_id
+WHERE s.sale_status <> 'CANCELLED';
+
+CREATE INDEX idx_users_manager_id ON app_users(manager_id);
+CREATE INDEX idx_users_role_id ON app_users(role_id);
+CREATE INDEX idx_roles_role_code ON roles(role_code); 
+
+
+CREATE OR REPLACE VIEW v_user_team_map AS
+WITH RECURSIVE hierarchy AS (
+
+    SELECT
+        u.user_id,
+        u.full_name,
+        u.manager_id,
+        u.user_id AS team_head_id,
+        u.full_name AS team_head_name
+    FROM app_users u
+    JOIN roles r ON r.role_id = u.role_id
+    WHERE r.finance_role = 'PH'
+
+    UNION ALL
+
+    SELECT
+        u.user_id,
+        u.full_name,
+        u.manager_id,
+        h.team_head_id,
+        h.team_head_name
+    FROM app_users u
+    JOIN hierarchy h ON u.manager_id = h.user_id
+)
+SELECT * FROM hierarchy;
+
+

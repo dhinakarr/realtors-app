@@ -20,14 +20,15 @@ public class DashboardScope {
 	private LocalDate fromDate;
 	private LocalDate toDate;
 	private Set<DashboardPermission> permissions;
+	private boolean teamView;
 
 	public static DashboardScope all() {
 		return DashboardScope.builder().all(true).build();
 	}
 
-	
-	  public boolean isCustomer() { return customerId != null; }
-	 
+	public boolean isCustomer() {
+		return customerId != null;
+	}
 
 	public boolean hasDateRange() {
 		return fromDate != null && toDate != null;

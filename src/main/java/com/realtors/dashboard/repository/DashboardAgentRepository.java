@@ -24,37 +24,58 @@ public class DashboardAgentRepository {
 	}
 
 	public List<AgentPerformanceDTO> fetchAgentPerformance(DashboardScope scope) {
-		StringBuilder sql = new StringBuilder("""
-				    SELECT agent_id,
-				           agent_name,
-				           COUNT(sale_id)   AS total_sales,
-				           SUM(sale_amount) AS sales_value
-				    FROM v_receivable_details
-				""");
+	    boolean teamView = scope.isTeamView();
+	    StringBuilder sql = new StringBuilder("SELECT ");
 
-		MapSqlParameterSource params = new MapSqlParameterSource();
-		List<String> conditions = new ArrayList<>();
+	    if (teamView) {
+	        sql.append("""
+	            team_head_id AS agent_id,
+	            team_head_name AS agent_name,
+	            COUNT(sale_id) AS total_sales,
+	            SUM(sale_amount) AS sales_value
+	        """);
+	    } else {
+	        sql.append("""
+	            agent_id,
+	            agent_name,
+	            COUNT(sale_id) AS total_sales,
+	            SUM(sale_amount) AS sales_value
+	        """);
+	    }
 
-		if (scope.isCustomer()) {
-		    conditions.add("customer_id = :customerId");
-		    params.addValue("customerId", scope.getCustomerId());
-		} else if (!scope.isAll()) {
-			if (scope.getUserIds() != null && !scope.getUserIds().isEmpty()) {
-			    conditions.add("agent_id IN (:userIds)");
-			    params.addValue("userIds", scope.getUserIds());
-			}
-			if (scope.hasProjectScope() && scope.getProjectIds() != null && !scope.getProjectIds().isEmpty()) {
-				conditions.add("project_id IN (:projectIds)");
-				params.addValue("projectIds", scope.getProjectIds());
-			}
-		}
+	    sql.append(" FROM v_receivable_details ");
 
-		if (!conditions.isEmpty()) {
-			sql.append(" WHERE ").append(String.join(" AND ", conditions));
-		}
-		sql.append(" GROUP BY agent_id, agent_name");
-		sql.append(" ORDER BY sales_value DESC");
-		return jdbc.query(sql.toString(), params, new BeanPropertyRowMapper<>(AgentPerformanceDTO.class));
+	    MapSqlParameterSource params = new MapSqlParameterSource();
+	    List<String> conditions = new ArrayList<>();
+
+	    if (scope.isCustomer()) {
+	        conditions.add("customer_id = :customerId");
+	        params.addValue("customerId", scope.getCustomerId());
+	    }
+
+	    if (!scope.isAll() && scope.getUserIds()!=null && !scope.getUserIds().isEmpty()) {
+	        conditions.add("agent_id IN (:userIds)");
+	        params.addValue("userIds", scope.getUserIds());
+	    }
+
+	    if (scope.hasProjectScope() && scope.getProjectIds()!=null && !scope.getProjectIds().isEmpty()) {
+	        conditions.add("project_id IN (:projectIds)");
+	        params.addValue("projectIds", scope.getProjectIds());
+	    }
+
+	    if (!conditions.isEmpty()) {
+	        sql.append(" WHERE ").append(String.join(" AND ", conditions));
+	    }
+
+	    if (teamView) {
+	        sql.append(" GROUP BY team_head_id, team_head_name");
+	    } else {
+	        sql.append(" GROUP BY agent_id, agent_name");
+	    }
+
+	    sql.append(" ORDER BY sales_value DESC");
+logger.info("@DashboardAgentRepository.fetchAgentPerformance sql: "+ sql);
+	    return jdbc.query(sql.toString(), params,
+	            new BeanPropertyRowMapper<>(AgentPerformanceDTO.class));
 	}
-
 }

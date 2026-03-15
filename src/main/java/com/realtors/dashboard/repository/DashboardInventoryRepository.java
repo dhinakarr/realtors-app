@@ -38,7 +38,7 @@ public class DashboardInventoryRepository {
 				""");
 
 		MapSqlParameterSource params = new MapSqlParameterSource();
-		applyProjectScope(scope, sql, params, false);
+//		applyProjectScope(scope, sql, params, false);
 
 		sql.append(" GROUP BY project_id, project_name");
 		sql.append(" ORDER BY project_name");

@@ -365,6 +365,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 	 * Fetch all records with pagination, regardless of status.
 	 */
 	public PagedResult<T> findAllIncludingInactivePaginated(int page, int size) {
+		page = Math.max(page, 1);
 		int offset = (page - 1) * size;
 
 		String sql = "SELECT * FROM " + tableName + " ORDER BY updated_at DESC LIMIT ? OFFSET ?";
@@ -372,7 +373,6 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 		List<T> results = jdbcTemplate.query(sql, new JsonAwareRowMapper<>(dtoClass), size, offset);
 		int total = jdbcTemplate.queryForObject(countSql, Integer.class);
-
 		return new PagedResult<>(results, page, size, total, (int) Math.ceil((double) total / size));
 	}
 
@@ -395,8 +395,16 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 	// 2) Load lookup rows for a lookup_table
 	public List<Map<String, Object>> loadLookupData(String lookupTable, String keyColumn, String valueColumn) {
-		String sql = String.format("SELECT %s AS key, %s AS value FROM %s ORDER BY %s", keyColumn, valueColumn,
+
+		String valueExpr = valueColumn;
+		// Special formatting for user lookup
+		if ("app_users".equalsIgnoreCase(lookupTable) && "full_name".equalsIgnoreCase(valueColumn)) {
+			valueExpr = "full_name || ' (' || employee_id || ')'";
+		}
+
+		String sql = String.format("SELECT %s AS key, %s AS value FROM %s ORDER BY %s", keyColumn, valueExpr,
 				lookupTable, valueColumn);
+
 		return jdbcTemplate.query(sql, (rs, rowNum) -> {
 			Map<String, Object> m = new HashMap<>();
 			m.put("key", rs.getObject("key"));
@@ -427,46 +435,33 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 						m.getLookupLabel());
 				row.setLookupData(lookupRows);
 			}
-			if (
-				    ("radio".equalsIgnoreCase(m.getFieldType()) || "select".equalsIgnoreCase(m.getFieldType()))
-				    && m.getLookupTable() == null
-				    && m.getLookupKey() != null
-				    && !m.getLookupKey().isBlank()
-				) {
-				    try {
-				        ObjectMapper mapper = new ObjectMapper();
+			if (("radio".equalsIgnoreCase(m.getFieldType()) || "select".equalsIgnoreCase(m.getFieldType()))
+					&& m.getLookupTable() == null && m.getLookupKey() != null && !m.getLookupKey().isBlank()) {
+				try {
+					ObjectMapper mapper = new ObjectMapper();
+					List<String> keys = mapper.readValue(m.getLookupKey(), new TypeReference<List<String>>() {});
+					List<String> values = mapper.readValue(m.getLookupLabel(), new TypeReference<List<String>>() {});
 
-				        List<String> keys = mapper.readValue(
-				                m.getLookupKey(),
-				                new TypeReference<List<String>>() {}
-				        );
-
-				        List<String> values = mapper.readValue(
-				                m.getLookupLabel(),
-				                new TypeReference<List<String>>() {}
-				        );
-
-				        List<Map<String, Object>> optionMaps = new ArrayList<>();
-				        int size = Math.min(keys.size(), values.size());
-				        for (int i = 0; i < size; i++) {
-				            Map<String, Object> map = new HashMap<>();
-				            map.put("key", keys.get(i));       // "CH"
-				            map.put("value", values.get(i));   // "Chennai"
-				            optionMaps.add(map);
-				        }
-				        row.setLookupData(optionMaps);
-				    } catch (Exception e) {
-				        row.setLookupData(Collections.emptyList());
-				    }
+					List<Map<String, Object>> optionMaps = new ArrayList<>();
+					int size = Math.min(keys.size(), values.size());
+					for (int i = 0; i < size; i++) {
+						Map<String, Object> map = new HashMap<>();
+						map.put("key", keys.get(i)); // "CH"
+						map.put("value", values.get(i)); // "Chennai"
+						optionMaps.add(map);
+					}
+					row.setLookupData(optionMaps);
+				} catch (Exception e) {
+					row.setLookupData(Collections.emptyList());
 				}
-				else if ("checkbox".equalsIgnoreCase(m.getFieldType())) {
-		        row.setLookupData(Collections.emptyList());
+			} else if ("checkbox".equalsIgnoreCase(m.getFieldType())) {
+				row.setLookupData(Collections.emptyList());
 
-		        Map<String, Object> extra = new HashMap<>();
-		        extra.put("booleanField", true);
-		        extra.put("inputType", "checkbox"); // frontend hint
-		        row.setExtraSettings(extra);
-		    }
+				Map<String, Object> extra = new HashMap<>();
+				extra.put("booleanField", true);
+				extra.put("inputType", "checkbox"); // frontend hint
+				row.setExtraSettings(extra);
+			}
 		}
 		String[] idArr = getIdColumn().split(",\\s*");
 		return new DynamicFormResponseDto(this.tableName, idArr, newMeta);

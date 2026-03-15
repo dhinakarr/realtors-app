@@ -58,12 +58,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		try {
 			if (authHeader != null && authHeader.startsWith("Bearer ")) {
 				String token = authHeader.substring(7);
-
 				if (jwtUtil.validateToken(token) && !tokenCacheService.isRevoked(token)) {
 
 					Claims claims = jwtUtil.extractClaims(token);
 					String userId = claims.get("userId", String.class);
-
 					UUID userUuid = UUID.fromString(claims.get("userId", String.class));
 					UUID roleId = UUID.fromString(claims.get("roleId", String.class));
 					String roleCode = claims.get("roleCode", String.class);

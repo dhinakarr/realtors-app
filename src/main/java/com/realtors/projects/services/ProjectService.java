@@ -14,12 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.realtors.admin.dto.UserDocumentDto;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
 import com.realtors.admin.dto.form.EditResponseDto;
 import com.realtors.admin.service.AbstractBaseService;
 import com.realtors.common.EnumConstants;
-import com.realtors.common.service.AuditContext;
 import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.service.FileSavingService;
 import com.realtors.common.service.FileStorageContext;
@@ -81,12 +79,10 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 
 	// this will get all projects data irrespective of the status
 	public List<ProjectDto> getAllProjects() {
-		List<ProjectDto> list = super.findAllWithInactive();
 		return super.findAllWithInactive();
 	}
 
 	public Optional<ProjectDto> getProject(UUID id) {
-		Optional<ProjectDto> opt = super.findById(id);
 		return super.findById(id);
 	}
 

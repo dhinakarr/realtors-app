@@ -142,18 +142,27 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     // AUTO-GENERATE PLOTS
     // ---------------------------------------------------
     public void generatePlots(UUID projectId, List<String> plotNumbers) {
+        List<String> existingPlots = repo.findPlotNumbersByProjectId(projectId);
+
         List<PlotUnitDto> list = new ArrayList<>();
-        if (plotNumbers != null && !plotNumbers.isEmpty()) {
-        	for(String plotNo: plotNumbers) {
-        		PlotUnitDto dto = new PlotUnitDto();
-                dto.setPlotId(UUID.randomUUID());
-                dto.setProjectId(projectId);
-                dto.setPlotNumber(plotNo);
-                dto.setStatus("AVAILABLE");
-                dto.setIsPrime(false);
-                list.add(dto);
-        	}
-        	repo.bulkInsert(list);
+        for (String plotNo : plotNumbers) {
+
+            if (existingPlots.contains(plotNo)) {
+                continue;
+            }
+
+            PlotUnitDto dto = new PlotUnitDto();
+            dto.setPlotId(UUID.randomUUID());
+            dto.setProjectId(projectId);
+            dto.setPlotNumber(plotNo);
+            dto.setStatus("AVAILABLE");
+            dto.setIsPrime(false);
+
+            list.add(dto);
+        }
+
+        if (!list.isEmpty()) {
+            repo.bulkInsert(list);
         }
     }
     

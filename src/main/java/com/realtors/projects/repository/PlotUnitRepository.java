@@ -46,20 +46,16 @@ public class PlotUnitRepository {
 	// BULK INSERT (auto-generate)
 	// --------------------------
 	public void bulkInsert(List<PlotUnitDto> list) {
-
 		String sql = """
 				    INSERT INTO plot_units
 				    (plot_id, project_id, plot_number, base_price, status, is_prime)
 				    VALUES (?, ?, ?, ?, ?, ?)
 				""";
-
 		List<Object[]> batch = new ArrayList<>();
-
 		for (PlotUnitDto p : list) {
 			batch.add(new Object[] { p.getPlotId(), p.getProjectId(), p.getPlotNumber(), p.getBasePrice(),
 					p.getStatus(), p.getIsPrime() });
 		}
-
 		jdbc.batchUpdate(sql, batch);
 	}
 
@@ -72,7 +68,6 @@ public class PlotUnitRepository {
 				ORDER BY CAST(NULLIF(regexp_replace(plot_number, '[^0-9]', '', 'g'), '') AS INTEGER) NULLS LAST,
 					regexp_replace(plot_number, '[0-9]', '', 'g');
 				""";
-
 		return jdbc.query(sql, new PlotUnitRowMapper(), projectId);
 	}
 
@@ -92,7 +87,6 @@ public class PlotUnitRepository {
 	// UPDATE
 	// --------------------------
 	public int update(PlotUnitDto dto) {
-
 		String sql = """
 				    UPDATE plot_units SET
 				      plot_number = ?, area = ?, rate_per_sqft=?, base_price = ?, road_width = ?, survey_num = ?,
@@ -100,7 +94,6 @@ public class PlotUnitRepository {
 				      status = ?, customer_id = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
 				    WHERE plot_id = ?
 				""";
-
 		return jdbc.update(sql, dto.getPlotNumber(), dto.getArea(), dto.getRatePerSqft(), dto.getBasePrice(),
 				dto.getRoadWidth(), dto.getSurveyNum(), dto.getFacing(), dto.getWidth(), dto.getBreath(),
 				dto.getTotalPrice(), dto.getIsPrime(), dto.getStatus(), dto.getCustomerId(), dto.getRemarks(),
@@ -121,23 +114,38 @@ public class PlotUnitRepository {
 	}
 
 	public boolean deleteByProjectId(UUID projectId) {
-		String updateSql = "DELETE FROM plot_units WHERE project_id = ?";
-		int retValue = jdbc.update(updateSql, projectId);
+		String sql = """
+				    DELETE FROM plot_units
+				    WHERE project_id = ?
+				    AND plot_id NOT IN (
+				        SELECT plot_id FROM sales
+				    )
+				""";
+		int retValue = jdbc.update(sql, projectId);
 		return retValue > 0;
+	}
+
+	public List<String> findPlotNumbersByProjectId(UUID projectId) {
+		String sql = """
+				    SELECT plot_number
+				    FROM plot_units
+				    WHERE project_id = ?
+				""";
+		return jdbc.queryForList(sql, String.class, projectId);
 	}
 
 	public List<PlotUnitStatus> getPlotStats(UUID projectId) {
 		String sql = """
-					SELECT p.project_id, COUNT(*) AS total,
-					    SUM(CASE WHEN p.status = 'AVAILABLE' THEN 1 ELSE 0 END) AS available,
-					    SUM(CASE WHEN p.status = 'BOOKED' THEN 1 ELSE 0 END) AS booked,
-					    SUM(CASE WHEN p.status = 'SOLD' THEN 1 ELSE 0 END) AS sold,
-					    SUM(CASE WHEN p.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled
-					FROM plot_units p
-					WHERE p.project_id = ?
-					GROUP BY p.project_id;
+				SELECT p.project_id, COUNT(*) AS total,
+				    SUM(CASE WHEN p.status = 'AVAILABLE' THEN 1 ELSE 0 END) AS available,
+				    SUM(CASE WHEN p.status = 'BOOKED' THEN 1 ELSE 0 END) AS booked,
+				    SUM(CASE WHEN p.status = 'SOLD' THEN 1 ELSE 0 END) AS sold,
+				    SUM(CASE WHEN p.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled
+				FROM plot_units p
+				WHERE p.project_id = ?
+				GROUP BY p.project_id;
 
-							""";
+						""";
 		return jdbc.query(sql, ROW_MAPPER, projectId);
 	}
 }
