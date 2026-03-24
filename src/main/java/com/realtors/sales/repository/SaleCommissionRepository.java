@@ -17,6 +17,7 @@ public interface SaleCommissionRepository {
     List<SaleCommissionDTO> findBySaleId(UUID saleId);
     public List<SaleCommissionDTO> findBySale(UUID saleId, UUID userId);
     public BigDecimal getTotalPayable();
+    public BigDecimal getTotalPayable(LocalDate from, LocalDate to);
     public BigDecimal getPaidBetween(LocalDateTime from, LocalDateTime to);
     public List<CashFlowItemDTO> getPayables(LocalDate from, LocalDate to);
     public BigDecimal getPaidThisMonth();

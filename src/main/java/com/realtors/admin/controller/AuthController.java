@@ -41,7 +41,6 @@ public class AuthController {
         }
         try {
             LoginResponse token = userAuthService.login(email, password);
-            
             return ResponseEntity.ok(ApiResponse.success("Login successful", token, HttpStatus.OK));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ApiResponse.failure(ex.getMessage(), HttpStatus.UNAUTHORIZED));
@@ -92,8 +91,54 @@ public class AuthController {
 
         // update cached pair (reuse same refresh token)
         tokenCacheService.storeTokens(userId, newAccessToken, refreshToken);
-
         return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+    }
+    
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestHeader("Authorization") String header,
+            @RequestBody Map<String, String> req)  {
+        String token = header.substring(7);
+
+        if (!jwtUtil.validateToken(token)) {
+            return ResponseEntity.status(401)
+                    .body(ApiResponse.failure("Unauthorized", HttpStatus.UNAUTHORIZED));
+        }
+        String userId = jwtUtil.extractClaims(token).get("userId", String.class);
+        String oldPassword = req.get("oldPassword");
+        String newPassword = req.get("newPassword");
+
+        if (oldPassword == null || newPassword == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.failure("Old and new password required", HttpStatus.BAD_REQUEST));
+        }
+
+        userAuthService.changePassword(UUID.fromString(userId), oldPassword, newPassword);
+        return ResponseEntity.ok(ApiResponse.success("Password changed successfully", null, HttpStatus.OK));
+    }
+    
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> req) {
+        String email = req.get("email");
+        if (email == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.failure("Email is required", HttpStatus.BAD_REQUEST));
+        }
+        userAuthService.generateResetToken(email);
+
+        return ResponseEntity.ok(ApiResponse.success("Reset link sent", null, HttpStatus.OK));
+    }
+    
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> req) {
+        String token = req.get("token");
+        String newPassword = req.get("newPassword");
+
+        if (token == null || newPassword == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.failure("Token and new password required", HttpStatus.BAD_REQUEST));
+        }
+        userAuthService.resetPassword(token, newPassword);
+        return ResponseEntity.ok(ApiResponse.success("Password reset successful", null, HttpStatus.OK));
     }
     
     @PostMapping("/logout")

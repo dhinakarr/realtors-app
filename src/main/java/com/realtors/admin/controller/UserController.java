@@ -136,7 +136,6 @@ public class UserController {
 	@GetMapping("/form")
 	public ResponseEntity<ApiResponse<DynamicFormResponseDto>> getUserForm(@AuthenticationPrincipal UserPrincipalDto principal) {
 		DynamicFormResponseDto users = appUserService.getUserFormData(AppUtil.isCommonRole(principal));
-		logger.info("@UserController.getUserForm users: "+ users.toString());
 		return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", users, HttpStatus.OK));
 	}
 

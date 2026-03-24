@@ -84,7 +84,7 @@ public class FinanceController {
 	@GetMapping("/sale/details")
 	public ResponseEntity<ApiResponse<List<ReceivableDetailDTO>>> getSaleDetail(@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate from,
 			@RequestParam(required = false) @DateTimeFormat(iso = ISO.DATE) LocalDate to) {
-		List<ReceivableDetailDTO> retValue = service.findSalesByStatus();
+		List<ReceivableDetailDTO> retValue = service.findSalesDetails(from, to);
 		return ResponseEntity.ok(ApiResponse.success("Sale Details", retValue, HttpStatus.OK));
 	}
 	

@@ -49,7 +49,6 @@ public class FinanceService {
 	    BigDecimal receivedThisMonth    = nz(paymentService.getReceivedThisMonth(from, to));
 	    BigDecimal expectedToday        = nz(paymentService.getExpectedToday());
 	    BigDecimal totalPayable         = nz(commissionService.getTotalPayable(from, to));
-	    BigDecimal paidTotal            = nz(paymentService.getPaidTotal(from, to));
 	    BigDecimal paidThisMonth        = nz(paymentService.getPaidThisMonth(from, to));
 
 	    return FinanceSummaryDTO.builder()
@@ -57,7 +56,7 @@ public class FinanceService {
 	        .totalReceivable(totalReceivable)
 	        .receivedThisMonth(receivedThisMonth)
 	        .expectedToday(expectedToday)
-	        .commissionPayable(totalPayable.subtract(paidTotal))
+	        .commissionPayable(totalPayable)
 	        .commissionPaidThisMonth(paidThisMonth)
 	        .build();
 	}
@@ -78,6 +77,10 @@ public class FinanceService {
 	
 	public List<ReceivableDetailDTO> findSalesByStatus() {
 		return saleService.findSalesByStatus(List.of("BOOKED", "IN_PROGRESS"));
+	}
+	
+	public List<ReceivableDetailDTO> findSalesDetails(LocalDate from, LocalDate to) {
+		return saleService.findSalesDetails(from, to, List.of("BOOKED", "IN_PROGRESS"));
 	}
 
 	public List<PayableDetailsDTO> getPayableDetails(LocalDate from, LocalDate to) {

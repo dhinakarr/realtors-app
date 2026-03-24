@@ -70,6 +70,10 @@ public class SaleService {
 	public List<ReceivableDetailDTO> findSalesByStatus(List<String> status) {
 		return saleRepository.findSalesByStatus(status);
 	}
+	
+	public List<ReceivableDetailDTO> findSalesDetails(LocalDate from, LocalDate to, List<String> status) {
+		return saleRepository.findSalesDetails(from, to, status);
+	}
 
 	@Transactional("txManager")
 	public SaleDTO createSale(SaleCreateRequest request) {

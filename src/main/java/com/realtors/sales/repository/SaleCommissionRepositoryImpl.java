@@ -106,23 +106,23 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 				""";
 		return jdbc.queryForObject(sql, BigDecimal.class);
 	}
-	
+
 	@Override
 	public BigDecimal getPaidThisMonth() {
-	    LocalDateTime startOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-	    LocalDateTime endOfMonth = LocalDateTime.now();
+		LocalDateTime startOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+		LocalDateTime endOfMonth = LocalDateTime.now();
 
-	    String sql = """
-	        SELECT COALESCE(SUM(amount),0)
-	        FROM payments p
-	        JOIN sale_commissions sc ON sc.sale_id = p.sale_id
-	        WHERE payment_type='PAID'
-	          AND p.payment_date BETWEEN ? AND ?
-	    """;
+		String sql = """
+				    SELECT COALESCE(SUM(amount),0)
+				    FROM payments p
+				    JOIN sale_commissions sc ON sc.sale_id = p.sale_id
+				    WHERE payment_type='PAID'
+				      AND p.payment_date BETWEEN ? AND ?
+				""";
 
-	    return jdbc.queryForObject(sql, BigDecimal.class, startOfMonth, endOfMonth);
+		return jdbc.queryForObject(sql, BigDecimal.class, startOfMonth, endOfMonth);
 	}
-	
+
 	@Override
 	public BigDecimal getPaidBetween(LocalDateTime from, LocalDateTime to) {
 		String sql = """
@@ -163,55 +163,57 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 		});
 	}
 
-	public List<CashFlowItemDTO> findPayables(
-	        LocalDate from,
-	        LocalDate to,
-	        CashFlowStatus status
-	) {
+	public List<CashFlowItemDTO> findPayables(LocalDate from, LocalDate to, CashFlowStatus status) {
 
-	    String sql = """
-	        SELECT
-	            sc.sale_id,
-	            u.full_name AS agent_name,
-	            (sc.commission_amount - COALESCE(p.total_paid, 0)) AS outstanding
-	        FROM sale_commissions sc
-	        JOIN sales s ON s.sale_id = sc.sale_id
-	        JOIN app_users u ON u.user_id = sc.user_id
-	        LEFT JOIN (
-	            SELECT sale_id, SUM(amount) AS total_paid
-	            FROM payments
-	            WHERE payment_type = 'PAID'
-	              AND is_verified = true
-	            GROUP BY sale_id
-	        ) p ON p.sale_id = sc.sale_id
-	        WHERE s.sale_status IN ('CONFIRMED','COMPLETED')
-	          AND (sc.commission_amount - COALESCE(p.total_paid, 0)) > 0
-	    """;
+		String sql = """
+				    SELECT
+				        sc.sale_id,
+				        u.full_name AS agent_name,
+				        (sc.commission_amount - COALESCE(p.total_paid, 0)) AS outstanding
+				    FROM sale_commissions sc
+				    JOIN sales s ON s.sale_id = sc.sale_id
+				    JOIN app_users u ON u.user_id = sc.user_id
+				    LEFT JOIN (
+				        SELECT sale_id, SUM(amount) AS total_paid
+				        FROM payments
+				        WHERE payment_type = 'PAID'
+				          AND is_verified = true
+				        GROUP BY sale_id
+				    ) p ON p.sale_id = sc.sale_id
+				    WHERE s.sale_status IN ('CONFIRMED','COMPLETED')
+				      AND (sc.commission_amount - COALESCE(p.total_paid, 0)) > 0
+				""";
 
-	    List<CashFlowItemDTO> items = jdbc.query(
-	        sql,
-	        (rs, rowNum) -> {
-	            CashFlowItemDTO dto = new CashFlowItemDTO();
-	            dto.setType(CashFlowType.PAYABLE);
-	            dto.setSaleId(rs.getObject("sale_id", UUID.class));
-	            dto.setPartyName(rs.getString("agent_name"));
-	            dto.setAmount(rs.getBigDecimal("outstanding"));
-				dto.setStatus(dto.getAmount().compareTo(BigDecimal.ZERO) > 0 ? CashFlowStatus.OVERDUE : CashFlowStatus.DUE );
-				
-	            return dto;
-	        }
-	    );
-	    if (status == null) return items;
-	    return items.stream()
-	        .filter(i -> i.getStatus() == status)
-	        .toList();
+		List<CashFlowItemDTO> items = jdbc.query(sql, (rs, rowNum) -> {
+			CashFlowItemDTO dto = new CashFlowItemDTO();
+			dto.setType(CashFlowType.PAYABLE);
+			dto.setSaleId(rs.getObject("sale_id", UUID.class));
+			dto.setPartyName(rs.getString("agent_name"));
+			dto.setAmount(rs.getBigDecimal("outstanding"));
+			dto.setStatus(dto.getAmount().compareTo(BigDecimal.ZERO) > 0 ? CashFlowStatus.OVERDUE : CashFlowStatus.DUE);
+
+			return dto;
+		});
+		if (status == null)
+			return items;
+		return items.stream().filter(i -> i.getStatus() == status).toList();
 	}
 
 	public List<PayableDetailsDTO> getPayableDetails() {
 		String sql = "SELECT * FROM v_commission_payable_details WHERE commission_payable > 0";
 		return jdbc.query(sql, new PayableDetailsRowMapper());
 	}
-	
+
+	@Override
+	public BigDecimal getTotalPayable(LocalDate from, LocalDate to) {
+		String sql = """
+					SELECT ROUND(COALESCE(SUM(commission_payable), 0), 0) AS total_payable
+					FROM v_commission_payable_details
+					WHERE  sale_date BETWEEN ? AND ?
+				""";
+		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+	}
+
 	public List<PayableDetailsDTO> getPayableDetails(LocalDate from, LocalDate to) {
 		String sql = "SELECT * FROM v_commission_payable_details WHERE commission_payable > 0 AND sale_date BETWEEN ? AND ?";
 		return jdbc.query(sql, new PayableDetailsRowMapper(), from, to);
@@ -220,13 +222,13 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 	@Override
 	public void updateStatus(UUID saleId, UUID userId, String status, boolean released) {
 		String sql = """
-			    UPDATE sale_commissions
-			    SET status=?, is_released = ?, released_at = now()
-			    WHERE sale_id = ?
-			""";
-logger.info("@SaleCommissionRepositoryImpl.updateStatus saleId: {}", saleId);
+				    UPDATE sale_commissions
+				    SET status=?, is_released = ?, released_at = now()
+				    WHERE sale_id = ?
+				""";
+		logger.info("@SaleCommissionRepositoryImpl.updateStatus saleId: {}", saleId);
 		jdbc.update(sql, status, released, saleId);
-		
+
 	}
 
 	@Override
@@ -236,30 +238,29 @@ logger.info("@SaleCommissionRepositoryImpl.updateStatus saleId: {}", saleId);
 	@Override
 	public BigDecimal getTotalCommission(UUID saleId, UUID userId) {
 		String sql = """
-				SELECT commission_amount
-				FROM sale_commissions
-				WHERE  sale_id=? AND user_id=?
-			""";
-	return jdbc.queryForObject(sql, BigDecimal.class, saleId, userId);
+					SELECT commission_amount
+					FROM sale_commissions
+					WHERE  sale_id=? AND user_id=?
+				""";
+		return jdbc.queryForObject(sql, BigDecimal.class, saleId, userId);
 	}
 
 	@Override
 	public void deleteCommissionData(UUID saleId, UUID userId) {
 		String sql = """
-				DELETE FROM sale_commissions
-				WHERE  sale_id=? AND user_id=?
-			""";
+					DELETE FROM sale_commissions
+					WHERE  sale_id=? AND user_id=?
+				""";
 		jdbc.update(sql, saleId, userId);
 	}
 
 	@Override
 	public void deleteBySaleId(UUID saleId) {
 		String sql = """
-				DELETE FROM sale_commissions
-				WHERE  sale_id=? 
-			""";
+					DELETE FROM sale_commissions
+					WHERE  sale_id=?
+				""";
 		jdbc.update(sql, saleId);
 	}
-
 
 }

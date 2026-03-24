@@ -76,7 +76,7 @@ public class CommissionService {
 	}
 
 	public BigDecimal getTotalPayable(LocalDate from, LocalDate to) {
-		return saleCommissionRepository.getTotalPayable();
+		return saleCommissionRepository.getTotalPayable(from, to);
 	}
 	
 	public BigDecimal getTotalPayable() {

@@ -156,15 +156,10 @@ public class PaymentService {
 		return list;
 	}
 	
-	public List<CashFlowItemDTO> getReceivables(
-			LocalDate from,
-			LocalDate to,
-			CashFlowStatus status
-	) {
+	public List<CashFlowItemDTO> getReceivables(LocalDate from, LocalDate to, CashFlowStatus status) {
 		List<CashFlowItemDTO> list = salestRepo.findReceivables(from, to);
 
 		if (status == null) return list;
-
 		return list.stream()
 				.filter(i -> i.getStatus() == status)
 				.toList();

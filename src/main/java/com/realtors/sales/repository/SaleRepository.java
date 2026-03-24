@@ -37,5 +37,7 @@ public interface SaleRepository {
 	
 	public List<ReceivableDetailDTO> findSalesByStatus(List<String> status);
 	
+	public List<ReceivableDetailDTO> findSalesDetails(LocalDate from, LocalDate to, List<String> status);
+	
 	SaleDetailDTO getSaleDetails(UUID saleId);
 }

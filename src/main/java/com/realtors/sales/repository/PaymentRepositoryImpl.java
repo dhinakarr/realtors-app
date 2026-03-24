@@ -112,18 +112,17 @@ public class PaymentRepositoryImpl {
 	
 	public BigDecimal getTotalReceivables(LocalDate from, LocalDate to) {
 		String sql = """
-		        SELECT COALESCE(SUM(s.total_price), 0) - COALESCE(SUM(p.total_received), 0) AS total_receivable
-					FROM sales s
-					LEFT JOIN ( SELECT sale_id,  SUM(amount) AS total_received
-					    FROM payments
-					    WHERE payment_type = 'RECEIVED'
-					    AND payment_date >= ?
-					    AND payment_date < ?
-					    GROUP BY sale_id
-					) p ON p.sale_id = s.sale_id
-					WHERE s.sale_status in ( 'BOOKED', 'IN_PROGRESS');
+		        SELECT COALESCE(SUM(sale_amount), 0) - COALESCE(SUM(total_received), 0) AS total_receivable
+		        FROM v_receivable_details
+		        WHERE sale_status IN ('BOOKED', 'IN_PROGRESS') AND sale_date >= ? 
+					    AND sale_date < ?
 		    """;
 		    return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+	}
+	
+	public List<ReceivableDetailDTO> getReceivableDetails(LocalDate from, LocalDate to) {
+		String sql = "SELECT * FROM v_receivable_details WHERE outstanding_amount > 0 AND sale_date >= ? AND sale_date < ?";
+		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to);
 	}
 	
 	public PaymentDTO update(PaymentDTO dto) {
@@ -193,18 +192,6 @@ public class PaymentRepositoryImpl {
 	    return jdbc.queryForObject(sql, new PaymentRowMapper(), verifierId, paymentId);
 	}
 	
-	public BigDecimal getReceivedBetween(LocalDate from, LocalDate to) {
-		String sql = """
-			SELECT SUM(total_received) FROM v_receivable_details
-			WHERE total_received > 0
-			AND sale_id IN (
-			SELECT sale_id FROM payments
-			WHERE payment_type = 'RECEIVED'
-			AND payment_date BETWEEN ? AND  ?);
-		""";
-		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
-	}
-	
 	public BigDecimal getReceivedBetween() {
 		String sql = """
 			SELECT SUM(total_received) FROM v_receivable_details
@@ -248,6 +235,18 @@ public class PaymentRepositoryImpl {
 		return jdbc.queryForObject(sql, ProjectWiseTotalReceivable.class);
 	}
 	
+	public BigDecimal getReceivedBetween(LocalDate from, LocalDate to) {
+		String sql = """
+			SELECT SUM(total_received) FROM v_receivable_details
+			WHERE total_received > 0
+			AND sale_id IN (
+			SELECT sale_id FROM payments
+			WHERE payment_type = 'RECEIVED'
+			AND payment_date BETWEEN ? AND  ?);
+		""";
+		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+	}
+	
 	public List<ReceivableDetailDTO> getReceivedDetails(LocalDate from, LocalDate to) {
 		String sql = """
 				SELECT * FROM v_receivable_details
@@ -262,10 +261,7 @@ public class PaymentRepositoryImpl {
 		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to);
 	}
 	
-	public List<ReceivableDetailDTO> getReceivableDetails(LocalDate from, LocalDate to) {
-		String sql = "SELECT * FROM v_receivable_details WHERE outstanding_amount > 0 AND sale_date >= ? AND sale_date < ?";
-		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to);
-	}
+	
 	
 	public List<ReceivableDetailDTO> findPendingByProject(UUID projectId) {
 	    String sql = "SELECT *  FROM v_receivable_details WHERE outstanding_amount > 0 AND project_id = ? ";

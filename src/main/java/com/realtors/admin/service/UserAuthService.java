@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -75,6 +77,7 @@ public class UserAuthService {
 		String token = jwtUtil.generateToken(email, userId.toString(), roleId);
 		String refToken = jwtUtil.generateRefreshToken(userId.toString());
 		tokenServce.storeTokens(userId.toString(), token, refToken);
+		Boolean forcePasswordChange = (Boolean) authData.get(0).get("force_password_change");
 
 		// Update lastLogin data
 		updateLastLogin(userId);
@@ -82,9 +85,77 @@ public class UserAuthService {
 		// Build return Value after successful login
 		List<ModulePermissionDto> returnDto = this.permissionService.findPermissionsByRole(roleId);
 		Map<String, Object> map = Map.of("accessToken", token, "refreshToken", refToken, "userId", userId.toString(),
-				"email", email, "roleId",roleId.toString(), "userType", userType);
+				"email", email, "roleId",roleId.toString(), "userType", userType, "forcePasswordChange", forcePasswordChange);
 		audit.auditAsync("user_auth", userId, EnumConstants.LOGIN);
 		return new LoginResponse(map, returnDto);
+	}
+	
+	public void changePassword(UUID userId, String oldPassword, String newPassword) {
+	    String sql = "SELECT password_hash FROM user_auth WHERE user_id=?";
+	    List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, userId);
+
+	    if (data.isEmpty()) {
+	        throw new IllegalArgumentException("User not found");
+	    }
+	    String currentHash = (String) data.get(0).get("password_hash");
+
+	    if (!passwordEncoder.matches(oldPassword, currentHash)) {
+	        throw new IllegalArgumentException("Old password is incorrect");
+	    }
+	    String newHash = passwordEncoder.encode(newPassword);
+	    jdbcTemplate.update(
+	        "UPDATE user_auth SET password_hash=?, force_password_change=false, failed_attempts=0 WHERE user_id=?",
+	        newHash, userId
+	    );
+
+	    audit.auditAsync("user_auth", userId, EnumConstants.UPDATE);
+	}
+	
+	public void generateResetToken(String email) {
+	    String sql = "SELECT user_id FROM user_auth WHERE username=?";
+	    List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, email);
+
+	    if (data.isEmpty()) {
+	        throw new IllegalArgumentException("User not found");
+	    }
+	    UUID userId = (UUID) data.get(0).get("user_id");
+	    String token = UUID.randomUUID().toString();
+
+	    jdbcTemplate.update(
+	        "INSERT INTO password_reset_token (user_id, token, expiry_time) VALUES (?, ?, ?)",
+	        userId, token, Timestamp.valueOf(LocalDateTime.now().plusMinutes(15))
+	    );
+
+	    // TODO: send email
+	    logger.info("RESET TOKEN: " + token);
+	}
+	
+	public void resetPassword(String token, String newPassword) {
+	    String sql = "SELECT * FROM password_reset_token WHERE token=?";
+	    List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, token);
+
+	    if (data.isEmpty()) {
+	        throw new IllegalArgumentException("Invalid token");
+	    }
+	    Map<String, Object> tokenData = data.get(0);
+	    boolean used = (Boolean) tokenData.get("used");
+	    Timestamp expiry = (Timestamp) tokenData.get("expiry_time");
+
+	    if (used || expiry.toLocalDateTime().isBefore(LocalDateTime.now())) {
+	        throw new IllegalArgumentException("Token expired or already used");
+	    }
+
+	    UUID userId = (UUID) tokenData.get("user_id");
+	    String newHash = passwordEncoder.encode(newPassword);
+	    jdbcTemplate.update(
+	        "UPDATE user_auth SET password_hash=?, force_password_change=false WHERE user_id=?",
+	        newHash, userId
+	    );
+	    jdbcTemplate.update(
+	        "UPDATE password_reset_token SET used=true WHERE token=?",
+	        token
+	    );
+	    audit.auditAsync("user_auth", userId, EnumConstants.UPDATE);
 	}
 	
 	 private boolean updateLastLogin(UUID userId) {

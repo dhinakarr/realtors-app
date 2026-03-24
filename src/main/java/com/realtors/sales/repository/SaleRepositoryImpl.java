@@ -1,7 +1,9 @@
 package com.realtors.sales.repository;
 
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -45,8 +47,35 @@ public class SaleRepositoryImpl implements SaleRepository {
         String placeholders = String.join( ",", Collections.nCopies(statuses.size(), "?"));
         String sql = "SELECT * FROM v_receivable_details " +
                      "WHERE sale_status IN (" + placeholders + ")";
+        logger.info("@SaleRepository.findSalesByStatus sql: {}", sql);
         return jdbc.query(sql, ROW_MAPPER, statuses.toArray());
     }
+	
+	@Override
+	public List<ReceivableDetailDTO> findSalesDetails(LocalDate fromDate, LocalDate toDate, List<String> statuses) {
+		if (statuses == null || statuses.isEmpty()) {
+            return List.of();
+        }
+		
+		StringBuilder sql = new StringBuilder(
+		        "SELECT * FROM v_receivable_details WHERE sale_status IN ("
+		    );
+		    String placeholders = String.join(",", Collections.nCopies(statuses.size(), "?"));
+		    sql.append(placeholders).append(")");
+
+		    List<Object> params = new ArrayList<>(statuses);
+		    if (fromDate != null) {
+		        sql.append(" AND sale_date >= ?");
+		        params.add(Date.valueOf(fromDate));
+		    }
+
+		    if (toDate != null) {
+		        sql.append(" AND sale_date <= ?");
+		        params.add(Date.valueOf(toDate));
+		    }
+		    logger.info("@SaleRepository.findSalesDetails sql: {}", sql);
+		    return jdbc.query(sql.toString(), ROW_MAPPER, params.toArray());
+	}
 	
 	@Override
 	public SaleDetailDTO getSaleDetails(UUID saleId) {
@@ -169,10 +198,10 @@ public class SaleRepositoryImpl implements SaleRepository {
 	
 	public BigDecimal getTotalSalesAmount(LocalDate from, LocalDate to) {
 	    String sql = """
-	        SELECT COALESCE(SUM(total_price), 0)
-	        FROM sales
+	        SELECT COALESCE(SUM(sale_amount), 0)
+	        FROM v_receivable_details
 	        WHERE sale_status IN ('BOOKED', 'IN_PROGRESS')
-	        AND created_at BETWEEN ? AND  ?
+	        AND sale_date BETWEEN ? AND  ?
 	    """;
 	    return jdbc.queryForObject(sql, BigDecimal.class, from, to);
 	}
