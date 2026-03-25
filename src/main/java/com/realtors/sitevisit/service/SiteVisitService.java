@@ -64,7 +64,7 @@ public class SiteVisitService extends AbstractBaseService<SiteVisitResponseDTO, 
 			// fetch customers for this visit
 			List<CustomerMiniDto> customers = repo
 					.findCustomers(visitId).stream().map(c -> new CustomerMiniDto(c.getCustomerId(),
-							c.getCustomerName(), c.getMobile(), c.getEmail(), c.getSoldBy()))
+							c.getCustomerName(), c.getMobile(), c.getEmail(), c.getSoldBy(), c.getAgentName()))
 					.collect(Collectors.toList());
 
 			// attach to the existing siteVisit DTO

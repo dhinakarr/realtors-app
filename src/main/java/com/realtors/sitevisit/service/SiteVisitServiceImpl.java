@@ -439,30 +439,53 @@ public class SiteVisitServiceImpl {
 	}
 
 	private Map<UUID, List<CustomerMiniDto>> fetchCustomers(List<UUID> siteVisitIds) {
-		if (siteVisitIds == null || siteVisitIds.isEmpty()) {
-			return Map.of();
-		}
 
-		String placeholders = siteVisitIds.stream().map(id -> "?").collect(Collectors.joining(","));
-		String sql = """
-				SELECT  svc.site_visit_id,  c.customer_id, c.customer_name, c.mobile, c.email
-				FROM site_visit_customers svc
-				JOIN customers c
-				  ON c.customer_id = svc.customer_id
-				WHERE svc.site_visit_id IN (""" + placeholders + ")";
+	    if (siteVisitIds == null || siteVisitIds.isEmpty()) {
+	        return Map.of();
+	    }
 
-		return jdbcTemplate.query(sql, siteVisitIds.toArray(), rs -> {
-			Map<UUID, List<CustomerMiniDto>> map = new HashMap<>();
-			while (rs.next()) {
-				UUID siteVisitId = rs.getObject("site_visit_id", UUID.class);
-				map.computeIfAbsent(siteVisitId, k -> new ArrayList<>())
-						.add(new CustomerMiniDto(rs.getObject("customer_id", UUID.class), rs.getString("customer_name"),
-								rs.getObject("mobile", Long.class), rs.getString("email"), null// ✅ safe
-				));
-			}
-			return map;
-		});
+	    String placeholders = siteVisitIds.stream()
+	            .map(id -> "?")
+	            .collect(Collectors.joining(","));
+
+	    String sql = """
+	        SELECT   svc.site_visit_id, c.customer_id, c.customer_name, c.mobile, c.email, c.created_by, u.full_name, u.employee_id
+	        FROM site_visit_customers svc
+	        JOIN customers c ON c.customer_id = svc.customer_id
+	        LEFT JOIN app_users u
+	          ON u.user_id = c.created_by
+	        WHERE svc.site_visit_id IN (""" + placeholders + ")";
+
+	    return jdbcTemplate.query(sql, siteVisitIds.toArray(), rs -> {
+
+	        Map<UUID, List<CustomerMiniDto>> map = new HashMap<>();
+
+	        while (rs.next()) {
+	            UUID siteVisitId = rs.getObject("site_visit_id", UUID.class);
+	            String fullName = rs.getString("full_name");
+	            String empId = rs.getString("employee_id");
+
+	            String agentName = null;
+	            if (fullName != null) {
+	                agentName = empId != null
+	                        ? fullName + " (" + empId + ")"
+	                        : fullName;
+	            }
+	            map.computeIfAbsent(siteVisitId, k -> new ArrayList<>())
+	               .add(new CustomerMiniDto(
+	                        rs.getObject("customer_id", UUID.class),
+	                        rs.getString("customer_name"),
+	                        rs.getObject("mobile", Long.class),
+	                        rs.getString("email"),
+	                        rs.getObject("created_by", UUID.class),
+	                        agentName   // ✅ NEW FIELD
+	               ));
+	        }
+
+	        return map;
+	    });
 	}
+	
 	public void deletePayments(UUID visitId, UUID paymentId) {
 		audit.auditAsync(TABLE_NAME, visitId, EnumConstants.DELETE);
 		paymentRepo.delete(paymentId, visitId);

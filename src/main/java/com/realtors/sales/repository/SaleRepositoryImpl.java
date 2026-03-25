@@ -214,11 +214,7 @@ public class SaleRepositoryImpl implements SaleRepository {
 	) {
 
 	    String sql = """
-	        SELECT
-	            s.sale_id,
-	            pl.plot_number,
-	            c.customer_name AS customer_name,
-	            (s.total_price - COALESCE(p.total_received, 0)) AS outstanding
+	        SELECT s.sale_id, pl.plot_number, c.customer_name AS customer_name,  (s.total_price - COALESCE(p.total_received, 0)) AS outstanding
 	        FROM sales s
 	        JOIN plot_units pl ON pl.plot_id = s.plot_id
 	        JOIN customers c ON c.customer_id = s.customer_id

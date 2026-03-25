@@ -15,4 +15,5 @@ public class CustomerMiniDto {
     private Long mobile;
     String email;
     private UUID soldBy;
+    private String agentName;
 }

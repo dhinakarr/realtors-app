@@ -348,21 +348,55 @@ public class CustomerRepository {
 		}
 		String inClause = String.join(",", Collections.nCopies(userIds.size(), "?"));
 		String sql = """
-				SELECT customer_id, customer_name, mobile, email, created_by
-				FROM customers
-				WHERE created_by IN (""" + inClause + ")";
+			    SELECT c.customer_id,  c.customer_name,  c.mobile, c.email, c.created_by, u.full_name, u.employee_id
+			    FROM customers c
+			    LEFT JOIN app_users u ON c.created_by = u.user_id
+			    WHERE c.created_by IN (""" + inClause + ")";
 
 		return jdbc.query(sql, userIds.toArray(),
-				(rs, rowNum) -> new CustomerMiniDto(rs.getObject("customer_id", java.util.UUID.class),
-						rs.getString("customer_name"), rs.getLong("mobile"), rs.getString("email"),
-						rs.getObject("created_by", java.util.UUID.class)));
+			    (rs, rowNum) -> {
+			        String fullName = rs.getString("full_name");
+			        String empId = rs.getString("employee_id");
+			        String agentName = null;
+			        if (fullName != null) {
+			            agentName = fullName + (empId != null ? " (" + empId + ")" : "");
+			        }
+			        return new CustomerMiniDto(
+			            rs.getObject("customer_id", UUID.class),
+			            rs.getString("customer_name"),
+			            rs.getLong("mobile"),
+			            rs.getString("email"),
+			            rs.getObject("created_by", UUID.class),
+			            agentName   // 👈 NEW FIELD
+			        );
+			    }
+			);
 	}
 
 	public List<CustomerMiniDto> getAllCustomers() {
-		String sql = "SELECT customer_id, customer_name, mobile, email, created_by FROM customers";
-		return jdbc.query(sql, (rs, rowNum) -> new CustomerMiniDto(rs.getObject("customer_id", java.util.UUID.class),
-						rs.getString("customer_name"), rs.getLong("mobile"), rs.getString("email"),
-						rs.getObject("created_by", java.util.UUID.class)));
+		String sql = """
+				SELECT c.customer_id,  c.customer_name,  c.mobile, c.email, c.created_by, u.full_name, u.employee_id
+			    FROM customers c
+			    LEFT JOIN app_users u ON c.created_by = u.user_id
+				""";
+		return jdbc.query(sql,
+			    (rs, rowNum) -> {
+			        String fullName = rs.getString("full_name");
+			        String empId = rs.getString("employee_id");
+			        String agentName = null;
+			        if (fullName != null) {
+			            agentName = fullName + (empId != null ? " (" + empId + ")" : "");
+			        }
+			        return new CustomerMiniDto(
+			            rs.getObject("customer_id", UUID.class),
+			            rs.getString("customer_name"),
+			            rs.getLong("mobile"),
+			            rs.getString("email"),
+			            rs.getObject("created_by", UUID.class),
+			            agentName   // 👈 NEW FIELD
+			        );
+			    }
+			);
 		
 	}
 }

@@ -136,13 +136,7 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 	@Override
 	public List<CashFlowItemDTO> getPayables(LocalDate from, LocalDate to) {
 		String sql = """
-					SELECT
-						sc.commission_id,
-						sc.sale_id,
-						pl.plot_number,
-						u.full_name AS agent_name,
-						sc.commission_amount,
-						sc.created_at
+					SELECT sc.commission_id, sc.sale_id, pl.plot_number, u.full_name AS agent_name, sc.commission_amount, sc.created_at
 					FROM sale_commissions sc
 					JOIN sales s ON s.sale_id = sc.sale_id
 					JOIN plot_units pl ON pl.plot_id = s.plot_id
