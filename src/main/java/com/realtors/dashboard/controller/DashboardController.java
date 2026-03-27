@@ -47,6 +47,7 @@ public class DashboardController {
          } else if (principal.hasRole(UserRole.MD) || principal.hasRole(UserRole.FINANCE)) {
         	 scope.setTeamView(true);
          }
+    	 
         scope.setFromDate(from);
         scope.setToDate(to);
         return dashboardService.getDashboard(scope);

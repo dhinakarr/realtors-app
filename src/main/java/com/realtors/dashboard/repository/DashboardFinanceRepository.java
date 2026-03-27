@@ -34,7 +34,6 @@ public class DashboardFinanceRepository {
 				           SUM(outstanding_amount) AS total_outstanding
 				    FROM v_receivable_details
 				""");
-
 		MapSqlParameterSource params = new MapSqlParameterSource();
 		List<String> conditions = new ArrayList<>();
 		

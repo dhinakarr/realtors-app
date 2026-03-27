@@ -70,11 +70,12 @@ public class DashboardSiteVisitRepository {
 	        }
 	    }
 	    if (scope.hasDateRange()) {
-	        conditions.add("sv.visit_date BETWEEN :fromDate AND :toDate");
-	    }
-	    if (scope.hasDateRange()) {
-	        conditions.add("sv.visit_date BETWEEN :fromDate AND :toDate");
-	    }
+		    conditions.add("sv.visit_date >= :fromDate");
+		    conditions.add("sv.visit_date < :toDate");
+
+		    params.addValue("fromDate", scope.getFromDate());
+		    params.addValue("toDate", scope.getToDate().plusDays(1));
+		}
 
 	    if (!conditions.isEmpty()) {
 	        sql.append(" WHERE ").append(String.join(" AND ", conditions));

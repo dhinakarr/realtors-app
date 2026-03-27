@@ -1721,7 +1721,7 @@ JOIN projects pr ON pr.project_id = pl.project_id
 WHERE p.payment_type = 'PAID';	
 
 =============================================================================
-14-Mar-2026:
+26-Mar-2026:
 =================
 CREATE OR REPLACE VIEW v_receivable_details AS
 SELECT
@@ -1731,7 +1731,7 @@ SELECT
 	(s.total_price - COALESCE(p.total_received, 0)) AS outstanding_amount,
     s.confirmed_at, s.sale_status, s.created_at as sale_date, u.manager_id,
     m.full_name AS manager_name, t.team_head_id,
-    t.team_head_name
+    t.team_head_name, pl.area
 FROM sales s
 JOIN projects pr ON pr.project_id = s.project_id
 JOIN plot_units pl ON pl.plot_id = s.plot_id
@@ -1777,5 +1777,12 @@ WITH RECURSIVE hierarchy AS (
     JOIN hierarchy h ON u.manager_id = h.user_id
 )
 SELECT * FROM hierarchy;
-
-
+=========================================================================
+27-Mar-26
+=============================
+UPDATE user_auth ua
+SET user_type = r.finance_role
+FROM roles r
+WHERE ua.role_id = r.role_id
+  AND r.finance_role IS NOT NULL
+  AND ua.user_type IS DISTINCT FROM r.finance_role;

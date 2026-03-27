@@ -5,6 +5,7 @@ import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.EmployeeCode;
 import com.realtors.admin.dto.ListUserDto;
 import com.realtors.admin.dto.PagedResult;
+import com.realtors.admin.dto.RoleDto;
 import com.realtors.admin.dto.UserBasicDto;
 import com.realtors.admin.dto.UserDocumentDto;
 import com.realtors.admin.dto.UserFlatDto;
@@ -49,6 +50,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	private final EmployeeCodeService codeService;
 	private NamedParameterJdbcTemplate namedJdbcTemplate;
 	private final FileSavingService fileService;
+	private final RoleService roleService;
 
 	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -57,17 +59,22 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 			new LookupDefinition("app_users", "app_users", "manager_id", "full_name", "managerName"));
 
 	public UserService(JdbcTemplate jdbcTemplate, AuditTrailService audit, UserAuthService userAuthService,
-			EmployeeCodeService codeService, FileSavingService fileService, NamedParameterJdbcTemplate namedJdbcTemplate) {
+			EmployeeCodeService codeService, FileSavingService fileService,
+			NamedParameterJdbcTemplate namedJdbcTemplate, RoleService roleService) {
 		super(AppUserDto.class, "app_users", jdbcTemplate, Set.of("role_name", "managerName"));
 		// Add multiple foreign key lookups
 		addDependentLookup("role_id", "roles", "role_id", "role_name", "roleName");
-		addDependentLookup("manager_id", "app_users", "user_id", "full_name", "managerName");
+		addDependentLookup("user_id", "app_users", "user_id", "full_name", "fullName",
+				"CONCAT({alias}.full_name, ' ( ', {alias}.employee_id, ')')");
+		addDependentLookup("manager_id", "app_users", "user_id", "full_name", "managerName",
+				"CONCAT({alias}.full_name, ' ( ', {alias}.employee_id, ')')");
 		this.jdbcTemplate = jdbcTemplate;
 		this.audit = audit;
 		this.userAuthService = userAuthService;
 		this.codeService = codeService;
 		this.fileService = fileService;
-		this.namedJdbcTemplate=namedJdbcTemplate; 
+		this.namedJdbcTemplate = namedJdbcTemplate;
+		this.roleService = roleService;
 	}
 
 	@Override
@@ -116,7 +123,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		docDto.setFilePath(imagePathUrl);
 		docDto.setUploadedAt(LocalDateTime.now());
 		docDto.setUploadedBy(AppUtil.getCurrentUserId());
-		
+
 		save(docDto);
 		audit.auditAsync("app_users", userId, EnumConstants.UPDATE);
 	}
@@ -132,14 +139,11 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	}
 
 	public UserDocumentDto findByDocumentId(Long docId) {
-		List<UserDocumentDto> list = jdbcTemplate.query(
-		        "SELECT * FROM user_documents WHERE document_id = ?",
-		        new BeanPropertyRowMapper<>(UserDocumentDto.class),
-		        docId
-		    );
-		    return list.isEmpty() ? null : list.get(0);
+		List<UserDocumentDto> list = jdbcTemplate.query("SELECT * FROM user_documents WHERE document_id = ?",
+				new BeanPropertyRowMapper<>(UserDocumentDto.class), docId);
+		return list.isEmpty() ? null : list.get(0);
 	}
-	
+
 	public void deleteDocument(Long docId) {
 		UserDocumentDto dto = findByDocumentId(docId);
 		UUID userId = dto.getUserId();
@@ -148,11 +152,11 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		delete(docId);
 		audit.auditAsync("app_users", userId, EnumConstants.DELETE_DOCUMENT);
 	}
-	
+
 	private void delete(Long docId) {
 		jdbcTemplate.update("DELETE FROM user_documents WHERE document_id = ?", docId);
 	}
-	
+
 	public List<UserDocumentDto> findDocumentsByUserId(UUID userId) {
 		String sql = "SELECT *  FROM user_documents WHERE user_id = ?";
 		return jdbcTemplate.query(sql, new Object[] { userId }, (rs, rowNum) -> {
@@ -168,7 +172,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 			return d;
 		});
 	}
-	
+
 	public List<UserMiniDto> getUsersByRole(UUID roleId) {
 		String sql = "SELECT user_id, full_name, employee_id from app_users where role_id=?";
 		return jdbcTemplate.query(sql, new Object[] { roleId }, (rs, rowNum) -> {
@@ -216,8 +220,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		String hashedPassword = passwordEncoder.encode("Test@123");
 		data.setPasswordHash(hashedPassword);
 
-		if (userExists(data.getEmail(), data.getMobile())) {
-			throw new IllegalArgumentException("Register with different Email.");
+		if (userAuthService.emailExists(data.getEmail(), data.getMobile())) {
+			throw new IllegalArgumentException(data.getEmail() +" exists, please register with different Email.");
 		}
 
 		byte[] imageBytes = null;
@@ -244,10 +248,11 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				: new HashMap<>(); // or empty map
 		data.setMeta(metaMap);
 		Map<String, Object> updatedMap = mapper.convertValue(data, Map.class);
+		String roleType = roleService.findById(data.getRoleId()).orElse(null).getFinanceRole();
 		AppUserDto obj = super.createWithFiles(updatedMap);
-		userAuthService.createUserAuth(obj.getUserId(), obj.getEmail(), null, obj.getRoleId(), obj.getMobile(), null);
+		userAuthService.createUserAuth(obj.getUserId(), obj.getEmail(), null, obj.getRoleId(), obj.getMobile(),
+				roleType);
 		audit.auditAsync("app_users", obj.getUserId(), EnumConstants.CREATE_WITH_FILES);
-		// You can use a GenericInsertUtil that supports files
 		return obj;
 	}
 
@@ -359,7 +364,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				        FROM app_users u
 				        JOIN subordinates s ON u.manager_id = s.user_id
 				    )
-				    SELECT u.user_id, u.full_name, u.mobile, u.email, u.employee_id, u.manager_id, m.full_name AS manager_name, u.role_id,  r.role_name, u.status
+				    SELECT u.user_id, u.full_name || ' (' || u.employee_id || ')' AS full_name, u.mobile, u.email, u.employee_id, 
+				    u.manager_id, m.full_name || ' (' || m.employee_id || ')'  AS manager_name, u.role_id,  r.role_name, u.status
 				    FROM app_users u
 				    LEFT JOIN app_users m ON m.user_id = u.manager_id
 				    LEFT JOIN roles r ON r.role_id = u.role_id

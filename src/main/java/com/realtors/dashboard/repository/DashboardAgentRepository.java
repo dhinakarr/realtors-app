@@ -32,14 +32,16 @@ public class DashboardAgentRepository {
 	            team_head_id AS agent_id,
 	            team_head_name AS agent_name,
 	            COUNT(sale_id) AS total_sales,
-	            SUM(sale_amount) AS sales_value
+	            COALESCE(SUM(sale_amount), 0) AS sales_value,
+	        	COALESCE(SUM(area), 0) AS total_area
 	        """);
 	    } else {
 	        sql.append("""
 	            agent_id,
 	            agent_name,
 	            COUNT(sale_id) AS total_sales,
-	            SUM(sale_amount) AS sales_value
+	            COALESCE(SUM(sale_amount), 0) AS sales_value,
+	        	COALESCE(SUM(area), 0) AS total_area
 	        """);
 	    }
 
@@ -62,6 +64,14 @@ public class DashboardAgentRepository {
 	        conditions.add("project_id IN (:projectIds)");
 	        params.addValue("projectIds", scope.getProjectIds());
 	    }
+	    
+	    if (scope.hasDateRange()) {
+		    conditions.add("sale_date >= :fromDate");
+		    conditions.add("sale_date < :toDate");
+
+		    params.addValue("fromDate", scope.getFromDate());
+		    params.addValue("toDate", scope.getToDate().plusDays(1));
+		}
 
 	    if (!conditions.isEmpty()) {
 	        sql.append(" WHERE ").append(String.join(" AND ", conditions));
@@ -74,7 +84,7 @@ public class DashboardAgentRepository {
 	    }
 
 	    sql.append(" ORDER BY sales_value DESC");
-logger.info("@DashboardAgentRepository.fetchAgentPerformance sql: "+ sql);
+//logger.info("@DashboardAgentRepository.fetchAgentPerformance sql: "+ sql);
 	    return jdbc.query(sql.toString(), params,
 	            new BeanPropertyRowMapper<>(AgentPerformanceDTO.class));
 	}

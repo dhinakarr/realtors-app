@@ -57,6 +57,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		public final String idColumn;
 		public final String nameColumn;
 		public final String resultAlias;
+		public String selectExpression;
 
 		public DependentLookup(String tableName, String idColumn, String nameColumn, String resultAlias) {
 			this.tableName = tableName;
@@ -64,11 +65,25 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 			this.nameColumn = nameColumn;
 			this.resultAlias = resultAlias;
 		}
+
+		public DependentLookup(String tableName, String idColumn, String nameColumn, String resultAlias,
+				String selectExpression) {
+			this.tableName = tableName;
+			this.idColumn = idColumn;
+			this.nameColumn = nameColumn;
+			this.resultAlias = resultAlias;
+			this.selectExpression = selectExpression;
+		}
 	}
 
 	protected void addDependentLookup(String fkColumn, String lookupTable, String idColumn, String nameColumn,
 			String resultAlias) {
 		dependentLookups.put(fkColumn, new DependentLookup(lookupTable, idColumn, nameColumn, resultAlias));
+	}
+
+	protected void addDependentLookup(String fkColumn, String lookupTable, String idColumn, String nameColumn,
+			String resultAlias, String selectExpression) {
+		dependentLookups.put(fkColumn, new DependentLookup(lookupTable, idColumn, nameColumn, resultAlias, selectExpression));
 	}
 
 	@Override
@@ -207,6 +222,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 		int offset = page * size;
 		String sql = buildSelectWithLookups("t") + " WHERE t.status = ? ORDER BY t.updated_at DESC LIMIT ? OFFSET ?";
+//		logger.info("@AbstractBaseService.findAllPaginated sql: "+ sql);
 		List<T> results = jdbcTemplate.query(sql, new JsonAwareRowMapper<>(dtoClass), status, size, offset);
 		return new PagedResult<>(results, page, size, total, (int) Math.ceil((double) total / size));
 	}
@@ -227,8 +243,17 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 			String alias = "j" + joinIndex;
 
 			// Use lookup.resultAlias for the final SELECT alias
-			sb.append(", ").append(alias).append(".").append(lookup.nameColumn).append(" AS ")
-					.append(lookup.resultAlias); // <-- GENERIC CHANGE HERE
+			if (lookup.selectExpression != null && !lookup.selectExpression.isEmpty()) {
+			    sb.append(", ")
+			      .append(lookup.selectExpression.replace("{alias}", alias))
+			      .append(" AS ")
+			      .append(lookup.resultAlias);
+			} else {
+			    sb.append(", ")
+			      .append(alias).append(".").append(lookup.nameColumn)
+			      .append(" AS ")
+			      .append(lookup.resultAlias);
+			}
 			joinIndex++;
 		}
 
@@ -439,8 +464,10 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 					&& m.getLookupTable() == null && m.getLookupKey() != null && !m.getLookupKey().isBlank()) {
 				try {
 					ObjectMapper mapper = new ObjectMapper();
-					List<String> keys = mapper.readValue(m.getLookupKey(), new TypeReference<List<String>>() {});
-					List<String> values = mapper.readValue(m.getLookupLabel(), new TypeReference<List<String>>() {});
+					List<String> keys = mapper.readValue(m.getLookupKey(), new TypeReference<List<String>>() {
+					});
+					List<String> values = mapper.readValue(m.getLookupLabel(), new TypeReference<List<String>>() {
+					});
 
 					List<Map<String, Object>> optionMaps = new ArrayList<>();
 					int size = Math.min(keys.size(), values.size());

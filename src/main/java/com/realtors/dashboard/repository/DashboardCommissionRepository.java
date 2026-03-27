@@ -32,7 +32,6 @@ public class DashboardCommissionRepository {
 				           SUM(commission_payable) AS commission_payable
 				    FROM v_commission_payable_details
 				""");
-
 		MapSqlParameterSource params = new MapSqlParameterSource();
 		List<String> conditions = new ArrayList<>();
 
@@ -47,7 +46,11 @@ public class DashboardCommissionRepository {
 			}
 		}
 		if (scope.hasDateRange()) {
-		    conditions.add("confirmed_at BETWEEN :fromDate AND :toDate");
+		    conditions.add("confirmed_at >= :fromDate");
+		    conditions.add("confirmed_at < :toDate");
+
+		    params.addValue("fromDate", scope.getFromDate());
+		    params.addValue("toDate", scope.getToDate().plusDays(1));
 		}
 
 		if (!conditions.isEmpty()) {

@@ -142,7 +142,7 @@ public class UserPerformanceRepository {
 
     public List<CommissionDetailsDTO> fetchCommission(UUID userId, LocalDate fromDate, LocalDate toDate) {
         String sql = """
-            SELECT sc.commission_id, proj.project_name, sc.agent_name, sc.sale_amount, sc.base_amount, sc.commission_paid, 
+            SELECT sc.commission_id, proj.project_name, sc.plot_number, sc.agent_name, sc.sale_amount, sc.base_amount, sc.commission_paid, 
                    sc.total_commission,  sc.confirmed_at
             FROM v_commission_payable_details sc
             JOIN projects proj ON proj.project_id = sc.project_id
@@ -160,6 +160,7 @@ public class UserPerformanceRepository {
                     dto.setCommissionId(UUID.fromString(rs.getString("commission_id")));
                     dto.setAgentName(rs.getString("agent_name"));
                     dto.setProjectName(rs.getString("project_name"));
+                    dto.setPlotNumber(rs.getString("plot_number"));
                     dto.setSaleAmount(rs.getBigDecimal("sale_amount"));
                     dto.setBaseAmount(rs.getBigDecimal("base_amount"));
                     dto.setTotalCommission(rs.getBigDecimal("total_commission"));

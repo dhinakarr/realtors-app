@@ -117,7 +117,13 @@ public class ProjectRepository {
 					    d.file_name AS d_file_name,
 					    d.file_path AS d_file_path,
 					    d.uploaded_by,
-					    d.uploaded_at
+					    d.uploaded_at,
+					    
+					    -- INVENTORY
+					    inv.total_plots AS inv_total_plots,
+					    inv.available AS inv_available,
+					    inv.booked AS inv_booked,
+					    inv.sold AS inv_sold
 
 					FROM projects p
 
@@ -130,6 +136,18 @@ public class ProjectRepository {
 
 					LEFT JOIN project_documents d
 					       ON p.project_id = d.project_id
+					       
+					-- 🔥 NEW JOIN
+					LEFT JOIN (
+					    SELECT 
+					        project_id,
+					        COUNT(*) AS total_plots,
+					        COUNT(*) FILTER (WHERE inventory_status = 'AVAILABLE') AS available,
+					        COUNT(*) FILTER (WHERE inventory_status IN ('BOOKED','IN_PROGRESS')) AS booked,
+					        COUNT(*) FILTER (WHERE inventory_status IN ('SOLD','COMPLETED')) AS sold
+					    FROM v_inventory_status
+					    GROUP BY project_id
+					) inv ON p.project_id = inv.project_id
 
 					WHERE p.status = 'ACTIVE'
 					ORDER BY p.created_at DESC;
@@ -163,11 +181,29 @@ public class ProjectRepository {
 					    d.file_name AS d_file_name,
 					    d.file_path AS d_file_path,
 					    d.uploaded_by,
-					    d.uploaded_at
+					    d.uploaded_at,
+					    
+					    -- INVENTORY
+					    inv.total_plots AS inv_total_plots,
+					    inv.available AS inv_available,
+					    inv.booked AS inv_booked,
+					    inv.sold AS inv_sold
 
 					FROM projects p
 					LEFT JOIN projects_files f ON p.project_id = f.project_id
 					LEFT JOIN project_documents d ON p.project_id = d.project_id
+					
+					-- 🔥 NEW JOIN
+					LEFT JOIN (
+					    SELECT 
+					        project_id,
+					        COUNT(*) AS total_plots,
+					        COUNT(*) FILTER (WHERE inventory_status = 'AVAILABLE') AS available,
+					        COUNT(*) FILTER (WHERE inventory_status IN ('BOOKED','IN_PROGRESS')) AS booked,
+					        COUNT(*) FILTER (WHERE inventory_status IN ('SOLD','COMPLETED')) AS sold
+					    FROM v_inventory_status
+					    GROUP BY project_id
+					) inv ON p.project_id = inv.project_id
 
 					WHERE p.status = 'ACTIVE'
 					  AND p.project_id = ?
@@ -216,6 +252,11 @@ public class ProjectRepository {
 				if (pUpdatedAt != null) {
 					project.setUpdatedAt(pUpdatedAt.toInstant());
 				}
+				
+				project.setTotalPlots(rs.getInt("inv_total_plots"));
+				project.setAvailablePlots(rs.getInt("inv_available"));
+				project.setBookedPlots(rs.getInt("inv_booked"));
+				project.setSoldPlots(rs.getInt("inv_sold"));
 
 				project.setStatus(rs.getString("status"));
 				projectMap.put(projectId, project);

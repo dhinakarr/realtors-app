@@ -15,4 +15,5 @@ public class AgentPerformanceDTO {
     private String agentName;
     private long totalSales;
     private BigDecimal salesValue;
+    private BigDecimal totalArea;
 }

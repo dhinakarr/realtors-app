@@ -51,7 +51,7 @@ public class SiteVisitRepository {
 
 	    sql.append(" AND sv.site_visit_id = :siteVisitId ");
 	    sql.append("""
-	        GROUP BY sv.site_visit_id, sv.visit_date, sv.user_id, u.full_name,
+	        GROUP BY sv.site_visit_id, sv.visit_date, sv.user_id, u.full_name, u.employee_id,
 	                 sv.project_id, p.project_name, sv.vehicle_type,
 	                 sv.expense_amount, sv.remarks,
 	                 acc.total_paid, acc.balance, acc.status
@@ -137,7 +137,7 @@ public class SiteVisitRepository {
 
 	    // Always group when using STRING_AGG
 	    sql.append("""
-	        GROUP BY sv.site_visit_id, sv.visit_date, sv.user_id, u.full_name, sv.project_id, p.project_name, sv.vehicle_type,  sv.expense_amount,
+	        GROUP BY sv.site_visit_id, sv.visit_date, sv.user_id, u.full_name, u.employee_id, sv.project_id, p.project_name, sv.vehicle_type,  sv.expense_amount,
 	            sv.remarks,  acc.total_paid, acc.balance, acc.status
 	        ORDER BY sv.visit_date DESC
 	    """);
@@ -171,7 +171,13 @@ public class SiteVisitRepository {
 	            UNION ALL
 	            SELECT u.user_id FROM app_users u  JOIN allowed_users au ON u.manager_id = au.user_id
 	        )
-	        SELECT sv.site_visit_id,  sv.visit_date, sv.user_id, u.full_name AS username, sv.project_id, p.project_name AS project_name, sv.vehicle_type,
+	        SELECT sv.site_visit_id,  sv.visit_date, sv.user_id, CONCAT(u.full_name, 
+				       CASE 
+				           WHEN u.employee_id IS NOT NULL 
+				           THEN CONCAT(' (', u.employee_id, ')') 
+				           ELSE '' 
+				       END
+				) AS username, sv.project_id, p.project_name AS project_name, sv.vehicle_type,
 	            sv.expense_amount, sv.remarks, acc.total_paid, acc.balance, acc.status,
 	            STRING_AGG(c.customer_name, ', ' ORDER BY c.customer_name) AS customer_names
 	        FROM site_visits sv
