@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.realtors.common.ApiResponse;
 import com.realtors.projects.controller.ProjectController;
+import com.realtors.projects.dto.PlotDetailsDto;
 import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.dto.ProjectDetailDto;
 import com.realtors.projects.dto.ProjectSummaryDto;
@@ -50,9 +51,9 @@ public class GreetingController {
 	}
     
     @GetMapping("/plots/{id}")
-	public ResponseEntity<ApiResponse<PlotUnitDto>> getPlotData(@PathVariable String id) {
+	public ResponseEntity<ApiResponse<PlotDetailsDto>> getPlotData(@PathVariable String id) {
 		UUID plotId = UUID.fromString(id);
-		PlotUnitDto plot = plotService.getByPlotId(plotId); // active projects only
+		PlotDetailsDto plot = plotService.getDetailsPlotId(plotId); // active projects only
 		return ResponseEntity.ok(ApiResponse.success("Projects Fetched", plot, HttpStatus.OK));
 	}
 }

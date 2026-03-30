@@ -12,6 +12,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.AntPathMatcher;
@@ -27,12 +29,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtUtil jwtUtil;
 	private final TokenCacheService tokenCacheService;
+	private final JdbcTemplate jdbcTemplate;
 	private final List<String> excludeUrls;
 	private final AntPathMatcher matcher = new AntPathMatcher();
 
-	public JwtAuthenticationFilter(JwtUtil jwtUtil, TokenCacheService tokenCacheService) {
+	public JwtAuthenticationFilter(JwtUtil jwtUtil, TokenCacheService tokenCacheService, JdbcTemplate jdbcTemplate) {
 		this.jwtUtil = jwtUtil;
 		this.tokenCacheService = tokenCacheService;
+		this.jdbcTemplate = jdbcTemplate;
 
 		this.excludeUrls = List.of("/api/auth/**", "/api/public/**", "/api/projects/file/**", "/", "/index.html",
 				"/favicon.ico", "/assets/**", "/**/*.js", "/**/*.css", "/**/*.png", "/error");
@@ -54,7 +58,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	    }
 
 		String authHeader = request.getHeader("Authorization");
-
 		try {
 			if (authHeader != null && authHeader.startsWith("Bearer ")) {
 				String token = authHeader.substring(7);
@@ -67,17 +70,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 					String roleCode = claims.get("roleCode", String.class);
 					UserRole role = UserRole.from(roleCode);
 					
-					UserPrincipalDto principal = new UserPrincipalDto(userUuid, Set.of(role), roleId);
+					Integer roleLevel = jdbcTemplate.query(
+						    "SELECT role_level FROM roles WHERE role_id = ?",
+						    rs -> rs.next() ? rs.getInt("role_level") : null,
+						    roleId);
+					
+					UserPrincipalDto principal = new UserPrincipalDto(userUuid, Set.of(role), roleId, roleLevel);
 					principal.setUserId(userUuid);
 					principal.setRoles(Set.of(role));
 					principal.setRoleId(roleId);
-
+					principal.setRoleLevel(roleLevel);
+					
 					UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-
 					SecurityContextHolder.getContext().setAuthentication(auth);
-
-					AuditContext.setContext(request.getRemoteAddr(), request.getHeader("User-Agent"),
-							UUID.fromString(userId));
+					AuditContext.setContext(request.getRemoteAddr(), request.getHeader("User-Agent"), UUID.fromString(userId));
 				} else {
 					log.warn("JWT token invalid or revoked");
 				}

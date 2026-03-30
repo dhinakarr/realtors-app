@@ -2,6 +2,8 @@ package com.realtors.admin.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +16,7 @@ import com.realtors.common.util.AppUtil;
 import com.realtors.common.util.GenericInsertUtil;
 import com.realtors.common.util.GenericUpdateUtil;
 import com.realtors.common.util.JsonAwareRowMapper;
+import com.realtors.dashboard.dto.UserPrincipalDto;
 
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -83,7 +86,8 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 	protected void addDependentLookup(String fkColumn, String lookupTable, String idColumn, String nameColumn,
 			String resultAlias, String selectExpression) {
-		dependentLookups.put(fkColumn, new DependentLookup(lookupTable, idColumn, nameColumn, resultAlias, selectExpression));
+		dependentLookups.put(fkColumn,
+				new DependentLookup(lookupTable, idColumn, nameColumn, resultAlias, selectExpression));
 	}
 
 	@Override
@@ -244,15 +248,11 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 			// Use lookup.resultAlias for the final SELECT alias
 			if (lookup.selectExpression != null && !lookup.selectExpression.isEmpty()) {
-			    sb.append(", ")
-			      .append(lookup.selectExpression.replace("{alias}", alias))
-			      .append(" AS ")
-			      .append(lookup.resultAlias);
+				sb.append(", ").append(lookup.selectExpression.replace("{alias}", alias)).append(" AS ")
+						.append(lookup.resultAlias);
 			} else {
-			    sb.append(", ")
-			      .append(alias).append(".").append(lookup.nameColumn)
-			      .append(" AS ")
-			      .append(lookup.resultAlias);
+				sb.append(", ").append(alias).append(".").append(lookup.nameColumn).append(" AS ")
+						.append(lookup.resultAlias);
 			}
 			joinIndex++;
 		}
@@ -401,6 +401,15 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		return new PagedResult<>(results, page, size, total, (int) Math.ceil((double) total / size));
 	}
 
+	private Map<String, Object> getDynamicContext() {
+		Map<String, Object> ctx = new HashMap<>();
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		UserPrincipalDto user = (UserPrincipalDto) auth.getPrincipal();
+		ctx.put("currentUserId", user.getUserId());
+		ctx.put("currentUserRoleLevel", user.getRoleLevel());
+		return ctx;
+	}
+
 	// ---------------------------
 	// 1) Fetch metadata rows and parse extra_settings
 	public List<DynamicFormMetaRow> getMetaRows() {
@@ -408,18 +417,9 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		return jdbcTemplate.query(sql, new JsonAwareRowMapper<>(DynamicFormMetaRow.class), this.tableName);
 	}
 
-	public Map<String, List<Map<String, Object>>> getLookupData(List<LookupDefinition> lookupDefs) {
-		Map<String, List<Map<String, Object>>> lookupMap = new HashMap<>();
-
-		for (LookupDefinition def : lookupDefs) {
-			List<Map<String, Object>> data = loadLookupData(def.tableName(), def.keyColumn(), def.valueColumn());
-			lookupMap.put(def.lookupKey(), data);
-		}
-		return lookupMap;
-	}
-
 	// 2) Load lookup rows for a lookup_table
-	public List<Map<String, Object>> loadLookupData(String lookupTable, String keyColumn, String valueColumn) {
+	public List<Map<String, Object>> loadLookupData(String lookupTable, String keyColumn, String valueColumn,
+			String filter) {
 
 		String valueExpr = valueColumn;
 		// Special formatting for user lookup
@@ -427,15 +427,29 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 			valueExpr = "full_name || ' (' || employee_id || ')'";
 		}
 
-		String sql = String.format("SELECT %s AS key, %s AS value FROM %s ORDER BY %s", keyColumn, valueExpr,
-				lookupTable, valueColumn);
+		String sql = String.format("SELECT %s AS key, %s AS value FROM %s", keyColumn, valueExpr, lookupTable);
+		List<Object> params = new ArrayList<>();
 
+		// 🔥 Apply dynamic filter
+		if (filter != null && !filter.isBlank()) {
+			Map<String, Object> context = getDynamicContext();
+
+			for (Map.Entry<String, Object> entry : context.entrySet()) {
+				String placeholder = ":" + entry.getKey();
+				if (filter.contains(placeholder)) {
+					filter = filter.replace(placeholder, "?");
+					params.add(entry.getValue());
+				}
+			}
+			sql += " WHERE " + filter;
+		}
+		sql += " ORDER BY " + valueColumn;
 		return jdbcTemplate.query(sql, (rs, rowNum) -> {
 			Map<String, Object> m = new HashMap<>();
 			m.put("key", rs.getObject("key"));
 			m.put("value", rs.getObject("value"));
 			return m;
-		});
+		}, params.toArray());
 	}
 
 	// 3) Build final DynamicFormResponseDto
@@ -446,9 +460,17 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 
 		for (DynamicFormMetaRow m : meta) {
 			String apiField = toCamel(m.getColumnName());
+			
+			Map<String, Object> extra = m.getExtraSettings();
+
+			String filter = null;
+			if (extra != null && extra.containsKey("filter")) {
+			    filter = (String) extra.get("filter");
+			}
+			
 			DynamicFormMetaRow row = new DynamicFormMetaRow(m.getTableName(), m.getColumnName(), m.getDisplayLabel(),
 					m.getFieldType(), m.getRequired(), m.getHidden(), m.getLookupTable(), m.getLookupKey(),
-					m.getLookupLabel(), m.getExtraSettings(), m.getSortOrder(), null, null);
+					m.getLookupLabel(), m.getExtraSettings(), m.getSortOrder(), null, null, filter);
 
 			row.setApiField(apiField);
 			newMeta.add(row);
@@ -457,7 +479,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 			if (m.getLookupTable() != null && m.getLookupKey() != null && m.getLookupLabel() != null) {
 
 				List<Map<String, Object>> lookupRows = loadLookupData(m.getLookupTable(), m.getLookupKey(),
-						m.getLookupLabel());
+						m.getLookupLabel(), filter);
 				row.setLookupData(lookupRows);
 			}
 			if (("radio".equalsIgnoreCase(m.getFieldType()) || "select".equalsIgnoreCase(m.getFieldType()))
@@ -484,10 +506,10 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 			} else if ("checkbox".equalsIgnoreCase(m.getFieldType())) {
 				row.setLookupData(Collections.emptyList());
 
-				Map<String, Object> extra = new HashMap<>();
-				extra.put("booleanField", true);
-				extra.put("inputType", "checkbox"); // frontend hint
-				row.setExtraSettings(extra);
+				Map<String, Object> extraSet = new HashMap<>();
+				extraSet.put("booleanField", true);
+				extraSet.put("inputType", "checkbox"); // frontend hint
+				row.setExtraSettings(extraSet);
 			}
 		}
 		String[] idArr = getIdColumn().split(",\\s*");

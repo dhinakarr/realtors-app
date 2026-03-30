@@ -24,4 +24,5 @@ public class DynamicFormMetaRow {
     private Integer sortOrder;
     private List<Map<String,Object>> lookupData;
     private String apiField;
+    private String filter;
 }

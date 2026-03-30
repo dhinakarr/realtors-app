@@ -39,7 +39,6 @@ public class DashboardScopeService {
 			return DashboardScope.builder()
 					.all(true)
 					.userId(userId)
-					.userIds(Set.of(userId))
 					.permissions(permissions)
 					.build();
 		}

@@ -47,7 +47,6 @@ public class SaleRepositoryImpl implements SaleRepository {
         String placeholders = String.join( ",", Collections.nCopies(statuses.size(), "?"));
         String sql = "SELECT * FROM v_receivable_details " +
                      "WHERE sale_status IN (" + placeholders + ")";
-        logger.info("@SaleRepository.findSalesByStatus sql: {}", sql);
         return jdbc.query(sql, ROW_MAPPER, statuses.toArray());
     }
 	
@@ -73,7 +72,6 @@ public class SaleRepositoryImpl implements SaleRepository {
 		        sql.append(" AND sale_date <= ?");
 		        params.add(Date.valueOf(toDate));
 		    }
-		    logger.info("@SaleRepository.findSalesDetails sql: {}", sql);
 		    return jdbc.query(sql.toString(), ROW_MAPPER, params.toArray());
 	}
 	

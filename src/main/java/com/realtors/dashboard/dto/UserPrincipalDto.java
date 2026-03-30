@@ -21,11 +21,13 @@ public class UserPrincipalDto implements UserDetails {
 	private UUID userId;
 	private UUID roleId;
     private Set<UserRole> roles;
+    private int roleLevel;
     
-    public UserPrincipalDto(UUID userId, Set<UserRole> roles, UUID roleId) {
+    public UserPrincipalDto(UUID userId, Set<UserRole> roles, UUID roleId, int roleLevel) {
         this.userId = userId;
         this.roles = roles;
         this.roleId = roleId;
+        this.roleLevel = roleLevel;
     }
 
     public boolean hasRole(UserRole role) {
@@ -39,7 +41,11 @@ public class UserPrincipalDto implements UserDetails {
     public UUID getRoleId() {
         return roleId;
     }
-
+    
+    public int getRoleLevel() {
+        return roleLevel;
+    }
+    
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()

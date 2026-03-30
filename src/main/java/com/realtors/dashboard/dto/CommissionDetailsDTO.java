@@ -35,6 +35,7 @@ public class CommissionDetailsDTO {
     private BigDecimal commissionEligible;
     private BigDecimal commissionPayable;
     private LocalDate paymentDate;
+    private LocalDate saleDate;
     private String saleStatus;
     private LocalDate confirmedAt;
 

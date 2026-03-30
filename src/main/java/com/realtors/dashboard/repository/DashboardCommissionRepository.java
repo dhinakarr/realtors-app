@@ -1,6 +1,8 @@
 package com.realtors.dashboard.repository;
 
 import java.util.List;
+import java.sql.Types;
+import java.util.UUID;
 import java.util.ArrayList;
 
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.realtors.dashboard.dto.CommissionDetailsDTO;
 import com.realtors.dashboard.dto.CommissionSummaryDTO;
 import com.realtors.dashboard.dto.DashboardScope;
 
@@ -59,6 +62,41 @@ public class DashboardCommissionRepository {
 		sql.append(" GROUP BY agent_id, agent_name");
 		sql.append(" ORDER BY commission_payable DESC");
 		return jdbc.query(sql.toString(), params, new BeanPropertyRowMapper<>(CommissionSummaryDTO.class));
+	}
+	
+	public List<CommissionDetailsDTO> getCommissionDetails(DashboardScope scope) {
+		StringBuilder sql = new StringBuilder("""
+				    SELECT * 
+				    FROM v_commission_payable_details
+				""");
+		MapSqlParameterSource params = new MapSqlParameterSource();
+		List<String> conditions = new ArrayList<>();
+
+		if (!scope.isAll()) {
+			if (scope.getUserIds() != null && !scope.getUserIds().isEmpty()) {
+				conditions.add("agent_id IN (:userIds)");
+				params.addValue("userIds", scope.getUserIds());
+			}
+
+			if (scope.hasProjectScope() && scope.getProjectIds() != null && !scope.getProjectIds().isEmpty()) {
+				conditions.add("project_id IN (:projectIds)");
+				params.addValue("projectIds", scope.getProjectIds());
+			}
+		}
+		if (scope.hasDateRange()) {
+		    conditions.add("confirmed_at >= :fromDate");
+		    conditions.add("confirmed_at < :toDate");
+
+		    params.addValue("fromDate", scope.getFromDate());
+		    params.addValue("toDate", scope.getToDate().plusDays(1));
+		}
+
+		if (!conditions.isEmpty()) {
+			sql.append(" WHERE ").append(String.join(" AND ", conditions));
+		}
+//		sql.append(" GROUP BY agent_id, agent_name");
+//		sql.append(" ORDER BY confirmed_at DESC DESC");
+		return jdbc.query(sql.toString(), params, new CommissionRowMapper());
 	}
 
 }

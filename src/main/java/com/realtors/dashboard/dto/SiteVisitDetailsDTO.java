@@ -11,28 +11,17 @@ import lombok.RequiredArgsConstructor;
 @Data
 @AllArgsConstructor
 @RequiredArgsConstructor
-public class ReceivableDetailDTO {
-
-    private UUID saleId;
+public class SiteVisitDetailsDTO {
+    private UUID siteVisitId;
+    private LocalDate visitDate;
     private UUID projectId;
     private String projectName;
-
-    private UUID plotId;
-    private String plotNumber;
-
+    private UUID agantId;
+    private String agentName;
     private UUID customerId;
     private String customerName;
-
-    private UUID agentId;
-    private String agentName;
-
-    private BigDecimal saleAmount;
-    private BigDecimal totalReceived;
-    private BigDecimal baseAmount;
-    private BigDecimal outstandingAmount;
-
+    private boolean isConverted;
+    private UUID saleId;
+    private BigDecimal salePrice;
     private LocalDate confirmedAt;
-    private int area;
-    // getters & setters
 }
-

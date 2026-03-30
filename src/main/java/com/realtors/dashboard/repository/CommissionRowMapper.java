@@ -6,6 +6,7 @@ import com.realtors.dashboard.dto.CommissionDetailsDTO;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 
 public class CommissionRowMapper implements RowMapper<CommissionDetailsDTO> {
 
@@ -25,7 +26,7 @@ public class CommissionRowMapper implements RowMapper<CommissionDetailsDTO> {
 
         dto.setPlotId(rs.getObject("plot_id", java.util.UUID.class));
         dto.setPlotNumber(rs.getString("plot_number"));
-
+        dto.setBaseAmount(rs.getBigDecimal("base_amount"));
         dto.setSaleAmount(rs.getBigDecimal("sale_amount"));
         dto.setCustomerPaid(rs.getBigDecimal("customer_paid"));
 
@@ -35,8 +36,21 @@ public class CommissionRowMapper implements RowMapper<CommissionDetailsDTO> {
         dto.setCommissionPayable(rs.getBigDecimal("commission_payable"));
         
         dto.setSaleStatus(rs.getString("sale_status"));
-        dto.setConfirmedAt(rs.getDate("confirmed_at").toLocalDate());
-
+//        dto.setConfirmedAt(rs.getObject("confirmed_at", java.time.LocalDate.class));
+        java.time.OffsetDateTime confirmed = rs.getObject("confirmed_at", java.time.OffsetDateTime.class);
+        java.time.OffsetDateTime saleDate = rs.getObject("sale_date", java.time.OffsetDateTime.class);
+        java.time.OffsetDateTime paymentDate = rs.getObject("payment_date", java.time.OffsetDateTime.class);
+        
+        // 2. Convert to LocalDate for your DTO
+        if (confirmed != null) {
+            dto.setConfirmedAt(confirmed.toLocalDate());
+        }
+        if (saleDate != null) {
+            dto.setSaleDate(saleDate.toLocalDate());
+        }
+        if (paymentDate != null) {
+            dto.setPaymentDate(paymentDate.toLocalDate());
+        }
         return dto;
     }
 }

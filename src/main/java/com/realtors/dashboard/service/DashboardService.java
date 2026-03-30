@@ -2,6 +2,7 @@ package com.realtors.dashboard.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.realtors.dashboard.dto.AgentPerformanceDTO;
+import com.realtors.dashboard.dto.CommissionDetailsDTO;
 import com.realtors.dashboard.dto.CommissionSummaryDTO;
 import com.realtors.dashboard.dto.DashboardKPI;
 import com.realtors.dashboard.dto.DashboardKpiDTO;
@@ -21,6 +23,9 @@ import com.realtors.dashboard.dto.DashboardScope;
 import com.realtors.dashboard.dto.FinancialSummaryDTO;
 import com.realtors.dashboard.dto.InventoryStatusDTO;
 import com.realtors.dashboard.dto.InventorySummaryDTO;
+import com.realtors.dashboard.dto.ReceivableDetailDTO;
+import com.realtors.dashboard.dto.SiteVisitDetailDTO;
+import com.realtors.dashboard.dto.SiteVisitDetailsDTO;
 import com.realtors.dashboard.dto.SiteVisitSummaryDTO;
 import com.realtors.dashboard.repository.DashboardAgentRepository;
 import com.realtors.dashboard.repository.DashboardCommissionRepository;
@@ -128,5 +133,16 @@ public class DashboardService {
 
 				.build();
 	}
+	
+	public List<ReceivableDetailDTO> getReceivableDetails(DashboardScope scope) {
+		return financeRepo.getReceivableDetails(scope);
+	}
 
+	public List<CommissionDetailsDTO> getCommissionDetails(DashboardScope scope) {
+		return commissionRepo.getCommissionDetails(scope);
+	}
+	
+	public List<SiteVisitDetailsDTO> fetchSiteVisitDetails(DashboardScope scope) {
+		return siteVisitRepo.fetchSiteVisitDetails(scope);
+	}
 }

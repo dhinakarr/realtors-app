@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -25,17 +26,19 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final TokenCacheService tokenCacheService;
+    private final JdbcTemplate jdbcTemplate;
 
-    public SecurityConfig(JwtUtil jwtUtil, TokenCacheService tokenCacheService) {
+    public SecurityConfig(JwtUtil jwtUtil, TokenCacheService tokenCacheService, JdbcTemplate jdbcTemplate) {
         this.jwtUtil = jwtUtil;
         this.tokenCacheService = tokenCacheService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         JwtAuthenticationFilter jwtFilter =
-                new JwtAuthenticationFilter(jwtUtil, tokenCacheService);
+                new JwtAuthenticationFilter(jwtUtil, tokenCacheService, jdbcTemplate);
 
         http
             .csrf(csrf -> csrf.disable())
