@@ -31,7 +31,10 @@ public class ReceivableRowMapper implements RowMapper<ReceivableDetailDTO> {
         dto.setTotalReceived(rs.getBigDecimal("total_received"));
         dto.setOutstandingAmount(rs.getBigDecimal("outstanding_amount"));
 
-        dto.setConfirmedAt(rs.getDate("confirmed_at").toLocalDate());
+        java.time.OffsetDateTime confirmed = rs.getObject("confirmed_at", java.time.OffsetDateTime.class);
+        if (confirmed != null) {
+            dto.setConfirmedAt(confirmed.toLocalDate());
+        }
         dto.setArea(rs.getInt("area"));
         return dto;
     }
