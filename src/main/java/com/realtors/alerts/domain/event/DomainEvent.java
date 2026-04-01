@@ -21,6 +21,6 @@ public abstract class DomainEvent {
     
     public String getEventId() { return eventId; }
     public String getInitiatedBy() { return initiatedBy; }
-    public String getEventtype() {return eventType;};
+    public String getEventType() {return eventType;};
     public LocalDateTime getOccurredAt() { return occurredAt; }
 }

@@ -1,15 +1,20 @@
 package com.realtors.admin.service;
 
+import com.realtors.admin.dto.AuthResponse;
 import com.realtors.admin.dto.LoginResponse;
 import com.realtors.admin.dto.ModulePermissionDto;
+import com.realtors.alerts.domain.event.EventType;
+import com.realtors.alerts.domain.event.ForgotPasswordEvent;
 import com.realtors.alerts.dto.RecipientDetail;
 import com.realtors.common.EnumConstants;
 import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.util.JwtUtil;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -33,21 +38,22 @@ public class UserAuthService {
 	private TokenCacheService tokenServce;
 	private AclPermissionService permissionService;
 	private final AuditTrailService audit;
+	private final ApplicationEventPublisher publisher;
 	private static final Logger logger = LoggerFactory.getLogger(UserAuthService.class);
 
 	public UserAuthService(JdbcTemplate jdbcTemplate, JwtUtil jwtUtil, TokenCacheService tokenServce,
-			AclPermissionService permissionService, AuditTrailService audit) {
+			AclPermissionService permissionService, AuditTrailService audit, ApplicationEventPublisher publisher) {
 		this.jdbcTemplate = jdbcTemplate;
 		this.jwtUtil = jwtUtil;
 		this.tokenServce = tokenServce;
 		this.permissionService = permissionService;
 		this.audit = audit;
+		this.publisher = publisher;
 	}
 
 	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 	public RecipientDetail getRecipientDetail(UUID userId) {
-		logger.info("@UserAuthervice.getRecipientDetail  userId={}", userId);
 		String sql = "SELECT  * FROM user_auth where user_id=? ";
 		List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, userId);
 		if (data.isEmpty())
@@ -117,21 +123,39 @@ public class UserAuthService {
 		List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, email);
 
 		if (data.isEmpty()) {
-			throw new IllegalArgumentException("User not found");
+			return;
 		}
-		UUID userId = (UUID) data.get(0).get("user_id");
+		Object userIdObj = data.get(0).get("user_id");
+		UUID userId = userIdObj instanceof UUID ? (UUID) userIdObj : UUID.fromString(userIdObj.toString());
+		jdbcTemplate.update("DELETE FROM password_reset_token WHERE user_id=?", userId);
+
+		String checkSql = """
+				    SELECT COUNT(*) FROM password_reset_token
+				    WHERE user_id = ?
+				    AND created_at > NOW() - INTERVAL '1 minute'
+				""";
+
+		Integer recentCount = jdbcTemplate.queryForObject(checkSql, Integer.class, userId);
+
+		if (recentCount != null && recentCount > 0) {
+			logger.warn("Too many reset requests for user {}", userId);
+			return;
+		}
 		String token = UUID.randomUUID().toString();
+		String hashedToken = DigestUtils.sha256Hex(token);
+		jdbcTemplate.update("INSERT INTO password_reset_token (user_id, token_hash, expiry_time) VALUES (?, ?, ?)",
+				userId, hashedToken, Timestamp.valueOf(LocalDateTime.now().plusMinutes(15)));
 
-		jdbcTemplate.update("INSERT INTO password_reset_token (user_id, token, expiry_time) VALUES (?, ?, ?)", userId,
-				token, Timestamp.valueOf(LocalDateTime.now().plusMinutes(15)));
-
-		// TODO: send email
-		logger.info("RESET TOKEN: " + token);
+		// send email
+		publisher.publishEvent(new ForgotPasswordEvent(userId.toString(), EventType.FORGOT_PASSWORD.name(), email,
+				email, token, userId));
 	}
 
-	public void resetPassword(String token, String newPassword) {
-		String sql = "SELECT * FROM password_reset_token WHERE token=?";
-		List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, token);
+	public AuthResponse resetPassword(String token, String newPassword) {
+		String sql = "SELECT * FROM password_reset_token WHERE token_hash=?";
+		String hashedToken = DigestUtils.sha256Hex(token);
+
+		List<Map<String, Object>> data = jdbcTemplate.queryForList(sql, hashedToken);
 
 		if (data.isEmpty()) {
 			throw new IllegalArgumentException("Invalid token");
@@ -144,12 +168,24 @@ public class UserAuthService {
 			throw new IllegalArgumentException("Token expired or already used");
 		}
 
-		UUID userId = (UUID) tokenData.get("user_id");
+		Object userIdObj = tokenData.get("user_id");
+		UUID userId = userIdObj instanceof UUID ? (UUID) userIdObj : UUID.fromString(userIdObj.toString());
 		String newHash = passwordEncoder.encode(newPassword);
 		jdbcTemplate.update("UPDATE user_auth SET password_hash=?, force_password_change=false WHERE user_id=?",
 				newHash, userId);
-		jdbcTemplate.update("UPDATE password_reset_token SET used=true WHERE token=?", token);
+		jdbcTemplate.update("UPDATE password_reset_token SET used=true WHERE token_hash=?", hashedToken);
+
+		String userSql = "select * from user_auth where user_id=?";
+		List<Map<String, Object>> userObj = jdbcTemplate.queryForList(userSql, userId);
+		Map<String, Object> row = userObj.stream().findFirst()
+			    .orElseThrow(() -> new RuntimeException("User not found"));
+		String email = (String) row.get("username");
+		UUID roleId = (UUID) row.get("role_id");
+		String accessToken = jwtUtil.generateToken(email, userId.toString(), roleId);
+		String refreshToken = jwtUtil.generateRefreshToken(userId.toString());
+
 		audit.auditAsync("user_auth", userId, EnumConstants.UPDATE);
+		return new AuthResponse(userId, accessToken, refreshToken);
 	}
 
 	private boolean updateLastLogin(UUID userId) {

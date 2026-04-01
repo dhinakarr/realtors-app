@@ -1,0 +1,7 @@
+notificaation sequence:
+-----------------------------
+1. Notification Event (com.realtors.alerts.domain.event)
+2. MessageBuilder (com.realtors.alerts.messages)
+3. Template HTML (resource/templates/email)
+4. Listner (com.realtors.alerts.listener)
+5. Add event in respective places

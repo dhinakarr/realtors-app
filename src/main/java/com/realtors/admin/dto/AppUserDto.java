@@ -27,7 +27,7 @@ public class AppUserDto {
     private String email;
     @Size(max = 15)
     private String mobile;
-    private String passwordHash;
+//    private String passwordHash;
     @Size(max = 55)
     private String fullName;
     private String address; 

@@ -44,7 +44,7 @@ public class SaleCreatedMessageBuilder {
 
 	private NotificationInstruction customerMessage(SaleCreatedEvent event) {
 		RecipientDetail recipient = authService.getRecipientDetail(event.getSaleDetails().getCustomerId());
-		return new NotificationInstruction(RoleType.CUSTOMER, recipient, event.getEventId(), event.getEventtype(),
+		return new NotificationInstruction(RoleType.CUSTOMER, recipient, event.getEventId(), event.getEventType(),
 				List.of(
 						new NotificationMessage(NotificationChannel.PUSH, "Plot booked 🎉",
 								createCustomerMessage(event.getSaleDetails()), null),
@@ -57,7 +57,7 @@ public class SaleCreatedMessageBuilder {
 	private NotificationInstruction agentMessage(SaleCreatedEvent event) {
 		RecipientDetail recipient = authService.getRecipientDetail(event.getSaleDetails().getAgentId());
 
-		return new NotificationInstruction(RoleType.PA, recipient, event.getEventId(), event.getEventtype(),
+		return new NotificationInstruction(RoleType.PA, recipient, event.getEventId(), event.getEventType(),
 				List.of(
 						new NotificationMessage(NotificationChannel.PUSH, "Plot booked 🎉",
 								createCustomerMessage(event.getSaleDetails()), null),
@@ -71,7 +71,7 @@ public class SaleCreatedMessageBuilder {
 		UUID financeUser = userService.getUsersByRoles(Set.of(RoleType.FINANCE.name())).getFirst().getUserId();
 		RecipientDetail recipient = authService.getRecipientDetail(financeUser);
 
-		return new NotificationInstruction(RoleType.PA, recipient, event.getEventId(), event.getEventtype(),
+		return new NotificationInstruction(RoleType.PA, recipient, event.getEventId(), event.getEventType(),
 				List.of(
 						new NotificationMessage(NotificationChannel.PUSH, "Plot booked 🎉",
 								createCustomerMessage(event.getSaleDetails()), null),
@@ -85,7 +85,7 @@ public class SaleCreatedMessageBuilder {
 		UUID financeUser = userService.getUsersByRoles(Set.of(RoleType.MD.name())).getFirst().getUserId();
 		RecipientDetail recipient = authService.getRecipientDetail(financeUser);
 		
-		return new NotificationInstruction(RoleType.PA, recipient, event.getEventId(), event.getEventtype(),
+		return new NotificationInstruction(RoleType.PA, recipient, event.getEventId(), event.getEventType(),
 				List.of(
 						new NotificationMessage(NotificationChannel.PUSH, "Plot booked 🎉",
 								createCustomerMessage(event.getSaleDetails()), null),

@@ -94,10 +94,9 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	BigDecimal sqftRate = projectDto.getPricePerSqft();
 
     	Boolean isPrime = Boolean.TRUE.equals(partialData.get("isPrime"));
-    	if (isPrime && basePriceObj != null) {
+    	if (isPrime ) {
     	    sqftRate = new BigDecimal(basePriceObj.toString());
     	} 
-    	
         BigDecimal basePrice = pricingService.calculateBasePrice(area, sqftRate);
         BigDecimal stampDuty = AppUtil.percent(AppUtil.nz(projectDto.getRegCharges()));
         

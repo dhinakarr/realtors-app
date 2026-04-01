@@ -217,8 +217,8 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	// ---------------- CREATE ----------------
 	public AppUserDto createWithFiles(AppUserDto data, MultipartFile profileImage) {
 		// Hash password
-		String hashedPassword = passwordEncoder.encode("Test@123");
-		data.setPasswordHash(hashedPassword);
+//		String hashedPassword = passwordEncoder.encode("Test@123");
+//		data.setPasswordHash(hashedPassword);
 
 		if (userAuthService.emailExists(data.getEmail(), data.getMobile())) {
 			throw new IllegalArgumentException(data.getEmail() +" exists, please register with different Email.");
