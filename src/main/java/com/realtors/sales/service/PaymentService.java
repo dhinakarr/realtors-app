@@ -1,6 +1,7 @@
 package com.realtors.sales.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.realtors.common.EnumConstants;
 import com.realtors.common.service.AuditTrailService;
@@ -37,35 +39,36 @@ public class PaymentService {
 	private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
 	public PaymentDTO addPayment(PaymentDTO dto) {
-	    PaymentDTO saved = paymentRepo.save(dto);
-	    saleLifecycleService.recalculate(saved.getSaleId(), saved.getPaymentType());
-	    audit.auditAsync(TABLE_NAME, saved.getPaymentId(), EnumConstants.CREATE);
-	    return saved;
+		PaymentDTO saved = paymentRepo.save(dto);
+		saleLifecycleService.recalculate(saved.getSaleId(), saved.getPaymentType());
+		audit.auditAsync(TABLE_NAME, saved.getPaymentId(), EnumConstants.CREATE);
+		return saved;
 	}
-	
+
 	public BigDecimal getTotalOutstanding() {
-	    BigDecimal totalSales = salestRepo.getTotalSalesAmount();
-	    BigDecimal received = paymentRepo.getTotalReceivedAll();
-	    return totalSales.subtract(AppUtil.nz(received));
+		BigDecimal totalSales = salestRepo.getTotalSalesAmount();
+		BigDecimal received = paymentRepo.getTotalReceivedAll();
+		return totalSales.subtract(AppUtil.nz(received));
 	}
-	
+
 	public BigDecimal getTotalReceivable(LocalDate from, LocalDate to) {
 		return paymentRepo.getTotalReceivables(from, to);
 	}
-	
+
 	public List<PaymentDTO> getPaymentsBySale(UUID saleId) {
 		return paymentRepo.findBySaleId(saleId);
 	}
-	
+
 	public List<PaymentDTO> getPaymentsByPlot(UUID plotId) {
 		SaleDTO sale = salestRepo.findSaleByPlotId(plotId);
 		return paymentRepo.findBySaleId(sale.getSaleId());
 	}
-	
+
 	public PaymentDTO getPaymentsById(UUID paymentId) {
 		return paymentRepo.getById(paymentId);
 	}
 
+	@Transactional("txManager")
 	public PaymentDTO save(PaymentDTO dto) {
 		UUID actorUserId = AppUtil.getCurrentUserId();
 		SaleDTO sale = salestRepo.findSaleByPlotId(dto.getPlotId());
@@ -73,6 +76,8 @@ public class PaymentService {
 		if (dto.getPaymentDate() == null) {
 			dto.setPaymentDate(LocalDate.now());
 		}
+
+		normalizeAmount(dto, sale);
 
 		// RECEIVED payment → collected_by is required
 		if (dto.getPaymentType().equals("RECEIVED")) {
@@ -92,6 +97,35 @@ public class PaymentService {
 		return dto;
 	}
 
+	private void normalizeAmount(PaymentDTO dto, SaleDTO sale) {
+		BigDecimal tolerance = BigDecimal.ONE;
+
+		BigDecimal requested = dto.getAmount().setScale(0, RoundingMode.HALF_UP);
+
+		if ("RECEIVED".equalsIgnoreCase(dto.getPaymentType())) {
+			BigDecimal outstanding = getOutstandingAmount(sale.getSaleId());
+			BigDecimal outstandingRounded = outstanding.setScale(0, RoundingMode.HALF_UP);
+			BigDecimal diff = requested.subtract(outstandingRounded).abs();
+			if (diff.compareTo(tolerance) <= 0) {
+				// ✅ within tolerance → snap to exact outstanding
+				requested = outstandingRounded;
+			}
+		}
+
+		/*
+		 * if ("PAID".equalsIgnoreCase(dto.getPaymentType())) { BigDecimal payable =
+		 * commissionRepo.getPayableAmount(sale.getSaleId(), sale.getSoldBy());
+		 * 
+		 * BigDecimal payableRounded = payable.setScale(0, RoundingMode.HALF_UP);
+		 * 
+		 * BigDecimal diff = requested.subtract(payableRounded).abs();
+		 * 
+		 * if (diff.compareTo(tolerance) <= 0) { requested = payableRounded; } }
+		 */
+
+		dto.setAmount(requested); // ✅ overwrite safely
+	}
+
 	public PaymentDTO updatePayment(UUID paymentId, PaymentDTO dto) {
 		PaymentDTO existing = paymentRepo.getById(paymentId);
 
@@ -106,11 +140,10 @@ public class PaymentService {
 		return dto;
 	}
 
-
 	public BigDecimal getTotalReceived(UUID saleId) {
 		return paymentRepo.getTotalReceived(saleId);
 	}
-	
+
 	public BigDecimal getTotalSaleAmount(UUID saleId) {
 		return salestRepo.getTotalAmount(saleId);
 	}
@@ -124,63 +157,62 @@ public class PaymentService {
 	public BigDecimal getCommissionPaid(UUID saleId) {
 		return paymentRepo.getTotalPaid(saleId);
 	}
-	
+
 	public BigDecimal getPaidThisMonth(LocalDate from, LocalDate to) {
 		return paymentRepo.getTotalPaidThisMonth(from, to);
 	}
-	
+
 	public BigDecimal getPaidTotal(LocalDate from, LocalDate to) {
 		return paymentRepo.getTotalPaid();
 	}
-	
-	
+
 	public BigDecimal getReceivedThisMonth(LocalDate from, LocalDate to) {
 		return paymentRepo.getReceivedBetween(from, to);
 	}
-	
+
 	public BigDecimal getReceivedThisMonth() {
 		return paymentRepo.getReceivedBetween();
 	}
-	
+
 	public BigDecimal getExpectedToday() {
 		return salestRepo.getOutstandingDueToday();
 	}
-	
+
 	public List<ReceivableDetailDTO> getReceivableDetails(LocalDate from, LocalDate to) {
 		List<ReceivableDetailDTO> list = paymentRepo.getReceivableDetails(from, to);
 		return list;
 	}
-	
+
 	public List<ReceivableDetailDTO> getReceivedDetails(LocalDate from, LocalDate to) {
 		List<ReceivableDetailDTO> list = paymentRepo.getReceivedDetails(from, to);
 		return list;
 	}
-	
+
 	public List<CashFlowItemDTO> getReceivables(LocalDate from, LocalDate to, CashFlowStatus status) {
 		List<CashFlowItemDTO> list = salestRepo.findReceivables(from, to);
 
-		if (status == null) return list;
-		return list.stream()
-				.filter(i -> i.getStatus() == status)
-				.toList();
+		if (status == null)
+			return list;
+		return list.stream().filter(i -> i.getStatus() == status).toList();
 	}
-	
+
 	public void verifyPayment(UUID paymentId) {
-	    PaymentDTO payment = paymentRepo.verify(paymentId, AppUtil.getCurrentUserId());
-	    saleLifecycleService.recalculate(payment.getSaleId(), payment.getPaymentType());
+		PaymentDTO payment = paymentRepo.verify(paymentId, AppUtil.getCurrentUserId());
+		saleLifecycleService.recalculate(payment.getSaleId(), payment.getPaymentType());
 	}
-	
+
 	public void deletePayment(UUID paymentId) {
-	    PaymentDTO payment = paymentRepo.getById(paymentId);
-	    if (payment.isVerified()) {
+		PaymentDTO payment = paymentRepo.getById(paymentId);
+		if (payment.isVerified()) {
 			throw new IllegalStateException("Verified payments cannot be deleted");
 		}
-	    paymentRepo.softDelete(paymentId, AppUtil.getCurrentUserId());
-	    saleLifecycleService.recalculate(payment.getSaleId(), payment.getPaymentType());
-	    audit.auditAsync(TABLE_NAME, paymentId, EnumConstants.DELETE);
+		paymentRepo.softDelete(paymentId, AppUtil.getCurrentUserId());
+		saleLifecycleService.recalculate(payment.getSaleId(), payment.getPaymentType());
+		audit.auditAsync(TABLE_NAME, paymentId, EnumConstants.DELETE);
 	}
-	
+
 	private void validatePayment(PaymentDTO dto, SaleDTO sale) {
+		BigDecimal tolerance = BigDecimal.ONE;
 		if (dto.getAmount() == null || dto.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
 			throw new IllegalArgumentException("Payment amount must be positive");
 		}
@@ -191,16 +223,16 @@ public class PaymentService {
 
 		if (dto.getPaymentType().equals("RECEIVED")) {
 			BigDecimal outstanding = getOutstandingAmount(sale.getSaleId());
-			if (dto.getAmount().compareTo(outstanding) > 0) {
+			if (dto.getAmount().compareTo(outstanding.add(tolerance)) > 0) {
 				throw new IllegalArgumentException("Received amount exceeds outstanding balance");
 			}
 		}
 	}
-	
+
 	public BigDecimal getOutstandingAmount(UUID saleId) {
-	    BigDecimal totalSale = salestRepo.getTotalAmount(saleId);
-	    BigDecimal received  = paymentRepo.getTotalReceived(saleId);
-	    return totalSale.subtract(AppUtil.nz(received));
+		BigDecimal totalSale = salestRepo.getTotalAmount(saleId);
+		BigDecimal received = paymentRepo.getTotalReceived(saleId);
+		return totalSale.subtract(AppUtil.nz(received));
 	}
 
 }

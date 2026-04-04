@@ -113,8 +113,9 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		}
 		ProjectDto data = super.patch(projectId, dto);
 		if (plotNumbers != null && !plotNumbers.isEmpty()) {
-			plotService.deleteByProjectId(projectId);
-			plotService.generatePlots(projectId, plotNumbers);
+//			plotService.deleteByProjectId(projectId);
+//			plotService.generatePlots(projectId, plotNumbers);
+			plotService.syncPlots(projectId, plotNumbers);
 		}
 
 		audit.auditAsync("projects", data.getProjectId(), EnumConstants.PATCH);

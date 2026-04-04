@@ -3,6 +3,8 @@ package com.realtors.projects.repository;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.realtors.common.util.AppUtil;
@@ -16,10 +18,12 @@ import java.util.*;
 public class PlotUnitRepository {
 
 	private final JdbcTemplate jdbc;
+	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 	private static final RowMapper<PlotUnitStatus> ROW_MAPPER = new BeanPropertyRowMapper<>(PlotUnitStatus.class);
 
-	public PlotUnitRepository(JdbcTemplate jdbc) {
+	public PlotUnitRepository(JdbcTemplate jdbc, NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
 		this.jdbc = jdbc;
+		this.namedParameterJdbcTemplate=namedParameterJdbcTemplate; 
 	}
 
 	// --------------------------
@@ -111,6 +115,64 @@ public class PlotUnitRepository {
 	public int delete(UUID id) {
 		String updateSql = "UPDATE plot_units SET status='CANCELLED' WHERE plot_id = ?";
 		return jdbc.update(updateSql, id);
+	}
+	
+	public void syncPlots(UUID projectId, List<String> incomingPlots) {
+
+	    List<String> existingPlots = findPlotNumbersByProjectId(projectId);
+
+	    // Convert to Set for faster lookup
+	    Set<String> existingSet = new HashSet<>(existingPlots);
+	    Set<String> incomingSet = new HashSet<>(incomingPlots);
+
+	    // ➕ INSERT: incoming - existing
+	    List<String> toInsert = incomingSet.stream()
+	            .filter(p -> !existingSet.contains(p))
+	            .toList();
+
+	    // ❌ DELETE: existing - incoming
+	    List<String> toDelete = existingSet.stream()
+	            .filter(p -> !incomingSet.contains(p))
+	            .toList();
+
+	    // ---- INSERT NEW ----
+	    if (!toInsert.isEmpty()) {
+	        List<PlotUnitDto> list = new ArrayList<>();
+
+	        for (String plotNo : toInsert) {
+	            PlotUnitDto dto = new PlotUnitDto();
+	            dto.setPlotId(UUID.randomUUID());
+	            dto.setProjectId(projectId);
+	            dto.setPlotNumber(plotNo);
+	            dto.setStatus("AVAILABLE");
+	            dto.setIsPrime(false);
+	            list.add(dto);
+	        }
+
+	        bulkInsert(list);
+	    }
+
+	    // ---- DELETE OLD (only NOT SOLD) ----
+	    if (!toDelete.isEmpty()) {
+	        deletePlotsByNumbers(projectId, toDelete);
+	    }
+	}
+	
+	public void deletePlotsByNumbers(UUID projectId, List<String> plotNumbers) {
+	    String sql = """
+	        DELETE FROM plot_units pu
+	        WHERE pu.project_id = ?
+	        AND pu.plot_number IN (:plotNumbers)
+	        AND pu.plot_id NOT IN (
+	            SELECT plot_id FROM sales
+	        )
+	    """;
+
+	    MapSqlParameterSource params = new MapSqlParameterSource();
+	    params.addValue("projectId", projectId);
+	    params.addValue("plotNumbers", plotNumbers);
+
+	    namedParameterJdbcTemplate.update(sql, params);
 	}
 
 	public boolean deleteByProjectId(UUID projectId) {

@@ -70,7 +70,7 @@ public class SaleRepositoryImpl implements SaleRepository {
 
 		    if (toDate != null) {
 		        sql.append(" AND sale_date <= ?");
-		        params.add(Date.valueOf(toDate));
+		        params.add(Date.valueOf(toDate.plusDays(1)));
 		    }
 		    return jdbc.query(sql.toString(), ROW_MAPPER, params.toArray());
 	}
@@ -201,7 +201,7 @@ public class SaleRepositoryImpl implements SaleRepository {
 	        WHERE sale_status IN ('BOOKED', 'IN_PROGRESS')
 	        AND sale_date BETWEEN ? AND  ?
 	    """;
-	    return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+	    return jdbc.queryForObject(sql, BigDecimal.class, from, to.plusDays(1));
 	}
 	
 	@Override

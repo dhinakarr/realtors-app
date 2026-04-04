@@ -111,19 +111,40 @@ public class SaleService {
 
 		// insert customer into user_auth table to enable login access to customer
 		CustomerDto customerDto = customerService.getCustomer(request.getCustomerId());
-		if (!authService.isUserPresent(customerDto.getCustomerId())) {
-			authService.createUserAuth(customerDto.getCustomerId(), customerDto.getEmail(), null, 
-					customerDto.getRoleId(), customerDto.getMobile().toString(), RoleType.CUSTOMER.name());
-		}
+		authService.createOrGetUser(
+			    customerDto.getCustomerId(),
+			    customerDto.getEmail(),
+			    null,
+			    customerDto.getRoleId(),
+			    customerDto.getMobile().toString(),
+			    RoleType.CUSTOMER.name()
+			);
 		// 6. Distribute commission after sale creation
 		commisionDistributionService.distributeCommission(project.getProjectId(), userId, basePrice, area, sale.getSaleId());
 		
 		// 7. Send Notification
-		SaleDetailDTO saleDetail = saleRepository.getSaleDetails(sale.getSaleId());
+		SaleDetailDTO saleDetail = getSaleDetails(project, plot, customerDto, sale); //saleRepository.getSaleDetails(sale.getSaleId());
 		publisher.publishEvent(new SaleCreatedEvent(userId.toString(), sale.getSaleId().toString(), EventType.SALE_CREATED.name(), userId.toString(), saleDetail));
 		
 		audit.auditAsync(TABLE_NAME, sale.getSaleId(), EnumConstants.CREATE);
 		return sale;
+	}
+	
+	private SaleDetailDTO getSaleDetails(ProjectDto project, PlotUnitDto plot, CustomerDto customer, SaleDTO sale) {
+		SaleDetailDTO dto = new SaleDetailDTO();
+		dto.setSaleId(sale.getSaleId());
+		dto.setProjectId(project.getProjectId());
+		dto.setProjectName(project.getProjectName());
+		dto.setCustomerId(customer.getCustomerId());
+		dto.setCustomerName(customer.getCustomerName());
+		dto.setAgentId(AppUtil.getCurrentUserId());
+		dto.setPlotId(plot.getPlotId());
+		dto.setPlotNumber(plot.getPlotNumber());
+		dto.setSaleAmount(sale.getTotalPrice());
+		dto.setBaseAmount(sale.getBasePrice());
+		dto.setSaleStatus(PlotStatus.BOOKED.name());
+//		dto.setConfirmedAt(sale.getConfirmedAt());
+		return dto;
 	}
 
 	public void confirmSale(UUID saleId) {

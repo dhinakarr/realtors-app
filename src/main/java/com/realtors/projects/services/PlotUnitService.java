@@ -116,6 +116,10 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
     	return super.patch(plotId, partialData);
     }
     
+    public void syncPlots(UUID projectId, List<String> incomingPlots) {
+    	repo.syncPlots(projectId, incomingPlots);
+    }
+    
     public PlotUnitDto updateCancel(UUID plotId, Map<String, Object> partialData) {
     	audit.auditAsync(TABLE_NAME, plotId, EnumConstants.UPDATE);
     	return super.patch(plotId, partialData);
@@ -149,17 +153,14 @@ public class PlotUnitService extends AbstractBaseService<PlotUnitDto, UUID>{
             if (existingPlots.contains(plotNo)) {
                 continue;
             }
-
             PlotUnitDto dto = new PlotUnitDto();
             dto.setPlotId(UUID.randomUUID());
             dto.setProjectId(projectId);
             dto.setPlotNumber(plotNo);
             dto.setStatus("AVAILABLE");
             dto.setIsPrime(false);
-
             list.add(dto);
         }
-
         if (!list.isEmpty()) {
             repo.bulkInsert(list);
         }

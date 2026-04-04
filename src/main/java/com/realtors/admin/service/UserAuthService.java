@@ -178,7 +178,7 @@ public class UserAuthService {
 		String userSql = "select * from user_auth where user_id=?";
 		List<Map<String, Object>> userObj = jdbcTemplate.queryForList(userSql, userId);
 		Map<String, Object> row = userObj.stream().findFirst()
-			    .orElseThrow(() -> new RuntimeException("User not found"));
+				.orElseThrow(() -> new RuntimeException("User not found"));
 		String email = (String) row.get("username");
 		UUID roleId = (UUID) row.get("role_id");
 		String accessToken = jwtUtil.generateToken(email, userId.toString(), roleId);
@@ -216,6 +216,27 @@ public class UserAuthService {
 				ps.setString(6, type);
 			}
 		});
+	}
+
+	public UUID createOrGetUser(UUID userId, String username, String password, UUID roleId, String mobile,
+			String userType) {
+
+		String sql = "SELECT user_id FROM user_auth WHERE username = ?";
+		List<UUID> existing = jdbcTemplate.queryForList(sql, UUID.class, username);
+
+		if (!existing.isEmpty()) {
+			return existing.get(0); // ✅ reuse existing
+		}
+
+		String hashedPassword = passwordEncoder.encode(password == null ? "Test@123" : password);
+		String type = userType == null ? "INTERNAL" : "CUSTOMER";
+
+		jdbcTemplate.update("""
+				INSERT INTO user_auth (user_id, username, password_hash, role_id, mobile, user_type)
+				VALUES (?, ?, ?, ?, ?, ?)
+				""", userId, username, hashedPassword, roleId, mobile, type);
+
+		return userId;
 	}
 
 	public boolean emailExists(String username, String mobile) {

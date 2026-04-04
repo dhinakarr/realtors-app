@@ -86,7 +86,7 @@ public class PaymentRepositoryImpl {
 				select SUM(commission_paid) from v_commission_payable_details 
 				WHERE sale_date BETWEEN ? AND ?
 				""" ;
-		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+		return jdbc.queryForObject(sql, BigDecimal.class, from, to.plusDays(1));
 	}
 	
 	
@@ -117,12 +117,12 @@ public class PaymentRepositoryImpl {
 		        WHERE sale_status IN ('BOOKED', 'IN_PROGRESS') AND sale_date >= ? 
 					    AND sale_date < ?
 		    """;
-		    return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+		    return jdbc.queryForObject(sql, BigDecimal.class, from, to.plusDays(1));
 	}
 	
 	public List<ReceivableDetailDTO> getReceivableDetails(LocalDate from, LocalDate to) {
 		String sql = "SELECT * FROM v_receivable_details WHERE outstanding_amount > 0 AND sale_date >= ? AND sale_date < ?";
-		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to);
+		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to.plusDays(1));
 	}
 	
 	public PaymentDTO update(PaymentDTO dto) {
@@ -258,7 +258,7 @@ public class PaymentRepositoryImpl {
 				AND payment_date >= ?
                 AND payment_date < ?)
 				""";
-		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to);
+		return jdbc.query(sql, new ReceivableDetailsRowMapper(), from, to.plusDays(1));
 	}
 	
 	

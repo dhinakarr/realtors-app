@@ -3,7 +3,7 @@ package com.realtors.common.exception;
 
 import com.realtors.common.ApiResponse;
 
-
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -84,5 +84,10 @@ public class GlobalExceptionHandler {
                         HttpStatus.BAD_REQUEST));
     }
 
+    @ExceptionHandler(ClientAbortException.class)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void handleClientAbortException(ClientAbortException ex) {
+        log.debug("Client disconnected: {}", ex.getMessage());
+    }
 
 }

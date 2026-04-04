@@ -205,12 +205,12 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 					FROM v_commission_payable_details
 					WHERE  sale_date BETWEEN ? AND ?
 				""";
-		return jdbc.queryForObject(sql, BigDecimal.class, from, to);
+		return jdbc.queryForObject(sql, BigDecimal.class, from, to.plusDays(1));
 	}
 
 	public List<PayableDetailsDTO> getPayableDetails(LocalDate from, LocalDate to) {
 		String sql = "SELECT * FROM v_commission_payable_details WHERE commission_payable > 0 AND sale_date BETWEEN ? AND ?";
-		return jdbc.query(sql, new PayableDetailsRowMapper(), from, to);
+		return jdbc.query(sql, new PayableDetailsRowMapper(), from, to.plusDays(1));
 	}
 
 	@Override
@@ -232,10 +232,11 @@ public class SaleCommissionRepositoryImpl implements SaleCommissionRepository {
 	@Override
 	public BigDecimal getTotalCommission(UUID saleId, UUID userId) {
 		String sql = """
-					SELECT commission_amount
+					SELECT COALESCE(SUM(commission_amount), 0)
 					FROM sale_commissions
 					WHERE  sale_id=? AND user_id=?
 				""";
+		logger.info("@SaleCommissionRepositoryImpl.getTotalCommission saleId: {}, userId: {}", saleId, userId);
 		return jdbc.queryForObject(sql, BigDecimal.class, saleId, userId);
 	}
 

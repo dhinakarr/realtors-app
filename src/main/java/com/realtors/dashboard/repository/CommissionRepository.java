@@ -67,12 +67,12 @@ public class CommissionRepository {
 
         String sql = """
             select * from v_commission_payable_details 
-			where commission_paid > 0 
+			where commission_eligible > 0 
 			AND  sale_date >= ?
 			AND sale_date < ?
             ORDER BY sale_date DESC
         """;
-        return jdbcTemplate.query(sql, ROW_MAPPER, from, to);
+        return jdbcTemplate.query(sql, ROW_MAPPER, from, to.plusDays(1));
     }
     
 }
