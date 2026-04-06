@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.RoleType;
 import com.realtors.admin.service.UserAuthService;
 import com.realtors.admin.service.UserService;
@@ -96,11 +97,12 @@ public class SaleCreatedMessageBuilder {
 	}
 
 	private String createCustomerMessage(SaleDetailDTO data) {
+		AppUserDto user = userService.getUserById(data.getAgentId()).orElse(null);
 		return String.format(
 				"Dear %s, Your Registration for Plot No.%s in the %s Project at Village is fixed on %s by %s Associate."
 				+ " Kindly Follow up with our Associate for further details. Regards: Diamond Realty Team.",
 				data.getCustomerName(), data.getPlotNumber(), data.getProjectName(), AppUtil.getFormattedDate(LocalDate.now()),
-				data.getAgentName());
+				user.getFullName());
 	}
 
 	public Map<String, Object> buildEmailContext(SaleDetailDTO data) {

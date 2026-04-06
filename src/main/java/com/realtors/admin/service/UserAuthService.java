@@ -21,6 +21,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Optional;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -62,7 +63,6 @@ public class UserAuthService {
 		UUID user = (UUID) data.get(0).get("user_id");
 		String email = (String) data.get(0).get("username");
 		String mobile = (String) data.get(0).get("mobile");
-		logger.info("@UserAuthervice.getRecipientDetail  user={}, email={}, mobile={}", user, email, mobile);
 		return new RecipientDetail(user, email, mobile);
 	}
 
@@ -194,15 +194,12 @@ public class UserAuthService {
 		return rows > 0;
 	}
 
-	public void createUserAuth(UUID userId, String username, String password, UUID roleId, String mobile) {
-		audit.auditAsync("user_auth", userId, EnumConstants.CREATE);
-		createUserAuth(userId, username, password, roleId, mobile, null);
-	}
-
 	public void createUserAuth(UUID userId, String username, String password, UUID roleId, String mobile,
 			String userType) {
 		String hashedPassword = passwordEncoder.encode(password == null ? "Test@123" : password);
-		String type = userType == null ? "INTERNAL" : "CUSTOMER";
+		String type = Optional.ofNullable(userType)
+                .filter(s -> !s.trim().isEmpty())
+                .orElse("INTERNAL");
 		String insertSql = "INSERT INTO user_auth (user_id, username, password_hash, role_id, mobile, user_type) values(?,?,?,?,?, ?)";
 		audit.auditAsync("user_auth", userId, EnumConstants.CREATE);
 		jdbcTemplate.update(insertSql, new PreparedStatementSetter() {
