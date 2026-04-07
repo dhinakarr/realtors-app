@@ -161,7 +161,7 @@ public class PlotUnitRepository {
 	public void deletePlotsByNumbers(UUID projectId, List<String> plotNumbers) {
 	    String sql = """
 	        DELETE FROM plot_units pu
-	        WHERE pu.project_id = ?
+	        WHERE pu.project_id = :projectId
 	        AND pu.plot_number IN (:plotNumbers)
 	        AND pu.plot_id NOT IN (
 	            SELECT plot_id FROM sales

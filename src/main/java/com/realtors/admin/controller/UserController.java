@@ -173,12 +173,20 @@ public class UserController {
 	}
 
 	@GetMapping("/pages")
-	public ResponseEntity<ApiResponse<PagedResult<ListUserDto>>> getPagedData(@AuthenticationPrincipal UserPrincipalDto principal, @RequestParam int page,
-			@RequestParam int size) {
-		PagedResult<ListUserDto> users = appUserService.getPaginatedUsers(page-1, size, AppUtil.isCommonRole(principal));
-		return ResponseEntity.ok(ApiResponse.success("Active Users fetched", users));
-	}
+	public ResponseEntity<ApiResponse<PagedResult<ListUserDto>>> getPagedData(
+	        @AuthenticationPrincipal UserPrincipalDto principal,
+	        @RequestParam int page,
+	        @RequestParam int size,
+	        @RequestParam(required = false) String search,
+	        @RequestParam(required = false) String role,
+	        @RequestParam(required = false) String manager
+	) {
+	    PagedResult<ListUserDto> users =
+	            appUserService.getPaginatedUsers(page, size, search, role, manager, AppUtil.isCommonRole(principal));
 
+	    return ResponseEntity.ok(ApiResponse.success("Active Users fetched", users));
+	}
+	
 	/** ✅ Get user by ID */
 	@GetMapping("/{id}")
 	public ResponseEntity<ApiResponse<AppUserDto>> getUserById(@PathVariable String id) {
@@ -275,18 +283,5 @@ public class UserController {
 		}
 
 		return ResponseEntity.ok(ApiResponse.success("User updated successfully", updated, HttpStatus.OK));
-	}
-
-	/** ✅ Update last login */
-	@PatchMapping("/{id}/last-login")
-	public ResponseEntity<ApiResponse<Void>> updateLastLogin(@PathVariable UUID id) {
-		UUID loggedInUser = AppUtil.getCurrentUserId();
-		if (loggedInUser == null) {
-			return ResponseEntity.badRequest().body(ApiResponse.failure("Unauthorized", HttpStatus.UNAUTHORIZED));
-		}
-
-		boolean updated = appUserService.updateLastLogin(id);
-		return updated ? ResponseEntity.ok(ApiResponse.success("Last login updated", null, HttpStatus.OK))
-				: ResponseEntity.badRequest().body(ApiResponse.failure("User not found", HttpStatus.NOT_FOUND));
 	}
 }

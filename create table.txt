@@ -21,11 +21,9 @@ CREATE TABLE app_users (
     role_id UUID NOT NULL REFERENCES roles(role_id),
     email VARCHAR(55) UNIQUE NOT NULL,
 	mobile VARCHAR(15),
-    password_hash TEXT NOT NULL,
     full_name VARCHAR(55),
     address TEXT,
 	profile_image BYTEA,
-    last_login TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
@@ -1869,3 +1867,40 @@ CREATE INDEX idx_reset_token_user ON password_reset_token(user_id);
 CREATE INDEX idx_reset_token_token ON password_reset_token(token_hash);
 
 npm install zxcvbn
+
+UPDATE form_metadata
+SET field_type = 'select',
+    lookup_key = '["East","West","South", "North", "South East", "South West", "North East", "North West"]'::jsonb,
+    lookup_label = '["East","West","South", "North", "South East", "South West", "North East", "North West"]'::jsonb
+WHERE table_name = 'plot_units'
+  AND column_name = 'facing';
+  
+  
+SELECT 
+  'INSERT INTO form_metadata (id, table_name, column_name, display_label, field_type, ' ||
+  'is_required, is_hidden, lookup_table, lookup_key, lookup_label, extra_settings, sort_order) VALUES (' ||
+
+  id || ', ' ||
+
+  COALESCE(quote_literal(table_name), 'NULL') || ', ' ||
+  COALESCE(quote_literal(column_name), 'NULL') || ', ' ||
+  COALESCE(quote_literal(display_label), 'NULL') || ', ' ||
+  COALESCE(quote_literal(field_type), 'NULL') || ', ' ||
+
+  COALESCE(is_required::text, 'NULL') || ', ' ||
+  COALESCE(is_hidden::text, 'NULL') || ', ' ||
+
+  COALESCE(quote_literal(lookup_table), 'NULL') || ', ' ||
+  COALESCE(quote_literal(lookup_key), 'NULL') || ', ' ||
+  COALESCE(quote_literal(lookup_label), 'NULL') || ', ' ||
+  COALESCE(quote_literal(extra_settings), 'NULL') || ', ' ||
+
+  COALESCE(sort_order::text, 'NULL') ||
+
+  ');'
+AS insert_script
+FROM form_metadata;
+
+COPY form_metadata
+TO 'D:/temp/data.csv'
+WITH (FORMAT csv, HEADER true);  

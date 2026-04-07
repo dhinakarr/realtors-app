@@ -132,7 +132,8 @@ public class CustomerService extends AbstractBaseService<CustomerDto, UUID> {
 	}
 
 	public List<CustomerDto> search(String searchText) {
-		return super.search(searchText, List.of("customer_name", "email", "address", "mobile"), null);
+		List<CustomerDto> list = super.search(searchText, List.of("customer_name", "email", "address", "mobile"), null);
+		return list;
 	}
 	
 	public PagedResult<CustomerDto> getPaginatedUsers(int page, int size) {

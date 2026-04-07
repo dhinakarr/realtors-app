@@ -5,7 +5,6 @@ import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.EmployeeCode;
 import com.realtors.admin.dto.ListUserDto;
 import com.realtors.admin.dto.PagedResult;
-import com.realtors.admin.dto.RoleDto;
 import com.realtors.admin.dto.UserBasicDto;
 import com.realtors.admin.dto.UserDocumentDto;
 import com.realtors.admin.dto.UserFlatDto;
@@ -27,7 +26,6 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,8 +49,6 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	private NamedParameterJdbcTemplate namedJdbcTemplate;
 	private final FileSavingService fileService;
 	private final RoleService roleService;
-
-	private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
 	List<LookupDefinition> lookupDefs = List.of(
 			new LookupDefinition("roles", "roles", "role_id", "role_name", "roleName"),
@@ -221,7 +217,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 //		data.setPasswordHash(hashedPassword);
 
 		if (userAuthService.emailExists(data.getEmail(), data.getMobile())) {
-			throw new IllegalArgumentException(data.getEmail() +" exists, please register with different Email.");
+			throw new IllegalArgumentException(data.getEmail() + " exists, please register with different Email.");
 		}
 
 		byte[] imageBytes = null;
@@ -291,13 +287,6 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		}
 	}
 
-	/** ✅ Update last login */
-	public boolean updateLastLogin(UUID userId) {
-		int rows = jdbcTemplate.update("UPDATE app_users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?", userId);
-		audit.auditAsync("app_users", userId, EnumConstants.UPDATE);
-		return rows > 0;
-	}
-
 	// Search Use data
 	public List<ListUserDto> searchUsers(String searchText, boolean isCommonRole) {
 		List<AppUserDto> data = super.search(searchText, List.of("full_name", "email", "mobile", "employee_id"), null);
@@ -342,60 +331,140 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	}
 
 	// Get Paged modules data thi
-	public PagedResult<ListUserDto> getPaginatedUsers(int page, int size, boolean isCommonRole) {
+	public PagedResult<ListUserDto> getPaginatedUsers(int page, int size, String search, String role, String manager,
+			boolean isCommonRole) {
+		page = Math.max(page, 1);
 		if (isCommonRole) {
-			PagedResult<AppUserDto> paged = super.findAllPaginated(page, size, null);
-			return new PagedResult<>(findAllUsers(paged.data(), true), paged.page(), paged.size(), paged.total(),
-					paged.totalPages());
+			return getAllUsersPaginated(page, size, search, role, manager);
+		} else {
+			return findSelfAndSubordinatesPaginated(AppUtil.getCurrentUserId(), page, size, search, role, manager);
 		}
-		return findSelfAndSubordinatesPaginated(AppUtil.getCurrentUserId(), page, size);
+	}
+	private void applyFilters(StringBuilder sql, String search, String role, String manager) {
+		if (search != null && !search.isBlank()) {
+			sql.append("""
+					    AND (
+					        LOWER(u.full_name) LIKE :search OR
+					        LOWER(u.email) LIKE :search OR
+					        u.mobile LIKE :search OR
+					        u.employee_id LIKE :search
+					    )
+					""");
+		}
+		if (role != null && !role.isBlank()) {
+			sql.append(" AND r.role_name = :role ");
+		}
+		if (manager != null && !manager.isBlank()) {
+			sql.append(" AND m.full_name = :manager ");
+		}
 	}
 
-	private PagedResult<ListUserDto> findSelfAndSubordinatesPaginated(UUID userId, int page, int size) {
-		page = Math.max(page, 1);
+	private PagedResult<ListUserDto> getAllUsersPaginated(int page, int size, String search, String role,
+			String manager) {
 		int offset = (page - 1) * size;
-		String dataSql = """
-					    WITH RECURSIVE subordinates AS (
-				        SELECT user_id
-				        FROM app_users
-				        WHERE user_id = :userId
-				        UNION ALL
-				        SELECT u.user_id
-				        FROM app_users u
-				        JOIN subordinates s ON u.manager_id = s.user_id
-				    )
-				    SELECT u.user_id, u.full_name || ' (' || u.employee_id || ')' AS full_name, u.mobile, u.email, u.employee_id, 
-				    u.manager_id, m.full_name || ' (' || m.employee_id || ')'  AS manager_name, u.role_id,  r.role_name, u.status
-				    FROM app_users u
-				    LEFT JOIN app_users m ON m.user_id = u.manager_id
-				    LEFT JOIN roles r ON r.role_id = u.role_id
-				    JOIN subordinates s ON s.user_id = u.user_id
-				    ORDER BY u.full_name
-				    LIMIT :limit OFFSET :offset
-				""";
 
-		String countSql = """
-				    WITH RECURSIVE subordinates AS (
-				        SELECT user_id
-				        FROM app_users
-				        WHERE user_id = :userId
-				        UNION ALL
-				        SELECT u.user_id
-				        FROM app_users u
-				        JOIN subordinates s ON u.manager_id = s.user_id
-				    )
-				    SELECT COUNT(*) FROM subordinates
-				""";
+		StringBuilder sql = new StringBuilder("""
+				SELECT  u.user_id, u.full_name, u.mobile, u.email, u.employee_id,
+				       u.manager_id, m.full_name AS manager_name,
+				       u.role_id, r.role_name, u.status
+				FROM app_users u
+				LEFT JOIN app_users m ON m.user_id = u.manager_id
+				LEFT JOIN roles r ON r.role_id = u.role_id
+				WHERE 1=1 """);
+		applyFilters(sql, search, role, manager);
+		sql.append(" ORDER BY u.full_name");
+		sql.append(" LIMIT :limit OFFSET :offset");
 
-		MapSqlParameterSource params = new MapSqlParameterSource().addValue("userId", userId).addValue("limit", size)
-				.addValue("offset", offset);
+		StringBuilder countSql = new StringBuilder("""
+				SELECT COUNT(*)
+				FROM app_users u
+				LEFT JOIN app_users m ON m.user_id = u.manager_id
+				LEFT JOIN roles r ON r.role_id = u.role_id
+				WHERE 1=1""");
 
-		List<ListUserDto> users = namedJdbcTemplate.query(dataSql, params,
+		applyFilters(countSql, search, role, manager);
+
+		MapSqlParameterSource params = new MapSqlParameterSource().addValue("limit", size).addValue("offset", offset)
+				.addValue("search", (search == null || search.isBlank()) ? null : "%" + search.toLowerCase() + "%")
+				.addValue("role", (role == null || role.isBlank()) ? null : role)
+				.addValue("manager", (manager == null || manager.isBlank()) ? null : manager);
+
+		List<ListUserDto> users = namedJdbcTemplate.query(sql.toString(), params,
 				(rs, rowNum) -> new ListUserDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
 						rs.getString("mobile"), rs.getString("email"), rs.getString("employee_id"),
 						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"),
 						rs.getObject("role_id", UUID.class), rs.getString("role_name"), rs.getString("status")));
-		int total = namedJdbcTemplate.queryForObject(countSql, params, Integer.class);
+
+		int total = namedJdbcTemplate.queryForObject(countSql.toString(), params, Integer.class);
+		int totalPages = (int) Math.ceil((double) total / size);
+
+		return new PagedResult<>(users, page, size, total, totalPages);
+	}
+
+	private PagedResult<ListUserDto> findSelfAndSubordinatesPaginated(UUID userId, int page, int size, String search,
+			String role, String manager) {
+		int offset = (page - 1) * size;
+
+		StringBuilder dataSql = new StringBuilder("""
+				WITH RECURSIVE subordinates AS (
+				    SELECT user_id
+				    FROM app_users
+				    WHERE user_id = :userId
+				    UNION ALL
+				    SELECT u.user_id
+				    FROM app_users u
+				    JOIN subordinates s ON u.manager_id = s.user_id
+				)
+				SELECT DISTINCT ON (u.user_id) u.user_id,
+				       u.full_name,
+				       u.mobile,
+				       u.email,
+				       u.employee_id,
+				       u.manager_id,
+				       m.full_name AS manager_name,
+				       u.role_id,
+				       r.role_name,
+				       u.status
+				FROM app_users u
+				LEFT JOIN app_users m ON m.user_id = u.manager_id
+				LEFT JOIN roles r ON r.role_id = u.role_id
+				JOIN subordinates s ON s.user_id = u.user_id
+				WHERE 1=1 """);
+		applyFilters(dataSql, search, role, manager);
+		dataSql.append(" ORDER BY u.user_id, u.full_name");
+		dataSql.append(" LIMIT :limit OFFSET :offset");
+
+		StringBuilder countSql = new StringBuilder("""
+				WITH RECURSIVE subordinates AS (
+				    SELECT user_id
+				    FROM app_users
+				    WHERE user_id = :userId
+				    UNION ALL
+				    SELECT u.user_id
+				    FROM app_users u
+				    JOIN subordinates s ON u.manager_id = s.user_id
+				)
+				SELECT COUNT(DISTINCT u.user_id)
+				FROM app_users u
+				LEFT JOIN app_users m ON m.user_id = u.manager_id
+				LEFT JOIN roles r ON r.role_id = u.role_id
+				JOIN subordinates s ON s.user_id = u.user_id
+				WHERE 1=1 """);
+		applyFilters(countSql, search, role, manager);
+
+		MapSqlParameterSource params = new MapSqlParameterSource().addValue("userId", userId).addValue("limit", size)
+				.addValue("offset", offset)
+				.addValue("search", (search == null || search.isBlank()) ? null : "%" + search.toLowerCase() + "%")
+				.addValue("role", (role == null || role.isBlank()) ? null : role)
+				.addValue("manager", (manager == null || manager.isBlank()) ? null : manager);
+
+		List<ListUserDto> users = namedJdbcTemplate.query(dataSql.toString(), params,
+				(rs, rowNum) -> new ListUserDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
+						rs.getString("mobile"), rs.getString("email"), rs.getString("employee_id"),
+						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"),
+						rs.getObject("role_id", UUID.class), rs.getString("role_name"), rs.getString("status")));
+
+		int total = namedJdbcTemplate.queryForObject(countSql.toString(), params, Integer.class);
 		int totalPages = (int) Math.ceil((double) total / size);
 
 		return new PagedResult<>(users, page, size, total, totalPages);
