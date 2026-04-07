@@ -183,7 +183,6 @@ public class UserController {
 	) {
 	    PagedResult<ListUserDto> users =
 	            appUserService.getPaginatedUsers(page, size, search, role, manager, AppUtil.isCommonRole(principal));
-
 	    return ResponseEntity.ok(ApiResponse.success("Active Users fetched", users));
 	}
 	

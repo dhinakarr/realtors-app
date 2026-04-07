@@ -325,7 +325,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		List<ListUserDto> users = namedJdbcTemplate.query(sql, params,
 				(rs, rowNum) -> new ListUserDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
 						rs.getString("mobile"), rs.getString("email"), rs.getString("employee_id"),
-						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"),
+						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"), null,
 						rs.getObject("role_id", UUID.class), rs.getString("role_name"), rs.getString("status")));
 		return users;
 	}
@@ -365,7 +365,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 
 		StringBuilder sql = new StringBuilder("""
 				SELECT  u.user_id, u.full_name, u.mobile, u.email, u.employee_id,
-				       u.manager_id, m.full_name AS manager_name,
+				       u.manager_id, m.full_name AS manager_name, m.employee_id as managerEmpId,
 				       u.role_id, r.role_name, u.status
 				FROM app_users u
 				LEFT JOIN app_users m ON m.user_id = u.manager_id
@@ -392,7 +392,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		List<ListUserDto> users = namedJdbcTemplate.query(sql.toString(), params,
 				(rs, rowNum) -> new ListUserDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
 						rs.getString("mobile"), rs.getString("email"), rs.getString("employee_id"),
-						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"),
+						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"), rs.getString("managerEmpId"),
 						rs.getObject("role_id", UUID.class), rs.getString("role_name"), rs.getString("status")));
 
 		int total = namedJdbcTemplate.queryForObject(countSql.toString(), params, Integer.class);
@@ -421,7 +421,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				       u.email,
 				       u.employee_id,
 				       u.manager_id,
-				       m.full_name AS manager_name,
+				       m.full_name AS manager_name, m.employee_id as managerEmpId,
 				       u.role_id,
 				       r.role_name,
 				       u.status
@@ -461,7 +461,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		List<ListUserDto> users = namedJdbcTemplate.query(dataSql.toString(), params,
 				(rs, rowNum) -> new ListUserDto(rs.getObject("user_id", UUID.class), rs.getString("full_name"),
 						rs.getString("mobile"), rs.getString("email"), rs.getString("employee_id"),
-						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"),
+						rs.getObject("manager_id", UUID.class), rs.getString("manager_name"), rs.getString("managerEmpId"),
 						rs.getObject("role_id", UUID.class), rs.getString("role_name"), rs.getString("status")));
 
 		int total = namedJdbcTemplate.queryForObject(countSql.toString(), params, Integer.class);
@@ -473,7 +473,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	private List<ListUserDto> toListUserDtos(List<AppUserDto> users) {
 		return users.stream()
 				.map(u -> new ListUserDto(u.getUserId(), u.getFullName(), u.getMobile(), u.getEmail(),
-						u.getEmployeeId(), u.getManagerId(), u.getManagerName(), u.getRoleId(), u.getRoleName(),
+						u.getEmployeeId(), u.getManagerId(), u.getManagerName(), null, u.getRoleId(), u.getRoleName(),
 						u.getStatus()))
 				.toList();
 	}
@@ -490,7 +490,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		Set<UUID> allowedSet = new HashSet<>(findSelfAndSubordinateIds(AppUtil.getCurrentUserId()));
 		return users.stream().filter(u -> allowedSet.contains(u.getUserId()))
 				.map(u -> new ListUserDto(u.getUserId(), u.getFullName(), u.getMobile(), u.getEmail(),
-						u.getEmployeeId(), u.getManagerId(), u.getManagerName(), u.getRoleId(), u.getRoleName(),
+						u.getEmployeeId(), u.getManagerId(), u.getManagerName(), null, u.getRoleId(), u.getRoleName(),
 						u.getStatus()))
 				.toList();
 	}

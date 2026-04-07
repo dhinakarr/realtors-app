@@ -10,6 +10,7 @@ public record ListUserDto(
 		String employeeId,
 		UUID managerId,
 		String managerName,
+		String managerEmpId,
 		UUID roleId,
 		String roleName,
 		String status
