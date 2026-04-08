@@ -24,5 +24,6 @@ public enum EnumConstants {
 	DELETE_COMMENT,
 	CANCEL,
 	REJECT,
-	CLOSE
+	CLOSE,
+	PRICE_UPDATE
 }

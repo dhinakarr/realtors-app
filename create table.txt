@@ -1736,7 +1736,7 @@ JOIN plot_units pl ON pl.plot_id = s.plot_id
 JOIN customers c ON c.customer_id = s.customer_id
 JOIN app_users u ON u.user_id = s.sold_by
 LEFT JOIN app_users m ON m.user_id = u.manager_id
-JOIN v_user_team_map t ON t.user_id = u.user_id
+LEFT JOIN v_user_team_map t ON t.user_id = u.user_id
 LEFT JOIN (
     SELECT sale_id, SUM(amount) AS total_received
     FROM payments

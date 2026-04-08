@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.realtors.admin.service.UserHierarchyService;
 import com.realtors.admin.service.UserService;
+import com.realtors.common.util.AppUtil;
 import com.realtors.dashboard.dto.PagedResponse;
 import com.realtors.dashboard.dto.PerformanceResponse;
 import com.realtors.dashboard.dto.SiteVisitDetailDTO;
@@ -20,6 +21,7 @@ import com.realtors.dashboard.dto.UserPerformanceDTO;
 import com.realtors.dashboard.dto.UserPerformanceKpiDTO;
 import com.realtors.dashboard.dto.UserPerformanceResponse;
 import com.realtors.dashboard.dto.UserPerformanceSnapshotDTO;
+import com.realtors.dashboard.dto.UserPrincipalDto;
 import com.realtors.dashboard.repository.UserPerformanceRepository;
 
 @Service
@@ -52,33 +54,54 @@ public class UserPerformanceService {
 		return buildResponse(list);
 	}
 	
-	public UserPerformanceDTO getUserPerformance(UUID userId, LocalDate fromDate, LocalDate toDate) {
-        UserPerformanceDTO dto = new UserPerformanceDTO();
-        var user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+	/*
+	 * public UserPerformanceDTO getUserPerformance(UUID userId, LocalDate fromDate,
+	 * LocalDate toDate) { UserPerformanceDTO dto = new UserPerformanceDTO(); var
+	 * user = userRepo.findById(userId) .orElseThrow(() -> new
+	 * RuntimeException("User not found"));
+	 * 
+	 * dto.setUserId(user.getUserId()); dto.setUserName(user.getFullName());
+	 * 
+	 * dto.setSiteVisits(repo.fetchSiteVisits(userId, fromDate, toDate));
+	 * dto.setSales(repo.fetchSales(userId, fromDate, toDate));
+	 * dto.setReceivable(repo.fetchReceivable(userId, fromDate, toDate));
+	 * dto.setCommission(repo.fetchCommission(userId, fromDate, toDate));
+	 * 
+	 * // Compute Visit-to-Sale conversion Set<String> visitedCustomers =
+	 * dto.getSiteVisits().stream() .map(SiteVisitDetailDTO::getCustomerName)
+	 * .collect(Collectors.toSet());
+	 * 
+	 * long convertedCount = dto.getSales().stream() .filter(s ->
+	 * visitedCustomers.contains(s.getCustomerName())) .count();
+	 * 
+	 * dto.setVisitToSaleConversion(dto.getSiteVisits().size() > 0 ? (double)
+	 * convertedCount / dto.getSiteVisits().size() : 0);
+	 * 
+	 * return dto; }
+	 */
+	
+	public UserPerformanceDTO getUserPerformance(UUID userId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            UserPrincipalDto principal) {
 
-        dto.setUserId(user.getUserId());
-        dto.setUserName(user.getFullName());
-
-        dto.setSiteVisits(repo.fetchSiteVisits(userId, fromDate, toDate));
-        dto.setSales(repo.fetchSales(userId, fromDate, toDate));
-        dto.setReceivable(repo.fetchReceivable(userId, fromDate, toDate));
-        dto.setCommission(repo.fetchCommission(userId, fromDate, toDate));
-
-        // Compute Visit-to-Sale conversion
-        Set<String> visitedCustomers = dto.getSiteVisits().stream()
-                .map(SiteVisitDetailDTO::getCustomerName)
-                .collect(Collectors.toSet());
-
-        long convertedCount = dto.getSales().stream()
-                .filter(s -> visitedCustomers.contains(s.getCustomerName()))
-                .count();
-
-        dto.setVisitToSaleConversion(dto.getSiteVisits().size() > 0
-                ? (double) convertedCount / dto.getSiteVisits().size() : 0);
-        
-        return dto;
-    }
+			boolean isCommon = AppUtil.isCommonRole(principal);
+			
+			UserPerformanceDTO dto = new UserPerformanceDTO();
+			
+			var user = userRepo.findById(userId)
+			.orElseThrow(() -> new RuntimeException("User not found"));
+			
+			dto.setUserId(user.getUserId());
+			dto.setUserName(user.getFullName());
+			
+			dto.setSiteVisits(repo.fetchSiteVisits(userId, fromDate, toDate));
+			dto.setSales(repo.fetchSales(userId, fromDate, toDate, isCommon));
+			dto.setReceivable(repo.fetchReceivable(userId, fromDate, toDate, isCommon));
+			dto.setCommission(repo.fetchCommission(userId, fromDate, toDate, isCommon));
+			
+			return dto;
+			}
 
 	public PerformanceResponse buildResponse(List<UserPerformanceSnapshotDTO> rows) {
 		BigDecimal totalReceived = BigDecimal.ZERO;

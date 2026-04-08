@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,6 +42,7 @@ import com.realtors.projects.dto.ProjectDetailDto;
 import com.realtors.projects.dto.ProjectDocumentDto;
 import com.realtors.projects.dto.ProjectDto;
 import com.realtors.projects.dto.ProjectFileDto;
+import com.realtors.projects.dto.ProjectPricingRequest;
 import com.realtors.projects.dto.ProjectResponse;
 import com.realtors.projects.dto.ProjectSummaryDto;
 import com.realtors.projects.services.ProjectFacadeService;
@@ -274,4 +276,9 @@ public class ProjectController {
 		return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).contentType(mediaType).body(region);
 	}
 
+	@PatchMapping("/{projectId}/pricing")
+	public ResponseEntity<ApiResponse<String>> updatePricing(@PathVariable UUID projectId, @RequestBody ProjectPricingRequest request) {
+		service.updateGuidelineAndRate(projectId, request.getGuidanceValue(), request.getPricePerSqft());
+		return ResponseEntity.ok(ApiResponse.success("Project pricing updated successfully", "Charges recalculated"));
+	}
 }

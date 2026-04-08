@@ -21,7 +21,6 @@ spring:
   cache:
     caffeine:
       spec: expireAfterWrite=1h,maximumSize=1000
-  
   mvc:
     pathmatch:
        matching-strategy: ANT_PATH_MATCHER
@@ -45,6 +44,7 @@ spring:
         useServerPrepStmts: true
   main:
     allow-bean-definition-overriding: true
+    log-startup-info: true
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration

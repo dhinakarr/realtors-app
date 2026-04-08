@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -282,5 +283,19 @@ public class UserController {
 		}
 
 		return ResponseEntity.ok(ApiResponse.success("User updated successfully", updated, HttpStatus.OK));
+	}
+	
+	@GetMapping("/id-with-role")
+	public ResponseEntity<ApiResponse<List<UserMiniDto>>> getUsers(
+	    @RequestParam(required = false) UUID managerId,
+	    @RequestParam String role) {
+		List<UserMiniDto> retList = null;
+
+	    if (managerId == null) { 
+	    	retList =  appUserService.getUsersByRoles(Set.of(role));
+	    } else {
+	    	retList =  appUserService.getUsersByManagerAndRole(managerId, role);
+	    }
+	    return ResponseEntity.ok(ApiResponse.success("User updated successfully", retList, HttpStatus.OK));
 	}
 }

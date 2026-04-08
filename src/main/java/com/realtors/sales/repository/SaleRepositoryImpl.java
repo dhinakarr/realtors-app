@@ -33,7 +33,6 @@ import lombok.RequiredArgsConstructor;
 public class SaleRepositoryImpl implements SaleRepository {
 
 	private final JdbcTemplate jdbc;
-//	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
 	private static final RowMapper<ReceivableDetailDTO> ROW_MAPPER = new BeanPropertyRowMapper<>(ReceivableDetailDTO.class);
 	private static final RowMapper<SaleDetailDTO> SALE_MAPPER = new BeanPropertyRowMapper<>(SaleDetailDTO.class);
 	private static final Logger logger = LoggerFactory.getLogger(SaleRepositoryImpl.class);
@@ -55,7 +54,6 @@ public class SaleRepositoryImpl implements SaleRepository {
 		if (statuses == null || statuses.isEmpty()) {
             return List.of();
         }
-		
 		StringBuilder sql = new StringBuilder(
 		        "SELECT * FROM v_receivable_details WHERE sale_status IN ("
 		    );
@@ -86,8 +84,8 @@ public class SaleRepositoryImpl implements SaleRepository {
 			BigDecimal basePrice, BigDecimal extraCharges, BigDecimal totalPrice) {
 		String sql = """
 				    INSERT INTO sales
-				    (plot_id, project_id, customer_id, sold_by, area, base_price, extra_charges, total_price, sale_status)
-				    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+				    (plot_id, project_id, customer_id, sold_by, area, base_price, extra_charges, total_price, sale_status, confirmed_at)
+				    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, now())
 				    RETURNING sale_id, plot_id, project_id, customer_id, sold_by,
 				              area, base_price, extra_charges, total_price, sale_status, confirmed_at
 				""";

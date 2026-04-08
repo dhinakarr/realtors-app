@@ -202,6 +202,28 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 			return dto;
 		});
 	}
+	
+	public List<UserMiniDto> getUsersByManagerAndRole(UUID managerId, String role) {
+	    String sql = """
+	        SELECT u.user_id, u.full_name, u.employee_id
+	        FROM app_users u
+	        JOIN roles r ON u.role_id = r.role_id
+	        WHERE u.manager_id = :managerId
+	          AND r.finance_role = :role
+	    """;
+
+	    Map<String, Object> params = new HashMap<>();
+	    params.put("managerId", managerId);
+	    params.put("role", role);
+
+	    return namedJdbcTemplate.query(sql, params, (rs, rowNum) -> {
+	        UserMiniDto dto = new UserMiniDto();
+	        dto.setUserId(UUID.fromString(rs.getString("user_id")));
+	        dto.setFullName(rs.getString("full_name"));
+	        dto.setEmployeeId(rs.getString("employee_id"));
+	        return dto;
+	    });
+	}
 
 	/** ✅ Update user */
 	public AppUserDto updateUser(AppUserDto dto, UUID currentUserId) {

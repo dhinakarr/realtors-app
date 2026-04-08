@@ -55,9 +55,10 @@ public class UserPerformanceController {
     public ResponseEntity<UserPerformanceDTO> getPerformance(
             @PathVariable UUID userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @AuthenticationPrincipal UserPrincipalDto principal
     ) {
-        UserPerformanceDTO performance = performanceService.getUserPerformance(userId, fromDate, toDate);
+        UserPerformanceDTO performance = performanceService.getUserPerformance(userId, fromDate, toDate, principal);
         return ResponseEntity.ok(performance);
     }
 

@@ -1,5 +1,6 @@
 package com.realtors.projects.services;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -44,7 +45,7 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		this.repo = repo;
 		this.plotService = plotService;
 		this.audit = audit;
-		this.fileService= fileService; 
+		this.fileService = fileService;
 	}
 
 	@Override
@@ -126,8 +127,7 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		audit.auditAsync("projects", id, EnumConstants.DELETE);
 		return super.softDelete(id);
 	}
-	
-	
+
 	@Transactional("txManager")
 	public void uploadDocument(UUID projectId, String documentType, String documentNumber, MultipartFile file)
 			throws Exception {
@@ -161,14 +161,11 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 	}
 
 	public ProjectDocumentDto findByDocumentId(Long docId) {
-		List<ProjectDocumentDto> list = jdbcTemplate.query(
-		        "SELECT * FROM project_documents WHERE document_id = ?",
-		        new BeanPropertyRowMapper<>(ProjectDocumentDto.class),
-		        docId
-		    );
-		    return list.isEmpty() ? null : list.get(0);
+		List<ProjectDocumentDto> list = jdbcTemplate.query("SELECT * FROM project_documents WHERE document_id = ?",
+				new BeanPropertyRowMapper<>(ProjectDocumentDto.class), docId);
+		return list.isEmpty() ? null : list.get(0);
 	}
-	
+
 	public void deleteDocument(Long docId) {
 		ProjectDocumentDto dto = findByDocumentId(docId);
 		UUID projectId = dto.getProjectId();
@@ -177,11 +174,11 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		// delete DB record
 		delete(docId);
 	}
-	
+
 	private void delete(Long docId) {
 		jdbcTemplate.update("DELETE FROM project_documents WHERE document_id = ?", docId);
 	}
-	
+
 	public List<ProjectDocumentDto> findDocumentsByUserId(UUID userId) {
 		String sql = "SELECT *  FROM project_documents WHERE project_id = ?";
 		return jdbcTemplate.query(sql, new Object[] { userId }, (rs, rowNum) -> {
@@ -196,5 +193,64 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 			d.setUploadedAt(rs.getTimestamp("uploaded_at").toLocalDateTime());
 			return d;
 		});
+	}
+
+	@Transactional
+	public void updateGuidelineAndRate(UUID projectId, BigDecimal guidanceValue, BigDecimal pricePerSqft) {
+
+		// ✅ 1. If both null → exit early
+		if (guidanceValue == null && pricePerSqft == null) {
+			return; // no-op
+		}
+		// ✅ 2. Fetch existing values (only if needed)
+		Map<String, Object> project = jdbcTemplate.queryForMap("""
+				    SELECT guidance_value, price_per_sqft
+				    FROM projects
+				    WHERE project_id = ?
+				""", projectId);
+
+		BigDecimal existingGuidance = (BigDecimal) project.getOrDefault("guidance_value", BigDecimal.ZERO);
+		BigDecimal existingRate = (BigDecimal) project.getOrDefault("price_per_sqft",  BigDecimal.ZERO);
+
+		// ✅ 3. Decide final values
+		BigDecimal finalGuidance = (guidanceValue != null) ? guidanceValue : existingGuidance;
+		BigDecimal finalRate = (pricePerSqft != null) ? pricePerSqft : existingRate;
+
+		// ✅ 4. Check if actually changed (optional but best practice)
+		boolean isSame = finalGuidance.compareTo(existingGuidance) == 0 && finalRate.compareTo(existingRate) == 0;
+
+		if (isSame) {
+			return; // no change → skip DB update
+		}
+
+		// ✅ 5. Update project
+		jdbcTemplate.update("""
+				    UPDATE projects
+				    SET
+				        guidance_value = ?,
+				        price_per_sqft = ?,
+				        updated_at = now()
+				    WHERE project_id = ?
+				""", finalGuidance, finalRate, projectId);
+
+		// ✅ 6. Update plots (same as before)
+		jdbcTemplate.update("""
+				    UPDATE plot_units pu
+				    SET
+				        base_price = pu.area * p.price_per_sqft,
+				        total_price =
+				            (pu.area * p.price_per_sqft)
+				            +(p.reg_charges*p.guidance_value)/100
+				            + p.doc_charges
+				            + p.other_charges,
+				        updated_at = now(),
+				        rate_per_sqft=p.price_per_sqft,
+				        registration_charges=(pu.area *p.reg_charges*p.guidance_value)/100
+				    FROM projects p
+				    WHERE pu.project_id = p.project_id
+				      AND pu.project_id = ?
+				      AND pu.status = 'AVAILABLE'
+				""", projectId);
+		audit.auditAsync("projects", projectId, EnumConstants.PRICE_UPDATE);
 	}
 }
