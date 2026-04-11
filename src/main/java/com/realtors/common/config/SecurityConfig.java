@@ -32,7 +32,7 @@ public class SecurityConfig {
         this.jwtUtil = jwtUtil;
         this.tokenCacheService = tokenCacheService;
         this.jdbcTemplate = jdbcTemplate;
-    }
+    }	
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -52,6 +52,12 @@ public class SecurityConfig {
                     "/", "/files/*", "/index.html",
                     "/favicon.ico", "/vite.svg", "/assets/**"
                 ).permitAll()
+                .requestMatchers(
+                	    "/v3/api-docs/**",
+                	    "/swagger-ui/**",
+                	    "/swagger-ui.html",
+                	    "/api-docs-ui/**"
+                	).permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             )
@@ -70,7 +76,9 @@ public class SecurityConfig {
         config.setAllowedOriginPatterns(List.of(
             "http://localhost:*",
             "http://127.0.0.1:*",
-            "http://192.168.*.*:*"
+            "http://192.168.*.*:*",
+            "https://diamondrealty.co.in",
+            "http://diamondrealty.co.in"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

@@ -69,6 +69,8 @@ public class GenericInsertUtil {
 		placeholders.setLength(placeholders.length() - 2);
 
 		sql.append(") VALUES (").append(placeholders).append(") RETURNING *");
+		logger.info("@GenericInsertUtil.insertGeneric sql: {}", sql.toString());
+		logger.info("@GenericInsertUtil.insertGeneric params: {}", params.toArray().toString());
 		// 5️⃣ Execute query
 		return jdbcTemplate.queryForObject(sql.toString(), new JsonAwareRowMapper<>(dtoClass), params.toArray());
 	}

@@ -106,16 +106,17 @@ public class ProjectService extends AbstractBaseService<ProjectDto, UUID> {
 		if (value != null && value instanceof List<?> list) {
 			// Case: JSON array -> List
 			plotNumbers = list.stream().filter(Objects::nonNull).map(Object::toString).toList();
+			dto.put("noOfPlots", plotNumbers);
 		} else if (value != null && value instanceof String str) {
 			// Case: JSON string -> split by comma
 			plotNumbers = Arrays.stream(str.split(",")).map(String::trim) // remove extra spaces
 					.filter(s -> !s.isEmpty()) // remove empty strings
 					.toList();
+			dto.put("noOfPlots", plotNumbers.size());
 		}
+		
 		ProjectDto data = super.patch(projectId, dto);
 		if (plotNumbers != null && !plotNumbers.isEmpty()) {
-//			plotService.deleteByProjectId(projectId);
-//			plotService.generatePlots(projectId, plotNumbers);
 			plotService.syncPlots(projectId, plotNumbers);
 		}
 

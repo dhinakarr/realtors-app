@@ -178,13 +178,14 @@ public class GenericUpdateUtil {
 
             // Serialize JSON fields
             if (value instanceof Map || value instanceof List) {
+                sql.append(column).append(" = ?::jsonb, ");
                 try {
-                    value = objectMapper.writeValueAsString(value);
+                    params.add(objectMapper.writeValueAsString(value));
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException("Failed to serialize field: " + column, e);
                 }
+                continue; // ✅ IMPORTANT: skip rest
             }
-
             if (isJson(value)) {
                 sql.append(column).append(" = ?::jsonb, ");
                 try {

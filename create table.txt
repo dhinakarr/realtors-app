@@ -113,20 +113,6 @@ CREATE TABLE acl_permissions (
     CONSTRAINT unique_role_feature UNIQUE (role_id, feature_id)
 );
 
-CREATE TABLE dynamic_form_meta (
-    meta_id UUID PRIMARY KEY,
-    table_name VARCHAR(100) NOT NULL,
-    column_name VARCHAR(100) NOT NULL,
-    label VARCHAR(100),
-    input_type VARCHAR(50),   -- text, number, email, select, textarea, file
-    is_required BOOLEAN DEFAULT FALSE,
-    is_hidden BOOLEAN DEFAULT FALSE,
-    lookup_table VARCHAR(100),     -- null if no lookup
-    lookup_key VARCHAR(100),       -- e.g., "user_id"
-    lookup_value VARCHAR(100),     -- e.g., "full_name"
-    sort_order INT DEFAULT 0
-);
-
 CREATE TABLE form_metadata (
     id SERIAL PRIMARY KEY,
     table_name VARCHAR(50) NOT NULL,

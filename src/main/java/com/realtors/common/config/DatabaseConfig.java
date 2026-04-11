@@ -24,9 +24,9 @@ public class DatabaseConfig {
     @Bean
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(databaseProperties.getUrl());
-        config.setUsername(databaseProperties.getUsername());
-        config.setPassword(databaseProperties.getPassword());
+        config.setJdbcUrl(System.getenv("DB_URL"));
+        config.setUsername(System.getenv("DB_USERNAME"));
+        config.setPassword(System.getenv("DB_PASSWORD"));
         config.setDriverClassName(databaseProperties.getDriverClassName());
         config.setMaximumPoolSize(databaseProperties.getMaximumPoolSize());
         config.setMinimumIdle(databaseProperties.getMinimumIdle());

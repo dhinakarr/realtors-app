@@ -1,5 +1,6 @@
 package com.realtors.common;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,6 +22,24 @@ public class Utils {
 	        }
 	    }
 	    return allFields;
+	}
+	
+	public static Map<String, Object> castDateFields(Map<String, Object> fields, Set<String> dateFields) {
+	    Map<String, Object> updated = new HashMap<>(fields);
+
+	    for (String key : dateFields) {
+	        Object value = updated.get(key);
+
+	        if (value != null && value instanceof String str && !str.isBlank()) {
+	            try {
+	                updated.put(key, java.sql.Date.valueOf(str)); // ✅ convert to SQL Date
+	            } catch (IllegalArgumentException e) {
+	                throw new RuntimeException("Invalid date format for field: " + key + ". Expected yyyy-MM-dd");
+	            }
+	        }
+	    }
+
+	    return updated;
 	}
 
 }

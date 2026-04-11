@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.NoSuchElementException;
 
@@ -27,10 +28,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
         NoSuchElementException.class,
         EmptyResultDataAccessException.class,
-        ResourceNotFoundException.class
+        ResourceNotFoundException.class,
+        NoResourceFoundException.class
     })
     public ResponseEntity<ApiResponse> handleNotFound(RuntimeException ex) {
-        log.error("Resource not found", ex);
+        log.error("Resource not found", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.failure(ex.getMessage(), HttpStatus.NOT_FOUND));
     }
@@ -39,7 +41,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse> handleBadRequest(IllegalArgumentException ex) {
-        log.warn("Bad request", ex);
+        log.warn("Bad request", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(ApiResponse.failure(ex.getMessage(), HttpStatus.BAD_REQUEST));
     }
@@ -48,7 +50,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse> handleGeneric(Exception ex) {
-        log.error("Unhandled exception", ex);
+        log.error("Unhandled exception", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure(ex.getMessage()));
     }
@@ -59,7 +61,7 @@ public class GlobalExceptionHandler {
         MethodArgumentTypeMismatchException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleRequestParsing(Exception ex) {
-        log.warn("Request parsing error", ex);
+        log.warn("Request parsing error", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(ApiResponse.failure(ex.getMessage(), HttpStatus.BAD_REQUEST));
     }

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    environment:
+      DB_URL: jdbc:postgresql://db:5431/realtors
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Postgres@123
+      MAIL_USERNAME: apkdhina@gmail.com
+      MAIL_USERNAME: jrle ydzn nzak rvod
+      BACKEND_URL: 45.195.159.53:808
+      FRONTEND_URL: 45.195.159.53:80
+      JWT_SECRET: ThisIsASecretKeyForJWTsChangeMe1234567890
+      FILE_UPLOAD_DIR: /app/files/
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5431:5431"
+
+  backend:
+    build: ./backend
+    container_name: springboot_app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5431/realtors
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: Postgres@123
+    ports:
+      - "808:808"
+
+  frontend:
+    build: ./frontend
+    container_name: react_app
+    restart: always
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:

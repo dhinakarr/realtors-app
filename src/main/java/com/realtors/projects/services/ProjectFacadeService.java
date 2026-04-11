@@ -29,12 +29,25 @@ public class ProjectFacadeService {
 		this.fileService = fileService;
 		this.plotService = plotService;
 	}
+	
+	private int getNoOfPlots(ProjectDto dto) {
+		Object plotNoObj = dto.getPlotNumbers();
+		List<String> plotList = null;
+		if (plotNoObj != null && plotNoObj instanceof String str) {
+			// Case: JSON string -> split by comma
+			plotList = Arrays.stream(str.split(",")).map(String::trim) // remove extra spaces
+					.filter(s -> !s.isEmpty()) // remove empty strings
+					.toList();
+		}
+		return plotList.size();
+	}
 
 	/**
 	 * The core transactional method. Use the txManager bean explicitly.
 	 */
 	@Transactional( "txManager")
 	public ProjectResponse createProjectWithFilesAndPlots(ProjectDto dto, MultipartFile[] files) {
+		dto.setNoOfPlots(getNoOfPlots(dto));
 		// 1) create project (DB)
 		ProjectDto created = projectService.createProject(dto);
 		UUID project_id = created.getProjectId() ;

@@ -126,13 +126,21 @@ public class ProjectController {
 			@RequestPart(value = "files", required = false) MultipartFile[] files,
 			@RequestParam Map<String, Object> otherFields) { // This contains all other fields
 
-		Map<String, Object> updates = new HashMap<String, Object>();
-		ProjectDto updated = new ProjectDto();
+		Map<String, Object> updates = new HashMap<>();
+
 		if (otherFields != null && !otherFields.isEmpty()) {
 			Set<String> integerFields = Set.of("noOfPlots", "plotStartNumber", "pricePerSqft", "regCharges",
 					"docCharges", "otherCharges", "guidanceValue");
-			updates = Utils.castNumberFields(otherFields, integerFields);
+			Set<String> dateFields = Set.of("startDate", "endDate");
+
+			// ✅ Start from otherFields
+			updates = new HashMap<>(otherFields);
+			// ✅ Apply conversions in sequence
+			updates = Utils.castNumberFields(updates, integerFields);
+			updates = Utils.castDateFields(updates, dateFields);
 		}
+
+		ProjectDto updated = new ProjectDto();
 		if (updates.isEmpty()) {
 			updated = service.getProject(id).get();
 		} else {
@@ -277,7 +285,8 @@ public class ProjectController {
 	}
 
 	@PatchMapping("/{projectId}/pricing")
-	public ResponseEntity<ApiResponse<String>> updatePricing(@PathVariable UUID projectId, @RequestBody ProjectPricingRequest request) {
+	public ResponseEntity<ApiResponse<String>> updatePricing(@PathVariable UUID projectId,
+			@RequestBody ProjectPricingRequest request) {
 		service.updateGuidelineAndRate(projectId, request.getGuidanceValue(), request.getPricePerSqft());
 		return ResponseEntity.ok(ApiResponse.success("Project pricing updated successfully", "Charges recalculated"));
 	}

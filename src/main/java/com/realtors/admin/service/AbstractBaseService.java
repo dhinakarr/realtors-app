@@ -102,6 +102,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		values.put("created_by", currentUser);
 		values.put("updated_by", currentUser);
 //        }
+		logger.info("@AbstractBaseService.create currentUser: "+ currentUser);
 		return GenericInsertUtil.insertGeneric(tableName, dto, jdbcTemplate, dtoClass, getIdColumn());
 	}
 
