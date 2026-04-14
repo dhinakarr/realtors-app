@@ -10,8 +10,8 @@ spring:
   mail:
      host: smtp.gmail.com
      port: 587
-     username: apkdhina@gmail.com
-     password: jrle ydzn nzak rvod
+     username: ${MAIL_USERNAME}
+     password: ${MAIL_PASSWORD}
      properties: 
        mail: 
          smtp:
@@ -25,9 +25,9 @@ spring:
     pathmatch:
        matching-strategy: ANT_PATH_MATCHER
   datasource:
-    url: jdbc:postgresql://localhost:5432/test_db
-    username: postgres
-    password: admin
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -69,25 +69,43 @@ server:
 
 app:
   backend:
-    base-url: http://127.0.0.1:8080
+    base-url: ${BACKEND_URL}
   frontend:
-    base-url: http://127.0.0.1:5173
+    base-url: ${FRONTEND_URL}
+
+management:
+  server:
+    port: 8081
+  endpoints:
+    web:
+      exposue:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 logging:
   file:
     name: logs/application.log
+    logback:
+      rollingpolicy: 
+        max-file-size: 50MB
+        max-history: 10
   level:
     root: ERROR
     com.realtors: INFO 
     com.realitor.common.util.JsonAwareRowMapper: WARN
     org.springframework.web.servlet.resource.ResourceHttpRequestHandler: OFF
-    org.springframework.jdbc.core.BeanPropertyRowMapper: WARN
+    org.springframework.jdbc: ERROR
+    org.postgresql: ERROR
 
 jwt:
-  secret: "ThisIsASecretKeyForJWTsChangeMe1234567890"  # use env var in production
+  secret: ${JWT_SECRET}  # use env var in production
   expiration-ms: 86400000
   refreshExpirationMs: 604800000
 
 file:
-  upload-dir: D:\temp\app-images\uploads
-  temp-dir: D:\temp\
+  upload-dir: ${FILE_UPLOAD_DIR}
+  temp-dir: /home/diamondadm01/app/
+springdoc:
+  swagger-ui.path: springdoc  

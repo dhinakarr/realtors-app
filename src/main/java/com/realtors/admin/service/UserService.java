@@ -18,6 +18,7 @@ import com.realtors.common.service.AuditTrailService;
 import com.realtors.common.service.FileStorageContext;
 import com.realtors.common.service.FileSavingService;
 import com.realtors.common.util.AppUtil;
+import com.realtors.common.util.JsonAwareRowMapper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -231,17 +232,21 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 		audit.auditAsync("app_users", data.getUserId(), EnumConstants.UPDATE);
 		return data;
 	}
+	
+	private Optional<AppUserDto> findByEmail(String email) {
+		String sql = "SELECT * FROM app_users WHERE email=? ORDER BY updated_at DESC LIMIT 1";
+		List<AppUserDto> list = jdbcTemplate.query(sql, new JsonAwareRowMapper<>(AppUserDto.class), email);
+		return list.stream().findFirst();
+	}
 
 	// ---------------- CREATE ----------------
 	public AppUserDto createWithFiles(AppUserDto data, MultipartFile profileImage) {
-		// Hash password
-//		String hashedPassword = passwordEncoder.encode("Test@123");
-//		data.setPasswordHash(hashedPassword);
-
 		if (userAuthService.emailExists(data.getEmail(), data.getMobile())) {
 			throw new IllegalArgumentException(data.getEmail() + " exists, please register with different Email.");
 		}
-
+		
+		Optional<AppUserDto> existing = findByEmail(data.getEmail());
+		
 		byte[] imageBytes = null;
 		try {
 			if (profileImage != null && !profileImage.isEmpty()) {
@@ -266,8 +271,24 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				: new HashMap<>(); // or empty map
 		data.setMeta(metaMap);
 		Map<String, Object> updatedMap = mapper.convertValue(data, Map.class);
+		
 		String roleType = roleService.findById(data.getRoleId()).orElse(null).getFinanceRole();
-		AppUserDto obj = super.createWithFiles(updatedMap);
+		
+		AppUserDto obj = null;
+		if (existing.isPresent()) {
+		    AppUserDto user = existing.get();
+		    
+		    if ("ACTIVE".equals(user.getStatus())) {
+		        throw new IllegalArgumentException("Email already in use.");
+		    }
+		    updatedMap.put("userId", user.getUserId());
+		    updatedMap.put("status", "ACTIVE");
+	        obj = super.patchUpdateWithFile(user.getUserId(), updatedMap);
+		} else {
+			updatedMap.put("userId", UUID.randomUUID());
+			obj = super.createWithFiles(updatedMap);
+		}
+		
 		userAuthService.createUserAuth(obj.getUserId(), obj.getEmail(), null, obj.getRoleId(), obj.getMobile(),
 				roleType);
 		audit.auditAsync("app_users", obj.getUserId(), EnumConstants.CREATE_WITH_FILES);
@@ -282,9 +303,11 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 	}
 
 	/** ✅ Soft delete */
-	public boolean softDeleteUser(UUID userId) {
+	public boolean deleteUser(UUID userId) {
+		super.softDelete(userId);
+		jdbcTemplate.update("DELETE FROM user_auth WHERE user_id=?", userId);
 		audit.auditAsync("app_users", userId, EnumConstants.DELETE);
-		return super.softDelete(userId);
+		return true;
 	}
 
 	public AppUserDto partialUpdate(UUID id, Map<String, Object> dto) {
@@ -392,7 +415,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				FROM app_users u
 				LEFT JOIN app_users m ON m.user_id = u.manager_id
 				LEFT JOIN roles r ON r.role_id = u.role_id
-				WHERE 1=1 """);
+				WHERE u.status='ACTIVE' """);
 		applyFilters(sql, search, role, manager);
 		sql.append(" ORDER BY u.full_name");
 		sql.append(" LIMIT :limit OFFSET :offset");
@@ -402,7 +425,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				FROM app_users u
 				LEFT JOIN app_users m ON m.user_id = u.manager_id
 				LEFT JOIN roles r ON r.role_id = u.role_id
-				WHERE 1=1""");
+				WHERE u.status='ACTIVE' """);
 
 		applyFilters(countSql, search, role, manager);
 
@@ -451,7 +474,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				LEFT JOIN app_users m ON m.user_id = u.manager_id
 				LEFT JOIN roles r ON r.role_id = u.role_id
 				JOIN subordinates s ON s.user_id = u.user_id
-				WHERE 1=1 """);
+				WHERE u.status='ACTIVE' """);
 		applyFilters(dataSql, search, role, manager);
 		dataSql.append(" ORDER BY u.user_id, u.full_name");
 		dataSql.append(" LIMIT :limit OFFSET :offset");
@@ -471,7 +494,7 @@ public class UserService extends AbstractBaseService<AppUserDto, UUID> {
 				LEFT JOIN app_users m ON m.user_id = u.manager_id
 				LEFT JOIN roles r ON r.role_id = u.role_id
 				JOIN subordinates s ON s.user_id = u.user_id
-				WHERE 1=1 """);
+				WHERE u.status='ACTIVE' """);
 		applyFilters(countSql, search, role, manager);
 
 		MapSqlParameterSource params = new MapSqlParameterSource().addValue("userId", userId).addValue("limit", size)

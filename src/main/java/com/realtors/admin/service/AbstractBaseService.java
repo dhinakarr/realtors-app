@@ -11,7 +11,6 @@ import com.realtors.admin.dto.AppUserDto;
 import com.realtors.admin.dto.PagedResult;
 import com.realtors.admin.dto.form.DynamicFormMetaRow;
 import com.realtors.admin.dto.form.DynamicFormResponseDto;
-import com.realtors.admin.dto.form.LookupDefinition;
 import com.realtors.common.util.AppUtil;
 import com.realtors.common.util.GenericInsertUtil;
 import com.realtors.common.util.GenericUpdateUtil;
@@ -102,7 +101,6 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		values.put("created_by", currentUser);
 		values.put("updated_by", currentUser);
 //        }
-		logger.info("@AbstractBaseService.create currentUser: "+ currentUser);
 		return GenericInsertUtil.insertGeneric(tableName, dto, jdbcTemplate, dtoClass, getIdColumn());
 	}
 
@@ -162,6 +160,7 @@ public abstract class AbstractBaseService<T, ID> implements BaseService<T, ID> {
 		String sql = "UPDATE " + tableName + " SET status = 'INACTIVE', updated_at = ?, updated_by = ? WHERE "
 				+ getIdColumn() + " = ?";
 		UUID currentUser = AppUtil.getCurrentUserId();
+			
 		return jdbcTemplate.update(sql, OffsetDateTime.now(), currentUser, id) > 0;
 	}
 

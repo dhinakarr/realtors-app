@@ -52,7 +52,7 @@ CREATE TABLE user_auth (
 );
 
 INSERT INTO public.app_users(
-	user_id, role_id, email, mobile, password_hash, full_name)
+	role_id, email, mobile, password_hash, full_name)
 	VALUES (f8f0f7ca-05e4-4092-8271-0328b0ed2982, '', 'dhina@xyz.com', 98798797979, 
 	'$2a$10$1FR8E/uB3y08vimDTKZpYeEUjJMS9oRl6QLEO1UCbbjR0vfyapEpC', 'Dhinakaran');
 
@@ -1890,3 +1890,5 @@ FROM form_metadata;
 COPY form_metadata
 TO 'D:/temp/data.csv'
 WITH (FORMAT csv, HEADER true);  
+
+CREATE UNIQUE INDEX unique_active_email ON app_users(email) WHERE status = 'ACTIVE';

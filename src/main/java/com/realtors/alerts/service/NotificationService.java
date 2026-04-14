@@ -39,6 +39,10 @@ public class NotificationService {
 				NotificationChannel channel = msg.getChannel();
 	            NotificationSender sender = senders.get(channel);
 	            String recipientStr = getRecipient(channel, recipient);
+	            
+	            if (recipientStr == null) {
+	                return; // skip sending
+	            }
 
 	            if (recipient.email() != null)
 					sender.send(instruction, recipientStr);
@@ -46,18 +50,26 @@ public class NotificationService {
 		}
 		logger.info("@NotificationService.send messages Sent");
 	}
+	
 	private String getRecipient(NotificationChannel channel, RecipientDetail recipt) {
-		switch (channel) {
-			case NotificationChannel.PUSH:
-				return recipt.userId().toString();
-			case NotificationChannel.EMAIL:
-				return recipt.email();
-			case NotificationChannel.WHATSAPP:
-				return recipt.mobile();
-			case NotificationChannel.SMS:
-				return recipt.mobile();	
-			default:
-				return recipt.userId().toString();
-			}
+		
+		if (recipt == null) {
+		    logger.warn("Recipient is null, skipping notification");
+		    return null;
+		}
+		
+		String recipient = switch (channel) {
+	        case PUSH -> recipt.userId() != null ? recipt.userId().toString() : null;
+	        case EMAIL -> recipt.email();
+	        case WHATSAPP, SMS -> recipt.mobile();
+	        default -> recipt.userId() != null ? recipt.userId().toString() : null;
+	    };
+	
+	    if (recipient == null || recipient.isBlank()) {
+	        logger.warn("Recipient value missing for channel: {}", channel);
+	        return null;
+	    }
+	
+	    return recipient;
 	}
 }

@@ -2,6 +2,8 @@ package com.realtors.dashboard.dto;
 
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +19,7 @@ public class UserPrincipalDto implements UserDetails {
     /**
 	 * 
 	 */
+	private static final Logger logger = LoggerFactory.getLogger(UserPrincipalDto.class);
 	private static final long serialVersionUID = 1L;
 	private UUID userId;
 	private UUID roleId;

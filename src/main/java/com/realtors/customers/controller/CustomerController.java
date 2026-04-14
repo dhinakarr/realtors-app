@@ -67,11 +67,15 @@ import io.jsonwebtoken.Claims;
 	}
 	
 	@GetMapping("/hierarchy-visible")
-	public ResponseEntity<?> getHierarchyVisibleCustomers(@RequestHeader("Authorization") String header) {
+	public ResponseEntity<ApiResponse<List<CustomerMiniDto>>> getHierarchyVisibleCustomers(@RequestParam(required = true) UUID userId,
+			@RequestHeader("Authorization") String header) {
+		if(userId == null) {
+			return ResponseEntity.badRequest().body(ApiResponse.failure("Please select Project Head User"));
+		}
         String roleId = getRoleId(header);
-	    UUID userId = AppUtil.getCurrentUserId();
+//	    UUID userId = AppUtil.getCurrentUserId();
 	    List<CustomerMiniDto> customers = service.getCustomersVisibleToUser(userId, roleId);
-	    return ResponseEntity.ok(Map.of("success", true, "data", customers));
+	    return ResponseEntity.ok(ApiResponse.success("Customers fetched successfully", customers));
 	}
 	
 	private String getRoleId(String header) {

@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
         ResourceNotFoundException.class,
         NoResourceFoundException.class
     })
-    public ResponseEntity<ApiResponse> handleNotFound(RuntimeException ex) {
+    public ResponseEntity<ApiResponse<String>> handleNotFound(RuntimeException ex) {
         log.error("Resource not found", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.failure(ex.getMessage(), HttpStatus.NOT_FOUND));
@@ -40,8 +40,8 @@ public class GlobalExceptionHandler {
     /* ---------------- 400 ---------------- */
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse> handleBadRequest(IllegalArgumentException ex) {
-        log.warn("Bad request", ex.getMessage());
+    public ResponseEntity<ApiResponse<String>> handleBadRequest(IllegalArgumentException ex) {
+        log.warn("Bad request", ex);
         return ResponseEntity.badRequest()
                 .body(ApiResponse.failure(ex.getMessage(), HttpStatus.BAD_REQUEST));
     }
@@ -49,8 +49,8 @@ public class GlobalExceptionHandler {
     /* ---------------- 500 ---------------- */
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse> handleGeneric(Exception ex) {
-        log.error("Unhandled exception", ex.getMessage());
+    public ResponseEntity<ApiResponse<String>> handleGeneric(Exception ex) {
+        log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure(ex.getMessage()));
     }
@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
         MethodArgumentTypeMismatchException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleRequestParsing(Exception ex) {
-        log.warn("Request parsing error", ex.getMessage());
+        log.warn("Request parsing error", ex);
         return ResponseEntity.badRequest()
                 .body(ApiResponse.failure(ex.getMessage(), HttpStatus.BAD_REQUEST));
     }
@@ -89,7 +89,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ClientAbortException.class)
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void handleClientAbortException(ClientAbortException ex) {
-        log.debug("Client disconnected: {}", ex.getMessage());
+        log.debug("Client disconnected: {}", ex);
     }
 
 }

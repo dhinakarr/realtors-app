@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +83,6 @@ public class UserController {
 	    }
 		
 		appUserService.deleteDocument(id);
-		logger.info("@UserController.getDocuments document deleted");
 	    return ResponseEntity.ok(ApiResponse.success("Document deleted", null));
 	}
 	
@@ -115,7 +115,14 @@ public class UserController {
 	) {
 	    try {
 	        ObjectMapper mapper = new ObjectMapper();
-	        AppUserDto dto = mapper.readValue(dtoJson, AppUserDto.class);
+	        Map<String, Object> updatedMap = (Map<String, Object>) mapper.readValue(dtoJson, Map.class);
+	        updatedMap.keySet().removeAll(Arrays.asList(
+	        	    "roleName",
+	        	    "managerName",
+	        	    "createdAt",
+	        	    "createdBy"
+	        	));
+	        AppUserDto dto = mapper.convertValue(updatedMap, AppUserDto.class);
 
 	        if (dto.getEmail() == null || dto.getMobile() == null) {
 	            return ResponseEntity.badRequest()
@@ -268,7 +275,7 @@ public class UserController {
 	/** ✅ Soft delete */
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
-		boolean deleted = appUserService.softDelete(id);
+		boolean deleted = appUserService.deleteUser(id);
 		return deleted ? ResponseEntity.ok(ApiResponse.success("User marked as INACTIVE", null, HttpStatus.OK))
 				: ResponseEntity.badRequest().body(ApiResponse.failure("User not found", HttpStatus.NOT_FOUND));
 	}

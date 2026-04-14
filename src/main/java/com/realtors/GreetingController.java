@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import com.realtors.common.ApiResponse;
 import com.realtors.projects.controller.ProjectController;
 import com.realtors.projects.dto.PlotDetailsDto;
-import com.realtors.projects.dto.PlotUnitDto;
 import com.realtors.projects.dto.ProjectDetailDto;
 import com.realtors.projects.dto.ProjectSummaryDto;
 import com.realtors.projects.services.PlotUnitService;
@@ -20,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/public")
+@RequestMapping("/api/public")
 public class GreetingController {
 	
 	private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);

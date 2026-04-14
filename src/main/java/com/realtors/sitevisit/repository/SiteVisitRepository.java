@@ -31,14 +31,14 @@ public class SiteVisitRepository {
 
 	public UUID create(SiteVisitRequestDTO dto) {
 		UUID id = UUID.randomUUID();
-
+		BigDecimal expense = dto.getExpenseAmount() == null ? new BigDecimal(0) : dto.getExpenseAmount();
 		jdbcTemplate.update("""
 				    INSERT INTO site_visits
 				    (site_visit_id, visit_date, user_id, project_id,
 				     vehicle_type, expense_amount, remarks, status)
 				    VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN')
 				""", id, dto.getVisitDate(), dto.getUserId(), dto.getProjectId(), dto.getVehicleType(),
-				dto.getExpenseAmount(), dto.getRemarks());
+				expense, dto.getRemarks());
 
 		return id;
 	}

@@ -10,6 +10,8 @@ import com.realtors.admin.dto.LoginResponse;
 import com.realtors.admin.service.TokenCacheService;
 import com.realtors.admin.service.UserAuthService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +28,7 @@ public class AuthController {
 	private UserAuthService userAuthService;
 	private final JwtUtil jwtUtil;
 	private final TokenCacheService tokenCacheService;
+	private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
 	public AuthController(JwtUtil jwtUtil, TokenCacheService tokenCacheService, UserAuthService userAuthService) {
 		this.jwtUtil = jwtUtil;

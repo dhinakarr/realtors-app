@@ -15,11 +15,12 @@ public class SiteVisitAccountRepository {
 	private final JdbcTemplate jdbcTemplate;
 
 	public void create(UUID siteVisitId, BigDecimal expenseAmount) {
+		BigDecimal expense = expenseAmount == null ? new BigDecimal(0) : expenseAmount;
 		jdbcTemplate.update("""
 				    INSERT INTO site_visit_accounts
 				    (site_visit_id, total_paid, balance, status)
 				    VALUES (?, 0, ?, 'OPEN')
-				""", siteVisitId, expenseAmount);
+				""", siteVisitId, expense);
 	}
 
 	public void updateTotals(UUID siteVisitId, BigDecimal totalPaid, BigDecimal balance, String status) {

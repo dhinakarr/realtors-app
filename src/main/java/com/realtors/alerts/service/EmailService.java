@@ -27,12 +27,15 @@ public class EmailService {
 			helper.setSubject(subject);
 			helper.setText(html, true);
 			helper.setFrom("apkdhina@gmail.com");
-			helper.addInline("logo", new ClassPathResource("static/logo.png"));
+			helper.addInline("logo", new ClassPathResource("logo.png"));
 
 			mailSender.send(message);
 
 		} catch (Exception e) {
-			throw new NotificationDeliveryException("EMAIL delivery failed", e);
+			throw new NotificationDeliveryException(
+				    "EMAIL delivery failed: " + (e.getMessage() != null ? e.getMessage() : "unknown error"),
+				    e
+				);
 		}
 	}
 }

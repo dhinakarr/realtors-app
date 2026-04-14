@@ -59,8 +59,11 @@ public class PushNotificationSender implements NotificationSender {
 			logger.info("@PushNotificationSender.send Push sent: {}", response);
 
 		} catch (FirebaseMessagingException ex) {
-			notificationrepo.saveFailure(request, NotificationChannel.PUSH.name(), recipient, ex.getMessage());
-			throw new RuntimeException("Push failed", ex);
+			try {
+				notificationrepo.saveFailure(request, NotificationChannel.PUSH.name(), recipient, ex.getMessage());
+			} catch(Exception e) {
+				logger.error("Failed to log notification failure", ex);
+			}
 		}
 	}
 }

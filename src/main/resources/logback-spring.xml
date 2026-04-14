@@ -1,6 +1,6 @@
 <configuration>
 
-    <!-- File appender -->
+    <!-- File Appender -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/application.log</file>
 
@@ -14,9 +14,15 @@
         </encoder>
     </appender>
 
-    <!-- Disable console logging -->
-    <root level="ERROR">
+    <!-- Package-specific logging -->
+    <logger name="com.realtors" level="INFO"/>
+    <logger name="com.realitor.common.util.JsonAwareRowMapper" level="WARN"/>
+    <logger name="org.springframework.web.servlet.resource.ResourceHttpRequestHandler" level="OFF"/>
+    <logger name="org.springframework.jdbc.core.BeanPropertyRowMapper" level="WARN"/>
+
+    <!-- Root logger -->
+    <root level="INFO">
         <appender-ref ref="FILE"/>
     </root>
-
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
 </configuration>

@@ -21,6 +21,7 @@ public class AppUserDto {
     @NotNull(message = "roleId is required")
     private UUID roleId;
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @JsonIgnore
     private String roleName;
     @NotBlank(message = "email is required")
     @Email(message = "invalid email")
@@ -42,6 +43,7 @@ public class AppUserDto {
     private Map<String, Object> meta;
     private UUID managerId;
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    @JsonIgnore
     private String managerName;
     private byte[] profileImage;
     private @JsonIgnore UUID createdBy;

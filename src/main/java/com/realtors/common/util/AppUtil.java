@@ -43,7 +43,6 @@ public class AppUtil {
 		if (auth == null || auth.getPrincipal() == null)
 			return null;
 		String userIdStr = auth.getPrincipal().toString();
-		System.out.println("@AppUtil.getCurrentUserId: " + userIdStr);
 		try {
 			return UUID.fromString(userIdStr);
 		} catch (Exception e) {
@@ -126,18 +125,12 @@ public class AppUtil {
 			List<CustomerMiniDto> customers) {
 		for (DynamicFormMetaRow row : form.getFields()) {
 
-			logger.info("@AppUtil.filterLookup row check -> column={}, type={}, lookup={}", row.getColumnName(),
-					row.getFieldType(), row.getLookupData() != null);
-
 			if (subordinates != null && !subordinates.isEmpty()) {
 				Set<UUID> allowedUserIds = subordinates.stream().map(UserBasicDto::userId).collect(Collectors.toSet());
 				if ("user_id".equals(row.getColumnName()) && "select".equalsIgnoreCase(row.getFieldType())
 						&& row.getLookupData() != null) {
-					logger.info("@AppUtil.filterLookup matched user_id row");
 					List<Map<String, Object>> lookupData = (List<Map<String, Object>>) row.getLookupData();
 					List<Map<String, Object>> filtered = lookupData.stream().filter(m -> {
-						logger.info("@AppUtil.filterLookup subordinates: " + m.get("key") + " -> "
-								+ m.get("key").getClass());
 						Object keyObj = m.get("key");
 						if (keyObj == null)
 							return false;

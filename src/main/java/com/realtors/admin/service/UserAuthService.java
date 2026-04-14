@@ -88,7 +88,6 @@ public class UserAuthService {
 
 		// Update lastLogin data
 		updateLastLogin(userId);
-
 		// Build return Value after successful login
 		List<ModulePermissionDto> returnDto = this.permissionService.findPermissionsByRole(roleId);
 		Map<String, Object> map = Map.of("accessToken", token, "refreshToken", refToken, "userId", userId.toString(),

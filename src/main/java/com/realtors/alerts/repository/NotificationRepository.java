@@ -2,6 +2,8 @@ package com.realtors.alerts.repository;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -14,6 +16,7 @@ import com.realtors.alerts.messages.NotificationMessage;
 public class NotificationRepository {
 
 	private final JdbcTemplate jdbcTemplate;
+	private static final Logger logger = LoggerFactory.getLogger(NotificationRepository.class);
 
 	public NotificationRepository(JdbcTemplate jdbcTemplate) {
 		this.jdbcTemplate = jdbcTemplate;
@@ -32,12 +35,25 @@ public class NotificationRepository {
 	}
 
 	public void saveFailure(NotificationInstruction req, String channel, String recipient, String reason) {
-		jdbcTemplate.update("""
+		try {
+			jdbcTemplate.update("""
 				    INSERT INTO notification_log
 				    (event_id, event_type, channel, recipient, title, message, status, failure_reason)
 				    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-				""", req.eventId(), req.eventType(), channel, recipient, req.messages().getFirst().toString(),
-				NotificationStatus.FAILED.name(), reason);
+				""",
+				    req.eventId(),
+				    req.eventType(),
+				    channel,
+				    recipient,
+				    null,   // or proper title
+				    req.messages().getFirst().toString(), // message body
+				    NotificationStatus.FAILED.name(),
+				    reason
+				);
+		} catch(Exception e) {
+			logger.error("Failed to persist notification failure", e);
+		}
+		
 	}
 
 	public List<NotificationResponse> findByUser(String userId, int limit, int offset) {

@@ -144,7 +144,7 @@ public class GenericUpdateUtil {
 
 //        sql.setLength(sql.length() - 2); // remove trailing comma
         buildWhereClause(sql, params, idColumn, idValue);
-        logger.info("@GenericUpdateUtil.executeUpdateWithFiles  sql: "+sql);
+//        logger.info("@GenericUpdateUtil.executeUpdateWithFiles  sql: "+sql);
         // Execute
         jdbcTemplate.update(sql.toString(), params.toArray());
 

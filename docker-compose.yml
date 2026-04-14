@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: Postgres@123
       MAIL_USERNAME: apkdhina@gmail.com
-      MAIL_USERNAME: jrle ydzn nzak rvod
+      MAIL_PASSWORD: jrle ydzn nzak rvod
       BACKEND_URL: 45.195.159.53:808
       FRONTEND_URL: 45.195.159.53:80
       JWT_SECRET: ThisIsASecretKeyForJWTsChangeMe1234567890
