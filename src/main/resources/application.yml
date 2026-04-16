@@ -73,17 +73,6 @@ app:
   frontend:
     base-url: ${FRONTEND_URL}
 
-management:
-  server:
-    port: 8081
-  endpoints:
-    web:
-      exposue:
-        include: health
-  endpoint:
-    health:
-      show-details: never
-
 logging:
   file:
     name: logs/application.log
